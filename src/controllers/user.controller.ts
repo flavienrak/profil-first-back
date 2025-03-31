@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import isEmpty from 'utils/isEmpty';
+import isEmpty from '../utils/isEmpty';
 
 const prisma = new PrismaClient();
 
@@ -23,14 +23,14 @@ const get = async (req: Request, res: Response): Promise<void> => {
 
     const profile = await prisma.file.findFirst({
       where: { userId: res.locals.user.id, usage: 'profile' },
-      select: { fileName: true },
+      select: { name: true },
       orderBy: { updatedAt: 'desc' },
     });
 
     const { password, ...userWithoutPassword } = user;
 
     res.status(200).json({
-      user: { ...userWithoutPassword, image: profile?.fileName || null },
+      user: { ...userWithoutPassword, image: profile?.name || null },
     });
     return;
   } catch (error) {

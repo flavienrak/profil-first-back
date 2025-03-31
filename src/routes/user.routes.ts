@@ -1,9 +1,9 @@
 import express from 'express';
 import multer from 'multer';
 
-import { get, update } from '../controllers/user.controller.js';
+import { get, update } from '../controllers/user.controller';
 import { isAuthenticated } from '../middlewares/auth.middleware';
-import { updateProfileValidations } from 'validations/user.validations.js';
+import { updateProfileValidations } from '../validations/user.validations';
 
 const upload = multer();
 const router = express.Router();
