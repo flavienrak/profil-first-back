@@ -1,0 +1,27 @@
+# Ignorer les dossiers de configuration de l'IDE
+.vscode/
+.idea/
+
+# Ignorer les dépendances locales
+node_modules/
+venv/
+
+# Ignorer les fichiers de versionnement
+.git/
+
+# Ignorer les fichiers temporaires et logs
+*.tmp
+*.log
+*.cache
+
+# Ignorer les fichiers de documentation et tests
+docs/
+tests/
+
+# Ignorer les données sensibles
+.env
+secrets/
+
+# Ignorer les fichiers de build
+build/
+dist/
