@@ -7,9 +7,10 @@ import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
 import { maxAgeAuthToken } from '../utils/constants';
 
-dotenv.config({ path: '.env' });
-const secretKey = process.env.JWT_SECRET;
+dotenv.config();
+const secretKey = process.env.JWT_SECRET_KEY;
 const authTokenName = process.env.AUTH_TOKEN_NAME;
+const domain = process.env.NODE_ENV === 'production' ? '.com' : 'localhost';
 
 const prisma = new PrismaClient();
 
@@ -24,7 +25,9 @@ const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    user = await prisma.user.findUnique({ where: { email: body.email } });
+    user = await prisma.user.findUnique({
+      where: { email: body.email.toLowerCase() },
+    });
     if (!user) {
       res.json({ userNotFound: true });
       return;
@@ -48,13 +51,18 @@ const login = async (req: Request, res: Response): Promise<void> => {
     const authToken = jwt.sign({ infos }, secretKey, {
       expiresIn: maxAgeAuthToken,
     });
+
     const cookieOptions: {
       httpOnly: boolean;
       secure: boolean;
+      sameSite: boolean | 'none' | 'lax' | 'strict';
+      domain: string;
       maxAge?: number;
     } = {
       httpOnly: true,
       secure: false,
+      sameSite: 'none',
+      domain,
     };
     if (body.remember) {
       cookieOptions.maxAge = maxAgeAuthToken;
@@ -93,7 +101,7 @@ const register = async (req: Request, res: Response): Promise<void> => {
     user = await prisma.user.create({
       data: {
         name: body.name,
-        email: body.email,
+        email: body.email.toLowerCase(),
         password,
         role: body.role,
       },

@@ -36,7 +36,7 @@ const registerValidations = [
     .trim()
     .notEmpty()
     .withMessage('role required')
-    .isIn(['user', 'admin', 'recruiter'])
+    .isIn(['user', 'recruiter'])
     .withMessage('invalid role'),
 ];
 
