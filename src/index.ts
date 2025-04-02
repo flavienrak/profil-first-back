@@ -14,11 +14,11 @@ dotenv.config();
 sequelize.sync().then(() => console.log('PostgresSQL synchronized'));
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/*', checkUser);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Backend running successfully!');
 });
-app.get('/api/*', checkUser);
 app.get('/api/jwtid', requireAuth);
 
 app.use('/api/auth', authRoutes);

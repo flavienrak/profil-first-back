@@ -8,15 +8,17 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  role      String   @default("user")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt 
+  id               Int      @id @default(autoincrement())
+  name             String
+  email            String   @unique
+  password         String
+  acceptConditions Boolean  @default(false)
+  role             String   @default("user")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt 
 
   files     File[]
+  cvMinutes CvMinute[]
 }
 
 model File {
@@ -29,5 +31,18 @@ model File {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt 
 
+  cvMinute     CvMinute?
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model CvMinute {
+  id           Int      @id @default(autoincrement())
+  position     String   @db.Text
+  fileId       Int      @unique
+  userId       Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt 
+
+  file         File     @relation(fields: [fileId], references: [id])
   user         User     @relation(fields: [userId], references: [id])
 }

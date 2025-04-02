@@ -59,7 +59,7 @@ const login = async (req: Request, res: Response): Promise<void> => {
     } = {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
     };
     if (body.remember) {
       cookieOptions.maxAge = maxAgeAuthToken;
@@ -104,7 +104,7 @@ const register = async (req: Request, res: Response): Promise<void> => {
       },
     });
 
-    res.status(200).json({ user: user.id });
+    res.status(201).json({ user: user.id });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });

@@ -1,21 +1,38 @@
 import express from 'express';
 import multer from 'multer';
 
-import { get, update } from '../controllers/user.controller';
+import {
+  acceptConditions,
+  cvMinute,
+  getUser,
+  updateUser,
+} from '../controllers/user.controller';
 import { isAuthenticated } from '../middlewares/auth.middleware';
-import { updateProfileValidations } from '../validations/user.validations';
+import {
+  cvMinuteValidations,
+  updateProfileValidations,
+} from '../validations/user.validations';
 
 const upload = multer();
 const router = express.Router();
 
-router.get('/get-user', isAuthenticated, get);
+router.get('/', isAuthenticated, getUser);
+router.get('/accept-conditions', isAuthenticated, acceptConditions);
+
+router.post(
+  '/cv-minute',
+  upload.single('file'),
+  isAuthenticated,
+  cvMinuteValidations,
+  cvMinute,
+);
 
 router.put(
   '/update-profile',
   upload.single('file'),
   isAuthenticated,
   updateProfileValidations,
-  update,
+  updateUser,
 );
 
 export default router;
