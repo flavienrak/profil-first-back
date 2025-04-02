@@ -12,6 +12,12 @@ const loginValidations = [
     .withMessage('password required')
     .isLength({ min: 6 })
     .withMessage('invalid password'),
+  body('role')
+    .trim()
+    .notEmpty()
+    .withMessage('role required')
+    .isIn(['user', 'recruiter', 'admin'])
+    .withMessage('invalid role'),
 ];
 
 const registerValidations = [
@@ -36,7 +42,7 @@ const registerValidations = [
     .trim()
     .notEmpty()
     .withMessage('role required')
-    .isIn(['user', 'recruiter'])
+    .isIn(['user', 'recruiter', 'admin'])
     .withMessage('invalid role'),
 ];
 

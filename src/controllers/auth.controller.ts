@@ -10,7 +10,6 @@ import { maxAgeAuthToken } from '../utils/constants';
 dotenv.config();
 const secretKey = process.env.JWT_SECRET_KEY;
 const authTokenName = process.env.AUTH_TOKEN_NAME;
-const domain = process.env.NODE_ENV === 'production' ? '.com' : 'localhost';
 
 const prisma = new PrismaClient();
 
@@ -28,7 +27,7 @@ const login = async (req: Request, res: Response): Promise<void> => {
     user = await prisma.user.findUnique({
       where: { email: body.email.toLowerCase() },
     });
-    if (!user) {
+    if (!user || (user && user.role !== body.role)) {
       res.json({ userNotFound: true });
       return;
     }
@@ -56,13 +55,11 @@ const login = async (req: Request, res: Response): Promise<void> => {
       httpOnly: boolean;
       secure: boolean;
       sameSite: boolean | 'none' | 'lax' | 'strict';
-      domain: string;
       maxAge?: number;
     } = {
       httpOnly: true,
-      secure: false,
-      sameSite: 'none',
-      domain,
+      secure: true,
+      sameSite: 'strict',
     };
     if (body.remember) {
       cookieOptions.maxAge = maxAgeAuthToken;

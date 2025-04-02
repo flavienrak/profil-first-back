@@ -1,3 +1,3 @@
-const maxAgeAuthToken = 32000000;
+const maxAgeAuthToken = 31536000000;
 
 export { maxAgeAuthToken };
