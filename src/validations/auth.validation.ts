@@ -1,6 +1,6 @@
 import { body } from 'express-validator';
 
-const loginValidations = [
+const loginValidation = [
   body('email')
     .trim()
     .notEmpty()
@@ -20,7 +20,7 @@ const loginValidations = [
     .withMessage('invalid role'),
 ];
 
-const registerValidations = [
+const registerValidation = [
   body('name')
     .trim()
     .notEmpty()
@@ -46,4 +46,4 @@ const registerValidations = [
     .withMessage('invalid role'),
 ];
 
-export { loginValidations, registerValidations };
+export { loginValidation, registerValidation };

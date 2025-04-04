@@ -8,41 +8,96 @@ datasource db {
 }
 
 model User {
-  id               Int      @id @default(autoincrement())
+  id               Int        @id @default(autoincrement())
   name             String
-  email            String   @unique
+  email            String     @unique
   password         String
-  acceptConditions Boolean  @default(false)
-  role             String   @default("user")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt 
+  acceptConditions Boolean    @default(false)
+  role             String     @default("user")
 
-  files     File[]
-  cvMinutes CvMinute[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt 
+
+  files            File[]
+  cvMinutes        CvMinute[]
 }
 
 model File {
-  id           Int      @id @default(autoincrement())
+  id           Int          @id @default(autoincrement())
   name         String
   originalName String
   extension    String
   usage        String
   userId       Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt 
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt 
+
+  user         User         @relation(fields: [userId], references: [id])
 
   cvMinute     CvMinute?
-  user         User     @relation(fields: [userId], references: [id])
+  sectionInfo  SectionInfo?
 }
 
 model CvMinute {
-  id           Int      @id @default(autoincrement())
-  position     String   @db.Text
-  fileId       Int      @unique
-  userId       Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt 
+  id               Int               @id @default(autoincrement())
+  position         String
+  primaryColor     String            @default("#2A7F8B")   
+  background       String            @default("#FFFFFF")   
+  fileId           Int               @unique
+  userId           Int
 
-  file         File     @relation(fields: [fileId], references: [id])
-  user         User     @relation(fields: [userId], references: [id])
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt 
+
+  file             File              @relation(fields: [fileId], references: [id])
+  user             User              @relation(fields: [userId], references: [id])
+
+  cvMinuteSections CvMinuteSection[]
+}
+
+model Section {
+  id               Int               @id @default(autoincrement())
+  name             String            @unique
+  editable         Boolean           @default(false)
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt 
+  
+  cvMinuteSections CvMinuteSection[]
+}
+
+model CvMinuteSection {
+  sectionOrder                  Int?
+  sectionTitle                  String?       
+  cvMinuteId                    Int
+  sectionId                     Int
+
+  cvMinute                      CvMinute         @relation(fields: [cvMinuteId], references: [id])
+  sections                      Section          @relation(fields: [sectionId], references: [id])
+
+  sectionInfos                  SectionInfo[]
+
+  @@id([cvMinuteId, sectionId])
+}
+
+model SectionInfo {
+  id                Int              @id @default(autoincrement())
+  role              String           @default("text")
+  content           String
+  font              String           
+  color             String           @default("#000000")
+  background        String           @default("transparent")   
+  icon              String?
+  iconColor         String? 
+  iconSize          String?         
+  fileId            Int?             @unique
+  cvMinuteId        Int
+  sectionId         Int
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt 
+
+  file              File?            @relation(fields: [fileId], references: [id])
+  cvMinuteSection   CvMinuteSection  @relation(fields: [cvMinuteId, sectionId], references: [cvMinuteId, sectionId])
 }

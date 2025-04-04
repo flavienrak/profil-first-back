@@ -9,9 +9,9 @@ import {
 } from '../controllers/user.controller';
 import { isAuthenticated } from '../middlewares/auth.middleware';
 import {
-  cvMinuteValidations,
-  updateProfileValidations,
-} from '../validations/user.validations';
+  cvMinuteValidation,
+  updateProfileValidation,
+} from '../validations/user.validation';
 
 const upload = multer();
 const router = express.Router();
@@ -23,7 +23,7 @@ router.post(
   '/cv-minute',
   upload.single('file'),
   isAuthenticated,
-  cvMinuteValidations,
+  cvMinuteValidation,
   cvMinute,
 );
 
@@ -31,7 +31,7 @@ router.put(
   '/update-profile',
   upload.single('file'),
   isAuthenticated,
-  updateProfileValidations,
+  updateProfileValidation,
   updateUser,
 );
 

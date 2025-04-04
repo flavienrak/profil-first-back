@@ -1,14 +1,15 @@
 import express from 'express';
+
 import { login, logout, register } from '../controllers/auth.controller';
 import {
-  loginValidations,
-  registerValidations,
-} from '../validations/auth.validations';
+  loginValidation,
+  registerValidation,
+} from '../validations/auth.validation';
 
 const router = express.Router();
 
-router.post('/login', loginValidations, login);
-router.post('/register', registerValidations, register);
+router.post('/login', loginValidation, login);
+router.post('/register', registerValidation, register);
 router.get('/logout', logout);
 
 export default router;

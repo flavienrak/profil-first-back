@@ -1,15 +1,18 @@
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcrypt';
+import express from 'express';
 import isEmpty from '../utils/isEmpty';
 
-import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
 
 const prisma = new PrismaClient();
 
-const getUser = async (req: Request, res: Response): Promise<void> => {
+const getUser = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -44,7 +47,10 @@ const getUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const updateUser = async (req: Request, res: Response): Promise<void> => {
+const updateUser = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
   try {
     let user = null;
     let fileName = null;
@@ -124,7 +130,10 @@ const updateUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const cvMinute = async (req: Request, res: Response): Promise<void> => {
+const cvMinute = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
   try {
     let file = null;
     const body = req.body;
@@ -190,7 +199,10 @@ const cvMinute = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const acceptConditions = async (req: Request, res: Response): Promise<void> => {
+const acceptConditions = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
   try {
     await prisma.user.update({
       where: { id: res.locals.user.id },

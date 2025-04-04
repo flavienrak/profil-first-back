@@ -1,19 +1,20 @@
-import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
+import express from 'express';
 import jwt from 'jsonwebtoken';
 
-import { Request, Response } from 'express';
-import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
+import { validationResult } from 'express-validator';
 import { maxAgeAuthToken } from '../utils/constants';
 
-dotenv.config();
 const secretKey = process.env.JWT_SECRET_KEY;
 const authTokenName = process.env.AUTH_TOKEN_NAME;
 
 const prisma = new PrismaClient();
 
-const login = async (req: Request, res: Response): Promise<void> => {
+const login = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
   try {
     let user = null;
     const body = req.body;
@@ -75,7 +76,10 @@ const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const register = async (req: Request, res: Response): Promise<void> => {
+const register = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
   try {
     let user = null;
     const body = req.body;
@@ -112,7 +116,7 @@ const register = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const logout = async (req: Request, res: Response) => {
+const logout = async (req: express.Request, res: express.Response) => {
   res.cookie(authTokenName, '', { maxAge: -1 });
   res.redirect('/');
 };

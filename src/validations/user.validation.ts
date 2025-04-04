@@ -1,11 +1,11 @@
 import { body } from 'express-validator';
 
-const updateProfileValidations = [
+const updateProfileValidation = [
   body('name').trim().optional(),
   body('password').optional(),
 ];
 
-const cvMinuteValidations = [
+const cvMinuteValidation = [
   body('position')
     .trim()
     .notEmpty()
@@ -20,4 +20,4 @@ const cvMinuteValidations = [
   }),
 ];
 
-export { updateProfileValidations, cvMinuteValidations };
+export { updateProfileValidation, cvMinuteValidation };
