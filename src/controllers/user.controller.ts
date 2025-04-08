@@ -7,6 +7,7 @@ import isEmpty from '../utils/isEmpty';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
+import { imageMimeTypes } from '../utils/constants';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -86,7 +87,7 @@ const updateUser = async (
     }
 
     if (req.file) {
-      if (req.file.mimetype.startsWith('image/')) {
+      if (imageMimeTypes.includes(req.file.mimetype)) {
         const extension = path.extname(req.file.originalname);
         fileName = `profile-${res.locals.user.id}-${Date.now()}-${uniqueId}${extension}`;
         const directoryPath = path.join(

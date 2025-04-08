@@ -68,6 +68,7 @@ model Section {
 }
 
 model CvMinuteSection {
+  id           Int     @id @default(autoincrement())
   sectionOrder Int?
   sectionTitle String?
   cvMinuteId   Int
@@ -77,32 +78,40 @@ model CvMinuteSection {
   sections Section  @relation(fields: [sectionId], references: [id])
 
   sectionInfos SectionInfo[]
+  advices      Advice[]
 
-  @@id([cvMinuteId, sectionId])
+  @@unique([cvMinuteId, sectionId])
 }
 
 model SectionInfo {
-  id         Int     @id @default(autoincrement())
-  role       String  @default("text")
-  order      Int?
-  content    String?
-  title      String?
-  company    String?
-  date       String?
-  contrat    String?
-  conseil    String?
-  suggestion String?
-  font       String  @default("normal")         
-  color      String  @default("#000000")
-  background String  @default("transparent") 
-  icon       String?
-  iconSize   Int?
-  cvMinuteId Int
-  sectionId  Int
+  id                Int     @id @default(autoincrement())
+  role              String  @default("text")
+  order             Int?
+  content           String?
+  title             String?
+  company           String?
+  date              String?
+  contrat           String?
+  conseil           String?
+  suggestion        String?
+  font              String  @default("normal")
+  color             String  @default("#000000")
+  background        String  @default("transparent")
+  icon              String?
+  iconSize          Int?
+  cvMinuteSectionId Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   file            File?
-  cvMinuteSection CvMinuteSection @relation(fields: [cvMinuteId, sectionId], references: [cvMinuteId, sectionId])
+  cvMinuteSection CvMinuteSection @relation(fields: [cvMinuteSectionId], references: [id])
+}
+
+model Advice {
+  id                Int    @id @default(autoincrement())
+  content           String
+  cvMinuteSectionId Int
+
+  cvMinuteSection CvMinuteSection @relation(fields: [cvMinuteSectionId], references: [id])
 }

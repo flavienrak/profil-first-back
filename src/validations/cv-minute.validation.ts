@@ -43,17 +43,35 @@ const addSectionsValidation = [
     }),
 ];
 
+const updateCvMinuteProfileValidation = [
+  param('id')
+    .notEmpty()
+    .withMessage('id required')
+    .isInt()
+    .withMessage('invalid id'),
+  body('cvMinuteSectionId')
+    .notEmpty()
+    .withMessage('cvMinuteSectionId required'),
+  body().custom((value, { req }) => {
+    if (!req.file) {
+      throw new Error('File required');
+    }
+
+    return true;
+  }),
+];
+
 const udpateSectionValidation = [
   param('id')
     .notEmpty()
     .withMessage('id required')
     .isInt()
     .withMessage('invalid id'),
-  body('sectionId')
-    .notEmpty()
-    .withMessage('sectionId required')
-    .isInt()
-    .withMessage('invalid sectionId'),
+  // body('cvMinuteSectionId')
+  //   .notEmpty()
+  //   .withMessage('cvMinuteSectionId required')
+  //   .isInt()
+  //   .withMessage('invalid cvMinuteSectionId'),
 ];
 
 const udpateSectionsOrderValidation = [
@@ -80,6 +98,7 @@ export {
   getCvMinuteValidation,
   addCvMinuteValidation,
   addSectionsValidation,
+  updateCvMinuteProfileValidation,
   udpateSectionValidation,
   udpateSectionsOrderValidation,
 };

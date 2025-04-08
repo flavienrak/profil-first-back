@@ -23,8 +23,10 @@ const checkUser = async (
         where: { id: userId },
       });
 
-      const { password, ...userWithoutPassword } = user;
-      res.locals.user = userWithoutPassword;
+      if (user) {
+        const { password, ...userWithoutPassword } = user;
+        res.locals.user = userWithoutPassword;
+      }
       next();
     } else {
       res.locals.user = null;
@@ -49,6 +51,7 @@ const requireAuth = (req: express.Request, res: express.Response): void => {
       }
     }
   }
+  res.cookie(authTokenName, '', { maxAge: -1 });
   res.json({ notAuthenticated: true });
   return;
 };

@@ -19,4 +19,12 @@ const defaultSections = [
   },
 ];
 
-export { maxAgeAuthToken, defaultSections };
+const imageMimeTypes = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/svg',
+  'image/heif',
+];
+
+export { maxAgeAuthToken, defaultSections, imageMimeTypes };

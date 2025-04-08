@@ -8,6 +8,7 @@ import {
   addSections,
   updateSection,
   updateSectionsOrder,
+  updateCvMinuteProfile,
 } from '../controllers/cv-minute.controller';
 import {
   addCvMinuteValidation,
@@ -15,6 +16,7 @@ import {
   getCvMinuteValidation,
   udpateSectionValidation,
   udpateSectionsOrderValidation,
+  updateCvMinuteProfileValidation,
 } from '../validations/cv-minute.validation';
 
 const upload = multer();
@@ -34,6 +36,13 @@ router.post(
   isAuthenticated,
   addSectionsValidation,
   addSections,
+);
+router.post(
+  '/:id/profile',
+  upload.single('file'),
+  isAuthenticated,
+  updateCvMinuteProfileValidation,
+  updateCvMinuteProfile,
 );
 router.put(
   '/:id/section',
