@@ -68,7 +68,7 @@ const login = async (
 
     res.cookie(authTokenName, authToken, cookieOptions);
 
-    res.status(200).json({ user: user.id });
+    res.status(200).json({ userId: user.id });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
@@ -108,7 +108,7 @@ const register = async (
       },
     });
 
-    res.status(201).json({ user: user.id });
+    res.status(201).json({ userId: user.id });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });

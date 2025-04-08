@@ -1,11 +1,34 @@
 import { body, param } from 'express-validator';
 
-const addSectionsValidation = [
-  param('cvMinuteId')
+const getCvMinuteValidation = [
+  param('id')
     .notEmpty()
-    .withMessage('cvMinuteId required')
+    .withMessage('id required')
     .isInt()
-    .withMessage('invalid cvMinuteId'),
+    .withMessage('invalid id'),
+];
+
+const addCvMinuteValidation = [
+  body('position')
+    .trim()
+    .notEmpty()
+    .isLength({ min: 5 })
+    .withMessage('Position required'),
+  body().custom((value, { req }) => {
+    if (!req.file) {
+      throw new Error('File required');
+    }
+
+    return true;
+  }),
+];
+
+const addSectionsValidation = [
+  param('id')
+    .notEmpty()
+    .withMessage('id required')
+    .isInt()
+    .withMessage('invalid id'),
   body('sections')
     .isArray({ min: 1 })
     .withMessage('sections required')
@@ -20,50 +43,43 @@ const addSectionsValidation = [
     }),
 ];
 
-const udpateSectionTitleValidation = [
-  param('cvMinuteId')
+const udpateSectionValidation = [
+  param('id')
     .notEmpty()
-    .withMessage('cvMinuteId required')
+    .withMessage('id required')
     .isInt()
-    .withMessage('invalid cvMinuteId'),
+    .withMessage('invalid id'),
   body('sectionId')
     .notEmpty()
     .withMessage('sectionId required')
     .isInt()
     .withMessage('invalid sectionId'),
-  body('title').trim().notEmpty().withMessage('title required'),
 ];
 
-const udpateSectionOrderValidation = [
-  param('cvMinuteId')
+const udpateSectionsOrderValidation = [
+  param('id')
     .notEmpty()
-    .withMessage('cvMinuteId required')
+    .withMessage('id required')
     .isInt()
-    .withMessage('invalid cvMinuteId'),
-  body('sectionId')
-    .notEmpty()
-    .withMessage('sectionId required')
-    .isInt()
-    .withMessage('invalid sectionId'),
-  body('order')
-    .notEmpty()
-    .withMessage('order required')
-    .isInt()
-    .withMessage('invalid order'),
-];
-
-const sectionRelationsValidation = [
-  param('cvMinuteId')
-    .notEmpty()
-    .withMessage('cvMinuteId required')
-    .isInt()
-    .withMessage('invalid cvMinuteId'),
-  body('name').trim().notEmpty().withMessage('name required'),
+    .withMessage('invalid id'),
+  body('sections')
+    .isArray({ min: 1 })
+    .withMessage('sections required')
+    .custom((sections) => {
+      const isValid = sections.every((item: any) => {
+        return item.id && Number(item.id) && item.order && Number(item.order);
+      });
+      if (!isValid) {
+        throw new Error("sections'infos invalid");
+      }
+      return true;
+    }),
 ];
 
 export {
+  getCvMinuteValidation,
+  addCvMinuteValidation,
   addSectionsValidation,
-  udpateSectionTitleValidation,
-  udpateSectionOrderValidation,
-  sectionRelationsValidation,
+  udpateSectionValidation,
+  udpateSectionsOrderValidation,
 };
