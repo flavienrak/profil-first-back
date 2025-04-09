@@ -73,7 +73,13 @@ const updateCvMinuteSectionValidation = [
   body().custom((value, { req }) => {
     const body = req.body;
 
-    if (body.updateContactSection) {
+    if (body.updateBg) {
+      return (
+        !isEmpty(body.primaryBg) &&
+        !isEmpty(body.secondaryBg) &&
+        !isEmpty(body.tertiaryBg)
+      );
+    } else if (body.updateContactSection) {
       return (
         !isEmpty(body.cvMinuteSectionId) &&
         !isNaN(body.cvMinuteSectionId) &&

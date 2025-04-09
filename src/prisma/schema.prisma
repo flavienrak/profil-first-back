@@ -43,8 +43,9 @@ model File {
 model CvMinute {
   id           Int    @id @default(autoincrement())
   position     String
-  primaryColor String @default("#2A7F8B")
-  background   String @default("#FFFFFF")
+  primaryBg    String @default("#2A7F8B")
+  secondaryBg  String @default("#1A5F6B")
+  tertiaryBg   String @default("#BEDBFF")
   userId       Int
 
   createdAt DateTime @default(now())
@@ -92,9 +93,6 @@ model SectionInfo {
   company           String?
   date              String?
   contrat           String?
-  font              String  @default("normal")
-  color             String  @default("#000000")
-  background        String  @default("transparent")
   icon              String?
   iconSize          Int?
   cvMinuteSectionId Int
