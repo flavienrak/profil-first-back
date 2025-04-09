@@ -53,6 +53,7 @@ model CvMinute {
   user User @relation(fields: [userId], references: [id])
 
   files            File[]
+  advices          Advice[]
   cvMinuteSections CvMinuteSection[]
 }
 
@@ -77,23 +78,20 @@ model CvMinuteSection {
   cvMinute CvMinute @relation(fields: [cvMinuteId], references: [id])
   sections Section  @relation(fields: [sectionId], references: [id])
 
-  sectionInfos SectionInfo[]
   advices      Advice[]
+  sectionInfos SectionInfo[]
 
   @@unique([cvMinuteId, sectionId])
 }
 
 model SectionInfo {
   id                Int     @id @default(autoincrement())
-  role              String  @default("text")
   order             Int?
-  content           String?
+  content           String
   title             String?
   company           String?
   date              String?
   contrat           String?
-  conseil           String?
-  suggestion        String?
   font              String  @default("normal")
   color             String  @default("#000000")
   background        String  @default("transparent")
@@ -105,13 +103,23 @@ model SectionInfo {
   updatedAt DateTime @updatedAt
 
   file            File?
-  cvMinuteSection CvMinuteSection @relation(fields: [cvMinuteSectionId], references: [id])
+  advices         Advice[]
+  cvMinuteSection CvMinuteSection @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
 }
 
 model Advice {
-  id                Int    @id @default(autoincrement())
+  id                Int     @id @default(autoincrement())
+  order             Int?
+  role              String?
   content           String
-  cvMinuteSectionId Int
+  cvMinuteId        Int?
+  sectionInfoId     Int?
+  cvMinuteSectionId Int?
 
-  cvMinuteSection CvMinuteSection @relation(fields: [cvMinuteSectionId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id])
+  sectionInfo     SectionInfo?     @relation(fields: [sectionInfoId], references: [id], onDelete: Cascade)
+  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
 }

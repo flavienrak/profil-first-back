@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 
-import { app, server } from './socket';
+import { app, logger, server } from './socket';
 import { checkUser, requireAuth } from './middlewares/auth.middleware';
 
 import authRoutes from './routes/auth.routes';
@@ -24,4 +24,4 @@ app.use('/api/user', userRoutes);
 app.use('/api/cv-minute', cvMinuteRoutes);
 
 const port = process.env.BACKEND_PORT || 5000;
-server.listen(port, () => console.log(`App runing at: ${port}`));
+server.listen(port, () => logger.info(`App runing at: ${port}`));

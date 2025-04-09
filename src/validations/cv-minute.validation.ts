@@ -1,3 +1,4 @@
+import isEmpty from '../utils/isEmpty';
 import { body, param } from 'express-validator';
 
 const getCvMinuteValidation = [
@@ -61,17 +62,35 @@ const updateCvMinuteProfileValidation = [
   }),
 ];
 
-const udpateSectionValidation = [
+const updateCvMinuteSectionValidation = [
   param('id')
     .notEmpty()
     .withMessage('id required')
     .isInt()
     .withMessage('invalid id'),
-  // body('cvMinuteSectionId')
-  //   .notEmpty()
-  //   .withMessage('cvMinuteSectionId required')
-  //   .isInt()
-  //   .withMessage('invalid cvMinuteSectionId'),
+  body().custom((value, { req }) => {
+    const body = req.body;
+
+    if (body.newSection) {
+      return (
+        !isEmpty(body.cvMinuteSectionId) &&
+        !isNaN(body.cvMinuteSectionId) &&
+        !isEmpty(body.content) &&
+        !isEmpty(body.title)
+      );
+    } else if (body.updateExperience) {
+      return (
+        !isEmpty(body.cvMinuteSectionId) &&
+        !isNaN(body.cvMinuteSectionId) &&
+        !isEmpty(body.title) &&
+        !isEmpty(body.content) &&
+        !isEmpty(body.company) &&
+        !isEmpty(body.date) &&
+        !isEmpty(body.contrat)
+      );
+    }
+    return true;
+  }),
 ];
 
 const udpateSectionsOrderValidation = [
@@ -99,6 +118,6 @@ export {
   addCvMinuteValidation,
   addSectionsValidation,
   updateCvMinuteProfileValidation,
-  udpateSectionValidation,
+  updateCvMinuteSectionValidation,
   udpateSectionsOrderValidation,
 };

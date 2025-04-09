@@ -20,6 +20,7 @@ const getCvMinute = async (
 
     const cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
+      include: { advices: true },
     });
     if (!cvMinute) {
       res.json({ cvMinuteNotFound: true });
@@ -320,18 +321,18 @@ const updateCvMinuteProfile = async (
   }
 };
 
-const updateSection = async (
+const updateCvMinuteSection = async (
   req: express.Request,
   res: express.Response,
 ): Promise<void> => {
   try {
     let section = null;
     let cvMinuteSection = null;
+    let sectionInfo = null;
+
     const { id } = req.params;
     const body: {
-      sectionId?: number;
       sectionInfoId?: number;
-
       sectionOrder?: number;
       sectionTitle?: string;
 
@@ -343,10 +344,19 @@ const updateSection = async (
       date?: string;
       contrat?: string;
       conseil?: string;
-      suggestion?: string;
+
+      newSection?: boolean;
+      updateExperience?: boolean;
+      updateCvMinuteSection?: boolean;
 
       cvMinuteSectionId?: number;
     } = req.body;
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
 
     const cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
@@ -356,7 +366,85 @@ const updateSection = async (
       return;
     }
 
-    if (body.cvMinuteSectionId) {
+    // create (section | cvMinuteSection) & sectionInfo
+    if (body.newSection) {
+      section = await prisma.section.findUnique({
+        where: { name: body.title.trim().toLocaleLowerCase() },
+      });
+
+      if (section) {
+        cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+          where: {
+            cvMinuteId_sectionId: {
+              cvMinuteId: cvMinute.id,
+              sectionId: section.id,
+            },
+          },
+        });
+
+        if (cvMinuteSection) {
+          res.json({ sectionAlreadyExist: true });
+          return;
+        } else {
+          // create cvMinuteSection & sectionInfo
+          cvMinuteSection = await prisma.cvMinuteSection.create({
+            data: {
+              cvMinuteId: cvMinute.id,
+              sectionId: section.id,
+              sectionTitle: body.title.trim(),
+              sectionOrder: body.sectionOrder,
+            },
+          });
+
+          sectionInfo = await prisma.sectionInfo.create({
+            data: {
+              cvMinuteSectionId: cvMinuteSection.id,
+              content: body.content.trim(),
+            },
+          });
+
+          cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+            where: { id: cvMinuteSection.id },
+            include: { sectionInfos: true },
+          });
+
+          res.status(201).json({ cvMinuteSection });
+          return;
+        }
+      } else {
+        // create section & cvMinute & sectionInfo
+        section = await prisma.section.create({
+          data: { name: body.title.trim().toLocaleLowerCase(), editable: true },
+        });
+
+        cvMinuteSection = await prisma.cvMinuteSection.create({
+          data: {
+            cvMinuteId: cvMinute.id,
+            sectionId: section.id,
+            sectionTitle: body.title.trim(),
+            sectionOrder: body.sectionOrder,
+          },
+        });
+
+        sectionInfo = await prisma.sectionInfo.create({
+          data: {
+            cvMinuteSectionId: cvMinuteSection.id,
+            content: body.content.trim(),
+          },
+        });
+
+        cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+          where: { id: cvMinuteSection.id },
+          include: { sectionInfos: true },
+        });
+
+        res.status(201).json({ section, cvMinuteSection });
+        return;
+      }
+    }
+
+    // update (cvMinuteSection &| sectionInfo)
+    if (body.updateCvMinuteSection) {
       cvMinuteSection = await prisma.cvMinuteSection.findUnique({
         where: { id: body.cvMinuteSectionId },
       });
@@ -364,101 +452,83 @@ const updateSection = async (
       if (!cvMinuteSection) {
         res.json({ cvMinuteSectionNotFound: true });
         return;
+      } else {
+        if (
+          !isEmpty(body.sectionTitle) &&
+          body.sectionTitle.trim() !== cvMinuteSection.sectionTitle
+        ) {
+          cvMinuteSection = await prisma.cvMinuteSection.update({
+            where: { id: cvMinuteSection.id },
+            data: { sectionTitle: body.sectionTitle.trim() },
+          });
+        }
+
+        // (update | create) sectionInfo
+        if (body.sectionInfoId) {
+          sectionInfo = await prisma.sectionInfo.findUnique({
+            where: { id: body.sectionInfoId },
+          });
+
+          if (body.content !== sectionInfo.content) {
+            sectionInfo = await prisma.sectionInfo.update({
+              where: { id: body.sectionInfoId },
+              data: { content: body.content.trim() || ' ' },
+            });
+          }
+        } else {
+          sectionInfo = await prisma.sectionInfo.create({
+            data: {
+              cvMinuteSectionId: cvMinuteSection.id,
+              content: body.content.trim() || ' ',
+            },
+          });
+        }
+
+        cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+          where: { id: cvMinuteSection.id },
+          include: { sectionInfos: true },
+        });
+
+        res.status(200).json({ cvMinuteSection });
+        return;
       }
     }
 
-    if (body.sectionTitle) {
-      section = await prisma.section.findUnique({
-        where: { name: body.sectionTitle.trim().toLocaleLowerCase() },
+    if (body.updateExperience) {
+      cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+        where: { id: body.cvMinuteSectionId },
       });
+      if (!cvMinuteSection) {
+        res.json({ cvMinuteSectionNotFound: true });
+        return;
+      }
 
-      if (!section) {
-        section = await prisma.section.create({
-          data: {
-            name: body.sectionTitle.trim().toLocaleLowerCase(),
-            editable: true,
-          },
+      const infosToUpdate = {
+        title: body.title.trim(),
+        content: body.content.trim(),
+        company: body.company.trim(),
+        date: body.date.trim(),
+        contrat: body.contrat.trim(),
+      };
+
+      if (body.sectionInfoId) {
+        sectionInfo = await prisma.section.update({
+          where: { id: body.sectionInfoId },
+          data: infosToUpdate,
         });
 
-        cvMinuteSection = await prisma.cvMinuteSection.create({
+        if (!sectionInfo) {
+          res.json({ sectionInfoNotFound: true });
+          return;
+        }
+      } else {
+        sectionInfo = await prisma.sectionInfo.create({
           data: {
-            cvMinuteId: cvMinute.id,
-            sectionId: section.id,
-            sectionTitle: body.sectionTitle,
-            sectionOrder: body.sectionOrder,
+            ...infosToUpdate,
+            cvMinuteSectionId: cvMinuteSection.id,
           },
         });
       }
-    }
-
-    // if (!section) {
-    //   section = await prisma.section.create({
-    //     data: { name: s.name.trim().toLowerCase(), editable: s.editable },
-    //   });
-
-    //   const cvMinuteSection = await prisma.cvMinuteSection.create({
-    //     data: {
-    //       cvMinuteId: cvMinute.id,
-    //       sectionId: section.id,
-    //       sectionOrder: s.order,
-    //       sectionTitle: s.title?.trim(),
-    //     },
-    //   });
-    // data: { sectionTitle: body.sectionTitle.trim() },
-
-    const infosToUpdate: {
-      role?: string;
-      content?: string;
-      title?: string;
-      company?: string;
-      date?: string;
-      contrat?: string;
-      conseil?: string;
-      suggestion?: string;
-    } = {};
-
-    if (body.role) {
-      infosToUpdate.role = body.role.trim();
-    }
-    if (body.content) {
-      infosToUpdate.content = body.content.trim();
-    }
-    if (body.title) {
-      infosToUpdate.title = body.title.trim();
-    }
-    if (body.company) {
-      infosToUpdate.company = body.company.trim();
-    }
-    if (body.date) {
-      infosToUpdate.date = body.date.trim();
-    }
-    if (body.contrat) {
-      infosToUpdate.contrat = body.contrat.trim();
-    }
-    if (body.conseil) {
-      infosToUpdate.conseil = body.conseil.trim();
-    }
-    if (body.suggestion) {
-      infosToUpdate.suggestion = body.suggestion.trim();
-    }
-
-    if (isEmpty(infosToUpdate)) {
-      res.json({ invalidData: true });
-      return;
-    }
-
-    if (body.sectionInfoId) {
-      await prisma.sectionInfo.update({
-        where: { id: body.sectionInfoId },
-        data: infosToUpdate,
-      });
-    } else {
-      await prisma.sectionInfo.create({
-        data: {
-          ...infosToUpdate,
-          cvMinuteSectionId: cvMinuteSection.id,
-        },
-      });
     }
 
     cvMinuteSection = await prisma.cvMinuteSection.findUnique({
@@ -517,6 +587,6 @@ export {
   addCvMinute,
   updateCvMinuteProfile,
   addSections,
-  updateSection,
+  updateCvMinuteSection,
   updateSectionsOrder,
 };

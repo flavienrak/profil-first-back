@@ -6,7 +6,7 @@ import {
   getCvMinute,
   addCvMinute,
   addSections,
-  updateSection,
+  updateCvMinuteSection,
   updateSectionsOrder,
   updateCvMinuteProfile,
 } from '../controllers/cv-minute.controller';
@@ -14,7 +14,7 @@ import {
   addCvMinuteValidation,
   addSectionsValidation,
   getCvMinuteValidation,
-  udpateSectionValidation,
+  updateCvMinuteSectionValidation,
   udpateSectionsOrderValidation,
   updateCvMinuteProfileValidation,
 } from '../validations/cv-minute.validation';
@@ -47,8 +47,8 @@ router.post(
 router.put(
   '/:id/section',
   isAuthenticated,
-  udpateSectionValidation,
-  updateSection,
+  updateCvMinuteSectionValidation,
+  updateCvMinuteSection,
 );
 router.put(
   '/:id/section-order',

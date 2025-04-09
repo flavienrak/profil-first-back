@@ -66,15 +66,12 @@ CREATE TABLE "CvMinuteSection" (
 -- CreateTable
 CREATE TABLE "SectionInfo" (
     "id" SERIAL NOT NULL,
-    "role" TEXT NOT NULL DEFAULT 'text',
     "order" INTEGER,
-    "content" TEXT,
+    "content" TEXT NOT NULL,
     "title" TEXT,
     "company" TEXT,
     "date" TEXT,
     "contrat" TEXT,
-    "conseil" TEXT,
-    "suggestion" TEXT,
     "font" TEXT NOT NULL DEFAULT 'normal',
     "color" TEXT NOT NULL DEFAULT '#000000',
     "background" TEXT NOT NULL DEFAULT 'transparent',
@@ -90,8 +87,14 @@ CREATE TABLE "SectionInfo" (
 -- CreateTable
 CREATE TABLE "Advice" (
     "id" SERIAL NOT NULL,
+    "order" INTEGER,
+    "role" TEXT,
     "content" TEXT NOT NULL,
-    "cvMinuteSectionId" INTEGER NOT NULL,
+    "cvMinuteId" INTEGER,
+    "sectionInfoId" INTEGER,
+    "cvMinuteSectionId" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Advice_pkey" PRIMARY KEY ("id")
 );
@@ -127,7 +130,13 @@ ALTER TABLE "CvMinuteSection" ADD CONSTRAINT "CvMinuteSection_cvMinuteId_fkey" F
 ALTER TABLE "CvMinuteSection" ADD CONSTRAINT "CvMinuteSection_sectionId_fkey" FOREIGN KEY ("sectionId") REFERENCES "Section"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "SectionInfo" ADD CONSTRAINT "SectionInfo_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SectionInfo" ADD CONSTRAINT "SectionInfo_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Advice" ADD CONSTRAINT "Advice_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Advice" ADD CONSTRAINT "Advice_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Advice" ADD CONSTRAINT "Advice_sectionInfoId_fkey" FOREIGN KEY ("sectionInfoId") REFERENCES "SectionInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Advice" ADD CONSTRAINT "Advice_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
