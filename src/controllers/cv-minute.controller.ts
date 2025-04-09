@@ -332,21 +332,23 @@ const updateCvMinuteSection = async (
 
     const { id } = req.params;
     const body: {
-      sectionInfoId?: number;
       sectionOrder?: number;
       sectionTitle?: string;
+      sectionInfoId?: number;
+      sectionInfoOrder?: number;
 
-      order?: number;
+      icon?: string;
+      iconSize?: number;
       role?: string;
       title?: string;
       content?: string;
       company?: string;
       date?: string;
       contrat?: string;
-      conseil?: string;
 
       newSection?: boolean;
       updateExperience?: boolean;
+      updateContactSection?: boolean;
       updateCvMinuteSection?: boolean;
 
       cvMinuteSectionId?: number;
@@ -366,8 +368,39 @@ const updateCvMinuteSection = async (
       return;
     }
 
-    // create (section | cvMinuteSection) & sectionInfo
+    // (create | update) contact
+    if (body.updateContactSection) {
+      cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+        where: { id: body.cvMinuteSectionId },
+      });
+
+      if (!cvMinuteSection) {
+        res.json({ cvMinuteSectionNotFound: true });
+        return;
+      }
+
+      const infosToUpdate = {
+        content: body.content.trim(),
+        icon: body.icon.trim(),
+        iconSize: body.iconSize,
+        order: body.sectionInfoOrder,
+      };
+
+      // (update | create) sectionInfo
+      if (body.sectionInfoId) {
+        sectionInfo = await prisma.sectionInfo.update({
+          where: { id: body.sectionInfoId },
+          data: infosToUpdate,
+        });
+      } else {
+        sectionInfo = await prisma.sectionInfo.create({
+          data: { cvMinuteSectionId: body.cvMinuteSectionId, ...infosToUpdate },
+        });
+      }
+    }
+
     if (body.newSection) {
+      // create (section &| cvMinuteSection) & sectionInfo
       section = await prisma.section.findUnique({
         where: { name: body.title.trim().toLocaleLowerCase() },
       });
@@ -414,7 +447,10 @@ const updateCvMinuteSection = async (
       } else {
         // create section & cvMinute & sectionInfo
         section = await prisma.section.create({
-          data: { name: body.title.trim().toLocaleLowerCase(), editable: true },
+          data: {
+            name: body.title.trim().toLocaleLowerCase(),
+            editable: true,
+          },
         });
 
         cvMinuteSection = await prisma.cvMinuteSection.create({
@@ -494,6 +530,7 @@ const updateCvMinuteSection = async (
       }
     }
 
+    // (create | update) experience
     if (body.updateExperience) {
       cvMinuteSection = await prisma.cvMinuteSection.findUnique({
         where: { id: body.cvMinuteSectionId },
@@ -505,6 +542,7 @@ const updateCvMinuteSection = async (
 
       const infosToUpdate = {
         title: body.title.trim(),
+        order: body.sectionInfoOrder,
         content: body.content.trim(),
         company: body.company.trim(),
         date: body.date.trim(),

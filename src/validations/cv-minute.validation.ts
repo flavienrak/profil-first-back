@@ -71,7 +71,18 @@ const updateCvMinuteSectionValidation = [
   body().custom((value, { req }) => {
     const body = req.body;
 
-    if (body.newSection) {
+    if (body.updateContactSection) {
+      return (
+        !isEmpty(body.cvMinuteSectionId) &&
+        !isNaN(body.cvMinuteSectionId) &&
+        !isEmpty(body.sectionInfoOrder) &&
+        !isNaN(body.sectionInfoOrder) &&
+        !isEmpty(body.content) &&
+        !isEmpty(body.icon) &&
+        !isEmpty(body.iconSize) &&
+        !isNaN(Number(body.iconSize))
+      );
+    } else if (body.newSection) {
       return (
         !isEmpty(body.cvMinuteSectionId) &&
         !isNaN(body.cvMinuteSectionId) &&
@@ -83,6 +94,8 @@ const updateCvMinuteSectionValidation = [
         !isEmpty(body.cvMinuteSectionId) &&
         !isNaN(body.cvMinuteSectionId) &&
         !isEmpty(body.title) &&
+        !isEmpty(body.sectionInfoOrder) &&
+        !isNaN(body.sectionInfoOrder) &&
         !isEmpty(body.content) &&
         !isEmpty(body.company) &&
         !isEmpty(body.date) &&
