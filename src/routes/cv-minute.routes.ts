@@ -7,16 +7,18 @@ import {
   addCvMinute,
   addSections,
   updateCvMinuteSection,
-  updateSectionsOrder,
+  updateCvMinuteSectionOrder,
   updateCvMinuteProfile,
+  updateSectionInfoOrder,
 } from '../controllers/cv-minute.controller';
 import {
   addCvMinuteValidation,
   addSectionsValidation,
   getCvMinuteValidation,
   updateCvMinuteSectionValidation,
-  udpateSectionsOrderValidation,
+  updateCvMinuteSectionOrderValidation,
   updateCvMinuteProfileValidation,
+  updateSectionInfoOrderValidation,
 } from '../validations/cv-minute.validation';
 
 const upload = multer();
@@ -50,11 +52,18 @@ router.put(
   updateCvMinuteSectionValidation,
   updateCvMinuteSection,
 );
+
 router.put(
-  '/:id/section-order',
+  '/section-info-order',
   isAuthenticated,
-  udpateSectionsOrderValidation,
-  updateSectionsOrder,
+  updateSectionInfoOrderValidation,
+  updateSectionInfoOrder,
+);
+router.put(
+  '/section-order',
+  isAuthenticated,
+  updateCvMinuteSectionOrderValidation,
+  updateCvMinuteSectionOrder,
 );
 
 export default router;

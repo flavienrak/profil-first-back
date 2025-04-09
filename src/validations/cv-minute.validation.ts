@@ -52,7 +52,9 @@ const updateCvMinuteProfileValidation = [
     .withMessage('invalid id'),
   body('cvMinuteSectionId')
     .notEmpty()
-    .withMessage('cvMinuteSectionId required'),
+    .withMessage('cvMinuteSectionId required')
+    .isInt()
+    .withMessage('invalid cvMinuteSectionId'),
   body().custom((value, { req }) => {
     if (!req.file) {
       throw new Error('File required');
@@ -106,24 +108,30 @@ const updateCvMinuteSectionValidation = [
   }),
 ];
 
-const udpateSectionsOrderValidation = [
-  param('id')
+const updateCvMinuteSectionOrderValidation = [
+  body('cvMinuteSectionId')
     .notEmpty()
-    .withMessage('id required')
+    .withMessage('cvMinuteSectionId required')
     .isInt()
-    .withMessage('invalid id'),
-  body('sections')
-    .isArray({ min: 1 })
-    .withMessage('sections required')
-    .custom((sections) => {
-      const isValid = sections.every((item: any) => {
-        return item.id && Number(item.id) && item.order && Number(item.order);
-      });
-      if (!isValid) {
-        throw new Error("sections'infos invalid");
-      }
-      return true;
-    }),
+    .withMessage('invalid cvMinuteSectionId'),
+  body('targetCvMinuteSectionId')
+    .notEmpty()
+    .withMessage('targetCvMinuteSectionId required')
+    .isInt()
+    .withMessage('invalid targetCvMinuteSectionId'),
+];
+
+const updateSectionInfoOrderValidation = [
+  body('sectionInfoId')
+    .notEmpty()
+    .withMessage('sectionInfoId required')
+    .isInt()
+    .withMessage('invalid sectionInfoId'),
+  body('targetSectionInfoId')
+    .notEmpty()
+    .withMessage('targetSectionInfoId required')
+    .isInt()
+    .withMessage('invalid targetSectionInfoId'),
 ];
 
 export {
@@ -132,5 +140,6 @@ export {
   addSectionsValidation,
   updateCvMinuteProfileValidation,
   updateCvMinuteSectionValidation,
-  udpateSectionsOrderValidation,
+  updateCvMinuteSectionOrderValidation,
+  updateSectionInfoOrderValidation,
 };
