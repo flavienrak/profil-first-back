@@ -1,69 +1,68 @@
 import express from 'express';
 import multer from 'multer';
 
-import { isAuthenticated } from '../middlewares/auth.middleware';
 import {
   getCvMinute,
   addCvMinute,
-  addSections,
   updateCvMinuteSection,
   updateCvMinuteSectionOrder,
   updateCvMinuteProfile,
   updateSectionInfoOrder,
+  deleteSectionInfo,
+  deleteCvMinuteSection,
 } from '../controllers/cv-minute.controller';
 import {
   addCvMinuteValidation,
-  addSectionsValidation,
-  getCvMinuteValidation,
   updateCvMinuteSectionValidation,
   updateCvMinuteSectionOrderValidation,
   updateCvMinuteProfileValidation,
   updateSectionInfoOrderValidation,
 } from '../validations/cv-minute.validation';
+import { checkCvMinuteOwner } from '../middlewares/cvMinute.middleware';
 
 const upload = multer();
 const router = express.Router();
 
-router.get('/:id', isAuthenticated, getCvMinuteValidation, getCvMinute);
-router.post(
-  '/',
-  upload.single('file'),
-  isAuthenticated,
-  addCvMinuteValidation,
-  addCvMinute,
-);
+router.get('/:id', checkCvMinuteOwner, getCvMinute);
+router.post('/', upload.single('file'), addCvMinuteValidation, addCvMinute);
 
-router.post(
-  '/:id/section',
-  isAuthenticated,
-  addSectionsValidation,
-  addSections,
-);
-router.post(
-  '/:id/profile',
-  upload.single('file'),
-  isAuthenticated,
-  updateCvMinuteProfileValidation,
-  updateCvMinuteProfile,
-);
 router.put(
   '/:id/section',
-  isAuthenticated,
+  checkCvMinuteOwner,
   updateCvMinuteSectionValidation,
   updateCvMinuteSection,
 );
 
+router.post(
+  '/:id/profile',
+  upload.single('file'),
+  checkCvMinuteOwner,
+  updateCvMinuteProfileValidation,
+  updateCvMinuteProfile,
+);
+
 router.put(
-  '/section-info-order',
-  isAuthenticated,
+  '/:id/section/order',
+  checkCvMinuteOwner,
+  updateCvMinuteSectionOrderValidation,
+  updateCvMinuteSectionOrder,
+);
+router.put(
+  '/:id/section-info/order',
+  checkCvMinuteOwner,
   updateSectionInfoOrderValidation,
   updateSectionInfoOrder,
 );
-router.put(
-  '/section-order',
-  isAuthenticated,
-  updateCvMinuteSectionOrderValidation,
-  updateCvMinuteSectionOrder,
+
+router.delete(
+  '/:id/section/:cvMinuteSectionId',
+  checkCvMinuteOwner,
+  deleteCvMinuteSection,
+);
+router.delete(
+  '/:id/section-info/:sectionInfoId',
+  checkCvMinuteOwner,
+  deleteSectionInfo,
 );
 
 export default router;

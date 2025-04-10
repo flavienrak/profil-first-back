@@ -1,13 +1,5 @@
 import isEmpty from '../utils/isEmpty';
-import { body, param } from 'express-validator';
-
-const getCvMinuteValidation = [
-  param('id')
-    .notEmpty()
-    .withMessage('id required')
-    .isInt()
-    .withMessage('invalid id'),
-];
+import { body } from 'express-validator';
 
 const addCvMinuteValidation = [
   body('position')
@@ -24,32 +16,7 @@ const addCvMinuteValidation = [
   }),
 ];
 
-const addSectionsValidation = [
-  param('id')
-    .notEmpty()
-    .withMessage('id required')
-    .isInt()
-    .withMessage('invalid id'),
-  body('sections')
-    .isArray({ min: 1 })
-    .withMessage('sections required')
-    .custom((sections) => {
-      const isValid = sections.every((item: any) => {
-        return item.name && item.name.trim().length > 0;
-      });
-      if (!isValid) {
-        throw new Error("sections'name required");
-      }
-      return true;
-    }),
-];
-
 const updateCvMinuteProfileValidation = [
-  param('id')
-    .notEmpty()
-    .withMessage('id required')
-    .isInt()
-    .withMessage('invalid id'),
   body('cvMinuteSectionId')
     .notEmpty()
     .withMessage('cvMinuteSectionId required')
@@ -65,11 +32,6 @@ const updateCvMinuteProfileValidation = [
 ];
 
 const updateCvMinuteSectionValidation = [
-  param('id')
-    .notEmpty()
-    .withMessage('id required')
-    .isInt()
-    .withMessage('invalid id'),
   body().custom((value, { req }) => {
     const body = req.body;
 
@@ -83,8 +45,6 @@ const updateCvMinuteSectionValidation = [
       return (
         !isEmpty(body.cvMinuteSectionId) &&
         !isNaN(body.cvMinuteSectionId) &&
-        !isEmpty(body.sectionInfoOrder) &&
-        !isNaN(body.sectionInfoOrder) &&
         !isEmpty(body.content) &&
         !isEmpty(body.icon) &&
         !isEmpty(body.iconSize) &&
@@ -102,8 +62,6 @@ const updateCvMinuteSectionValidation = [
         !isEmpty(body.cvMinuteSectionId) &&
         !isNaN(body.cvMinuteSectionId) &&
         !isEmpty(body.title) &&
-        !isEmpty(body.sectionInfoOrder) &&
-        !isNaN(body.sectionInfoOrder) &&
         !isEmpty(body.content) &&
         !isEmpty(body.company) &&
         !isEmpty(body.date) &&
@@ -141,9 +99,7 @@ const updateSectionInfoOrderValidation = [
 ];
 
 export {
-  getCvMinuteValidation,
   addCvMinuteValidation,
-  addSectionsValidation,
   updateCvMinuteProfileValidation,
   updateCvMinuteSectionValidation,
   updateCvMinuteSectionOrderValidation,
