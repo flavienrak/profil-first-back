@@ -46,6 +46,8 @@ const updateCvMinuteSectionValidation = [
         !isEmpty(body.cvMinuteSectionId) &&
         !isNaN(body.cvMinuteSectionId) &&
         !isEmpty(body.content) &&
+        !isEmpty(body.sectionInfoOrder) &&
+        !isNaN(body.sectionInfoOrder) &&
         !isEmpty(body.icon) &&
         !isEmpty(body.iconSize) &&
         !isNaN(Number(body.iconSize))
@@ -61,6 +63,8 @@ const updateCvMinuteSectionValidation = [
       return (
         !isEmpty(body.cvMinuteSectionId) &&
         !isNaN(body.cvMinuteSectionId) &&
+        !isEmpty(body.sectionInfoOrder) &&
+        !isNaN(body.sectionInfoOrder) &&
         !isEmpty(body.title) &&
         !isEmpty(body.content) &&
         !isEmpty(body.company) &&

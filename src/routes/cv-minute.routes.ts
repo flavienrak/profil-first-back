@@ -10,6 +10,7 @@ import {
   updateSectionInfoOrder,
   deleteSectionInfo,
   deleteCvMinuteSection,
+  openaiController,
 } from '../controllers/cv-minute.controller';
 import {
   addCvMinuteValidation,
@@ -25,6 +26,8 @@ const router = express.Router();
 
 router.get('/:id', checkCvMinuteOwner, getCvMinute);
 router.post('/', upload.single('file'), addCvMinuteValidation, addCvMinute);
+
+router.post('/openai', openaiController);
 
 router.put(
   '/:id/section',

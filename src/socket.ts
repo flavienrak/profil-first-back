@@ -1,4 +1,3 @@
-import { Server, Socket } from 'socket.io';
 import http from 'http';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -6,6 +5,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import winston from 'winston';
 import compression from 'compression';
+import OpenAI from 'openai';
+import { Server, Socket } from 'socket.io';
 
 dotenv.config();
 const app = express();
@@ -30,6 +31,10 @@ app.use(
 app.use(compression());
 app.use(express.json());
 app.use(cookieParser());
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -82,4 +87,4 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-export { app, logger, io, server, getReceiverSocketId };
+export { app, openai, logger, io, server, getReceiverSocketId };

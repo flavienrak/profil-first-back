@@ -1,5 +1,4 @@
 import express from 'express';
-import dotenv from 'dotenv';
 import path from 'path';
 
 import { app, logger, server } from './socket';
@@ -12,8 +11,6 @@ import {
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import cvMinuteRoutes from './routes/cv-minute.routes';
-
-dotenv.config();
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/*', checkUser);

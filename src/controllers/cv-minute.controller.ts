@@ -2,11 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import express from 'express';
+import pdfParse from 'pdf-parse';
+import mammoth from 'mammoth';
 import isEmpty from '../utils/isEmpty';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
 import { defaultSections, imageMimeTypes } from '../utils/constants';
+import { openai } from '../socket';
+import { extractCVData } from '../utils/extractData';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -254,6 +258,7 @@ const updateCvMinuteSection = async (
       sectionOrder?: number;
       sectionTitle?: string;
       sectionInfoId?: number;
+      sectionInfoOrder?: number;
 
       icon?: string;
       iconSize?: number;
@@ -312,6 +317,7 @@ const updateCvMinuteSection = async (
         content: body.content.trim(),
         icon: body.icon.trim(),
         iconSize: body.iconSize,
+        order: body.sectionInfoOrder,
       };
 
       // (update | create) sectionInfo
@@ -468,6 +474,7 @@ const updateCvMinuteSection = async (
         company: body.company.trim(),
         date: body.date.trim(),
         contrat: body.contrat.trim(),
+        order: body.sectionInfoOrder,
       };
 
       if (body.sectionInfoId) {
@@ -619,6 +626,57 @@ const deleteCvMinuteSection = async (
   }
 };
 
+// OPENAI
+const openaiController = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    const directoryPath = path.join(__dirname, `../uploads/files/user-1`);
+    const filePath = path.join(
+      directoryPath,
+      'cv-1-1744216132106-ed7d5364.pdf',
+    );
+    const dataBuffer = fs.readFileSync(filePath);
+    const pdfData = await pdfParse(dataBuffer);
+
+    // if (file.mimetype === 'application/pdf') {
+    //   const dataBuffer = fs.readFileSync(file.path);
+    //   const data = await pdfParse(dataBuffer);
+    //   textContent = data.text;
+    // } else if (
+    //   file.mimetype ===
+    //   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    // ) {
+    //   const result = await mammoth.extractRawText({ path: file.path });
+    //   textContent = result.value;
+    // }
+
+    // const data = await extractCVData(pdfData.text);
+
+    // const openaiResponse = await openai.chat.completions.create({
+    //   model: 'gpt-4-turbo-preview',
+    //   messages: [
+    //     {
+    //       role: 'user',
+    //       content: `Voici un document PDF :\n${pdfData.text}\n\nPeux-tu en extraire toutes les informations importantes ?`,
+    //     },
+    //   ],
+    // });
+
+    const lignes = pdfData.text
+      .split('\n')
+      .map((ligne) => ligne.trim())
+      .filter((ligne) => ligne.length > 0);
+
+    res.status(200).json({ lignes });
+    return;
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` });
+    return;
+  }
+};
+
 export {
   getCvMinute,
   addCvMinute,
@@ -628,4 +686,5 @@ export {
   updateCvMinuteSectionOrder,
   deleteSectionInfo,
   deleteCvMinuteSection,
+  openaiController,
 };
