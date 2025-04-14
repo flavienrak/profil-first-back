@@ -8,9 +8,8 @@ import isEmpty from '../utils/isEmpty';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import { defaultSections, imageMimeTypes } from '../utils/constants';
+import { imageMimeTypes } from '../utils/constants';
 import { openai } from '../socket';
-import { extractCVData } from '../utils/extractData';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -103,32 +102,206 @@ const addCvMinute = async (
           cvMinuteId: cvMinute.id,
         },
       });
-    }
 
-    for (const s of defaultSections) {
-      let section = await prisma.section.findUnique({
-        where: { name: s.name.trim().toLowerCase() },
-      });
-
-      if (!section) {
-        section = await prisma.section.create({
-          data: { name: s.name.trim().toLowerCase(), editable: s.editable },
-        });
+      // OPENAI
+      let textData = null;
+      if (req.file.mimetype === 'application/pdf') {
+        const dataBuffer = fs.readFileSync(filePath);
+        const pdfData = await pdfParse(dataBuffer);
+        textData = pdfData.text;
+      } else {
+        const wordData = await mammoth.extractRawText({ path: filePath });
+        textData = wordData.value;
       }
 
-      await prisma.cvMinuteSection.create({
-        data: {
-          cvMinuteId: cvMinute.id,
-          sectionId: section.id,
-          sectionOrder: s.order,
-          sectionTitle: s.title?.trim(),
-        },
+      const lignes = textData
+        .split('\n')
+        .map((ligne) => ligne.trim())
+        .filter((ligne) => ligne.length > 0);
+
+      const openaiResponse = await openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content: `Vous êtes un expert en redaction de CV. 
+          Identifie toutes les informations contenues dans le CV.
+          Règles à suivre:
+          1. name: nom de la personne
+          2. firstname: prénom de la personne
+          4. contacts: tout les contacts, liens et/ou adresse de la personne. contactIcon: le nom de l'icone associé au contenu tiré de lucide-static, contactContent: contenu du contact/lien/adresse, contactOrder: commencant par 1 et s'incremente selon le nombre de contact, lien et adresse
+          5. title: titre du cv
+          6. presentation: presentation du profil de la personne
+          7. experiences: 
+          - postTitle: titre du poste
+          - postDate: date de début et/ou fin, avec le mois et le jour si precisé
+          - postCompany: nom de l'entreprise
+          - postContrat: type de contrat
+          - postDescription: description du poste
+          - postOrder: commencant par 1 et s'incremente selon le nombre d'experiences
+          5. Les restes seront consideres comme des sections. Une section aura un titre sectionTitle, sectionOrder commencant par 1 et s'incremente selon le nombre de sections, sectionContent qui regroupe l'ensemble des contenus, garde les '\n' lors du regroupement
+          6. S'il n'y a pas de contenu ou si le contenu est non determiné met 'à ajouter'.
+          7. Donne la réponse en json simple.`,
+          },
+          {
+            role: 'user',
+            content: `Contenu du CV :\n${lignes.join('\n')}\n Offre: ${body.position}`,
+          },
+        ],
       });
+
+      if (openaiResponse.id) {
+        for (const r of openaiResponse.choices) {
+          await prisma.openaiResponse.create({
+            data: {
+              responseId: openaiResponse.id,
+              cvMinuteId: cvMinute.id,
+              request: 'cv-infos',
+              response: r.message.content,
+              index: r.index,
+            },
+          });
+
+          const match = r.message.content.match(/```json\s*([\s\S]*?)\s*```/);
+          if (match) {
+            const jsonString = match[1];
+            const jsonData: {
+              name: string;
+              firstname: string;
+              contacts: {
+                contactIcon?: string;
+                contactContent?: string;
+                contactOrder?: string;
+              }[];
+              title: string;
+              presentation: string;
+              experiences: {
+                postTitle?: string;
+                postDate?: string;
+                postCompany?: string;
+                postContrat?: string;
+                postDescription?: string;
+                postOrder?: string;
+              }[];
+              sections: {
+                sectionTitle?: string;
+                sectionContent?: string;
+                sectionOrder?: string;
+                sectionEditable?: boolean;
+              }[];
+            } = JSON.parse(jsonString);
+
+            const allSections: {
+              name: string;
+              title?: string;
+              order?: string;
+              editable?: boolean;
+              content?:
+                | string
+                | {
+                    title?: string;
+                    content?: string;
+                    date?: string;
+                    company?: string;
+                    contrat?: string;
+                    icon?: string;
+                    iconSize?: number;
+                    order?: string;
+                  }[];
+            }[] = [
+              { name: 'profile', content: 'cv-profile' },
+              { name: 'name', content: jsonData.name },
+              { name: 'firstname', content: jsonData.firstname },
+              {
+                name: 'contacts',
+                content: jsonData.contacts.map((c) => ({
+                  icon: c.contactIcon,
+                  iconSize: 16,
+                  content: c.contactContent,
+                  order: c.contactOrder,
+                })),
+              },
+              { name: 'title', content: jsonData.title },
+              { name: 'presentation', content: jsonData.presentation },
+              {
+                name: 'experiences',
+                content: jsonData.experiences.map((item) => ({
+                  title: item.postTitle,
+                  date: item.postDate,
+                  company: item.postCompany,
+                  contrat: item.postContrat,
+                  content: item.postDescription,
+                  order: item.postOrder,
+                })),
+              },
+              ...jsonData.sections.map((section) => ({
+                name: section.sectionTitle,
+                title: section.sectionTitle.trim().toLocaleLowerCase(),
+                content: section.sectionContent.trim(),
+                order: section.sectionOrder,
+                editable: true,
+              })),
+            ];
+
+            // CvMinuteSection
+            for (const s of allSections) {
+              let section = await prisma.section.findUnique({
+                where: { name: s.name.trim().toLowerCase() },
+              });
+
+              if (!section) {
+                section = await prisma.section.create({
+                  data: {
+                    name: s.name.trim().toLowerCase(),
+                    editable: s.editable,
+                  },
+                });
+              }
+
+              const cvMinuteSection = await prisma.cvMinuteSection.create({
+                data: {
+                  cvMinuteId: cvMinute.id,
+                  sectionId: section.id,
+                  sectionOrder: s.order && Number(s.order),
+                  sectionTitle: s.title,
+                },
+              });
+
+              // SectionInfo
+              if (typeof s.content === 'string') {
+                await prisma.sectionInfo.create({
+                  data: {
+                    cvMinuteSectionId: cvMinuteSection.id,
+                    content: s.content,
+                  },
+                });
+              } else {
+                for (const item of s.content) {
+                  await prisma.sectionInfo.create({
+                    data: {
+                      cvMinuteSectionId: cvMinuteSection.id,
+                      title: item.title,
+                      content: item.content,
+                      date: item.date,
+                      company: item.company,
+                      contrat: item.contrat,
+                      icon: item.icon,
+                      iconSize: item.iconSize,
+                      order: Number(item.order),
+                    },
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
     res.status(201).json({ cvMinuteId: cvMinute.id });
     return;
   } catch (error) {
+    console.log('error:', error);
     res.status(500).json({ error: `${error.message}` });
     return;
   }
@@ -632,44 +805,17 @@ const openaiController = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    const directoryPath = path.join(__dirname, `../uploads/files/user-1`);
-    const filePath = path.join(
-      directoryPath,
-      'cv-1-1744216132106-ed7d5364.pdf',
-    );
-    const dataBuffer = fs.readFileSync(filePath);
-    const pdfData = await pdfParse(dataBuffer);
+    let jsonData;
+    const jsonResponse =
+      '```json\n{\n  "name": "MARTIN",\n  "firstname": "Raphaël",\n  "title": "DIRECTEUR COMMERCIAL",\n  "presentation": "Commercial diplômé, j’ai une expérience de 3 ans en tant qu’Assistant Commercial, et 4 ans en tant que Commercial chez DIOR. Je suis passionné et ai un bon sens relationnel que je saurai mettre au service de votre entreprise.",\n  "contacts": [\n    {\n      "contactIcon": "phone",\n      "contactContent": "06 06 06 06 06"\n    },\n    {\n      "contactIcon": "mail",\n      "contactContent": "raphael.martin@gnail.com"\n    },\n    {\n      "contactIcon": "mapPin",\n      "contactContent": "Paris, France"\n    },\n    {\n      "contactIcon": "linkedin",\n      "contactContent": "linkedin.com/raphael-martin"\n    }\n  ],\n  "experiences": [\n    {\n      "postTitle": "Commercial",\n      "postDate": "2019 – 2022",\n      "postCompany": "DIOR, Paris",\n      "postContrat": "CDI",\n      "postDescription": "Prospection commercial et gestion d’un portefeuille client.\\nDéveloppement de nouveaux produits et projets innovants.\\nGarantir le bon déroulement des formations, aussi bien à leur démarrage qu’à leur aboutissement.\\nParticiper au développement de marque via l’organisation de la communication et d’évènements locaux.",\n      "postCompatibility": "Haute"\n    },\n    {\n      "postTitle": "Assistant Commercial Export",\n      "postDate": "2016-2019",\n      "postCompany": "ORANGE, Paris",\n      "postContrat": "CDI",\n      "postDescription": "Assurer la mise à jour des coordonnées administrative relatives au compte client.\\nTraiter les demandes d’échantillon depuis la saisie jusqu’à l’expédition.\\nAssurer l\'interface entreprise-client export pour tout service sollicité.",\n      "postCompatibility": "Moyenne"\n    },\n    {\n      "postTitle": "Assistant Commercial Export",\n      "postDate": "2015",\n      "postCompany": "DANONE, Paris",\n      "postContrat": "Stage",\n      "postDescription": "Etablir des documents nécessaires à l\'expédition des commandes en fonction de son pays de destination, de l’incoterm ainsi que du mode de règlement convenu.\\nAssurer l\'accueil téléphonique des clients, fournisseurs et autres tiers.",\n      "postCompatibility": "Moyenne"\n    }\n  ],\n  "sections": [\n    {\n      "sectionTitle": "LANGUES",\n      "sectionContent": "Français\\nAnglais\\nEspagnol"\n    },\n    {\n      "sectionTitle": "COMPÉTENCES",\n      "sectionContent": "Sens du contact\\nCommunication\\nCapacité d’adaptation\\nPolyvalence\\nLogique\\nRigueur\\nAutonomie"\n    },\n    {\n      "sectionTitle": "CENTRES D’INTÉRÊT",\n      "sectionContent": "Triathlon\\nRandonnée\\nBénévolat\\nVoyage en sac à dos\\nThéâtre et concerts"\n    },\n    {\n      "sectionTitle": "FORMATION",\n      "sectionContent": "BTS Négociations et digitalisation relation client, Université Sorbonne, Paris | 2012 - 2015\\nLicence Pro Commerce et Distribution, ESUP, Paris | 2012 - 2015"\n    }\n  ]\n}\n```';
 
-    // if (file.mimetype === 'application/pdf') {
-    //   const dataBuffer = fs.readFileSync(file.path);
-    //   const data = await pdfParse(dataBuffer);
-    //   textContent = data.text;
-    // } else if (
-    //   file.mimetype ===
-    //   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    // ) {
-    //   const result = await mammoth.extractRawText({ path: file.path });
-    //   textContent = result.value;
-    // }
+    const match = jsonResponse.match(/```json\s*([\s\S]*?)\s*```/);
+    if (match) {
+      const jsonString = match[1];
+      jsonData = JSON.parse(jsonString);
+    }
 
-    // const data = await extractCVData(pdfData.text);
-
-    // const openaiResponse = await openai.chat.completions.create({
-    //   model: 'gpt-4-turbo-preview',
-    //   messages: [
-    //     {
-    //       role: 'user',
-    //       content: `Voici un document PDF :\n${pdfData.text}\n\nPeux-tu en extraire toutes les informations importantes ?`,
-    //     },
-    //   ],
-    // });
-
-    const lignes = pdfData.text
-      .split('\n')
-      .map((ligne) => ligne.trim())
-      .filter((ligne) => ligne.length > 0);
-
-    res.status(200).json({ lignes });
+    res.status(200).json({ jsonData });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
