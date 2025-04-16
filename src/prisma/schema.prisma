@@ -103,17 +103,17 @@ model SectionInfo {
   updatedAt DateTime @updatedAt
 
   file            File?
-  advice          Advice?
+  advices         Advice[]
   evaluation      Evaluation?
   cvMinuteSection CvMinuteSection @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
 }
 
 model Advice {
   id                Int    @id @default(autoincrement())
-  content           String
   type              String
+  content           String
   cvMinuteId        Int?
-  sectionInfoId     Int?   @unique
+  sectionInfoId     Int?
   cvMinuteSectionId Int?
 
   createdAt DateTime @default(now())
@@ -128,7 +128,6 @@ model Evaluation {
   id            Int     @id @default(autoincrement())
   initialScore  Int
   actualScore   Int?
-  title         String?
   content       String
   weakContent   String?
   cvMinuteId    Int?    @unique

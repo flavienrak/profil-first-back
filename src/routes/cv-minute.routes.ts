@@ -12,6 +12,8 @@ import {
   deleteCvMinuteSection,
   updateSectionInfoScore,
   updateCvMinuteScore,
+  generateCvMinuteSectionAdvice,
+  generateSectionInfoAdvice,
 } from '../controllers/cv-minute.controller';
 import {
   addCvMinuteValidation,
@@ -29,6 +31,7 @@ const router = express.Router();
 router.post('/', upload.single('file'), addCvMinuteValidation, addCvMinute);
 
 router.get('/:id', checkCvMinuteOwner, getCvMinute);
+router.post('/:id', checkCvMinuteOwner, generateCvMinuteSectionAdvice);
 router.put('/:id', checkCvMinuteOwner, updateCvMinuteScore);
 
 router.put(
@@ -52,6 +55,12 @@ router.put(
   updateCvMinuteSectionOrderValidation,
   updateCvMinuteSectionOrder,
 );
+router.delete(
+  '/:id/section/:cvMinuteSectionId',
+  checkCvMinuteOwner,
+  sectionInfoIdValidation,
+  deleteCvMinuteSection,
+);
 
 router.put(
   '/:id/section-info/order',
@@ -60,13 +69,12 @@ router.put(
   updateSectionInfoOrder,
 );
 
-router.delete(
-  '/:id/section/:cvMinuteSectionId',
+router.post(
+  '/:id/section-info/:sectionInfoId',
   checkCvMinuteOwner,
   sectionInfoIdValidation,
-  deleteCvMinuteSection,
+  generateSectionInfoAdvice,
 );
-
 router.put(
   '/:id/section-info/:sectionInfoId',
   checkCvMinuteOwner,

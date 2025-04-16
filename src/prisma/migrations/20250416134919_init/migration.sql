@@ -139,9 +139,6 @@ CREATE UNIQUE INDEX "Section_name_key" ON "Section"("name");
 CREATE UNIQUE INDEX "CvMinuteSection_cvMinuteId_sectionId_key" ON "CvMinuteSection"("cvMinuteId", "sectionId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Advice_sectionInfoId_key" ON "Advice"("sectionInfoId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Evaluation_cvMinuteId_key" ON "Evaluation"("cvMinuteId");
 
 -- CreateIndex

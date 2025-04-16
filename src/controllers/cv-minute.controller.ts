@@ -6,10 +6,12 @@ import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import isEmpty from '../utils/isEmpty';
 
+import { htmlToText } from 'html-to-text';
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
 import { imageMimeTypes } from '../utils/constants';
 import { openai } from '../socket';
+import { AdviceInterface } from 'interfaces/advice.interface';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -33,7 +35,7 @@ const getCvMinute = async (
     const cvMinuteSections = await prisma.cvMinuteSection.findMany({
       where: { cvMinuteId: cvMinute.id },
       include: {
-        sectionInfos: { include: { evaluation: true, advice: true } },
+        sectionInfos: { include: { evaluation: true, advices: true } },
         advices: true,
       },
     });
@@ -143,56 +145,56 @@ const addCvMinute = async (
                 firstname: prénom de la personne,
                 cvTitle: 
                   {
-                    title: titre du cv,
-                    titleAdvice: 1 à 3 phrases de suggestions pour améliorer le titre
+                    title: string, titre du cv,
+                    titleAdvice: string, 1 à 3 phrases de suggestions pour améliorer le titre, met à la ligne les phrases
                   },
                 profilePresentation:
                   {
-                    presentation: presentation du profil de la personne,
-                    presentationAdvice: 1 à 3 phrases de suggestions pour améliorer la présenation du profil
+                    presentation: string, presentation du profil de la personne,
+                    presentationAdvice: string, 1 à 3 phrases de suggestions pour améliorer la présenation du profil, met à la ligne les phrases
                   },
                 contacts:  
                   [
                     {
-                      contactIcon: nom de l'icone associé au contenu tiré de lucide-static,
-                      contactContent: contenu du contact/lien/adresse,
-                      contactOrder: commencant par 1 et s'incremente selon le nombre de contact, lien et adresse
+                      contactIcon: string, un nom d'icone adapté au contenu, tiré de lucide-static,
+                      contactContent: string, contenu du contact/lien/adresse,
+                      contactOrder: string, commencant par 1 et s'incremente selon le nombre de contact, lien et adresse
                     }
                   ], 
                 experiences: 
                   [
                     {
-                      postTitle: titre du poste,
-                      postDate: date de début et/ou fin, avec le mois et le jour si precisé,
-                      postCompany: nom de l'entreprise,
-                      postContrat: type de contrat,
-                      postDescription: description du poste,
-                      postOrder: commencant par 1 et s'incremente selon le nombre d'experiences,
-                      postScore: score de compatibilité de l'expérience avec l'offre,
-                      postHigh: 1 à 3 phrases explicites expliquant les points forts de l'expérience en dépit du score,
-                      postWeak: 1 à 3 phrases explicites expliquant les points à améliorer à l'expérience en dépit du score
+                      postTitle: string, titre du poste,
+                      postDate: string, date de début et/ou fin, avec le mois et le jour si precisé,
+                      postCompany: string, nom de l'entreprise,
+                      postContrat: string, type de contrat,
+                      postDescription: string, description du poste,
+                      postOrder: string, commencant par 1 et s'incremente selon le nombre d'experiences,
+                      postScore: string, score de compatibilité de l'expérience avec l'offre,
+                      postHigh: string, 1 à 3 phrases expliquant les points forts de l'expérience en dépit du score, met à la ligne les phrases
+                      postWeak: string, 1 à 3 phrases expliquant les points à améliorer à l'expérience en dépit du score, met à la ligne les phrases
                     }
                   ],
                 sections: 
                   [
                     {
-                      sectionTitle: titre de la section,
-                      sectionContent: regroupe l'ensemble des contenus, garde les '\n' lors du regroupement,
-                      sectionOrder: commencant par 1 et s'incremente selon le nombre de sections,
-                      sectionAdvice: 1 à 3 phrases explicites de suggestions pour améliorer la section actuelle par rapport à l'offre
+                      sectionTitle: string, titre de la section,
+                      sectionContent: string, regroupe l'ensemble des contenus, garde les à la ligne lors du regroupement,
+                      sectionOrder: string, commencant par 1 et s'incremente selon le nombre de sections,
+                      sectionAdvice: string, 1 à 3 phrases de suggestions pour améliorer la section actuelle par rapport à l'offre, met à la ligne les phrases
                     }
                   ],
-                newSectionsAdvice: 1 à 3 phrases explicites de suggestions pour l'ajout de nouvelles sections qu'on appelera rubrique,
+                newSectionsAdvice: string, 1 à 3 phrases de suggestions pour l'ajout de nouvelles sections qu'on appelera rubrique,
                 evaluations:
                   {
-                    globalScore: score de compatibilité global du contenu par rapport à l'offre,
-                    recommendations: 1 à 3 phrases explicites de recommendations d'améliorations en dépit du score 
+                    globalScore: string, score de compatibilité global du contenu par rapport à l'offre,
+                    recommendations: string, 1 à 3 phrases de recommendations d'améliorations en dépit du score, met à la ligne les phrases
                   } 
               }
               2. La partie contacts contient tout les contacts, liens et/ou adresse de la personne.
               3. Les restes du contenu seront considérés comme des sections.
               4. S'il n'y a pas de contenu ou si le contenu est non determiné met 'à ajouter'.
-              5. Met toujours des '\n' entre les phrases de suggestions, explications ou de recommendations.
+              5. Met toujours à la ligne chaque phrase pour les suggestions, explications ou de recommendations.
               6. Les scores seront des valeurs entre 0 et 100.
               7. Donne la réponse en json simple.
             `,
@@ -365,7 +367,7 @@ const addCvMinute = async (
                   data: {
                     cvMinuteSectionId: cvMinuteSection.id,
                     content: s.advice,
-                    type: 'existSection',
+                    type: 'advice',
                   },
                 });
               }
@@ -390,7 +392,7 @@ const addCvMinute = async (
                   data: {
                     sectionInfoId: sectionInfo.id,
                     content: s.withAdvice.advice,
-                    type: 'existSection',
+                    type: 'advice',
                   },
                 });
               } else {
@@ -435,7 +437,7 @@ const addCvMinute = async (
               data: {
                 cvMinuteId: cvMinute.id,
                 content: jsonData.newSectionsAdvice,
-                type: 'newSection',
+                type: 'advice',
               },
             });
           }
@@ -477,6 +479,7 @@ const updateCvMinuteProfile = async (
 
     cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: Number(body.cvMinuteSectionId) },
+      select: { id: true },
     });
 
     if (!cvMinuteSection) {
@@ -487,6 +490,7 @@ const updateCvMinuteProfile = async (
     if (body.sectionInfoId) {
       sectionInfo = await prisma.sectionInfo.findUnique({
         where: { id: Number(body.sectionInfoId) },
+        select: { id: true },
       });
 
       if (!sectionInfo) {
@@ -554,7 +558,7 @@ const updateCvMinuteProfile = async (
     cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: cvMinuteSection.id },
       include: {
-        sectionInfos: { include: { evaluation: true, advice: true } },
+        sectionInfos: { include: { evaluation: true, advices: true } },
       },
     });
     res.status(200).json({ cvMinuteSection, file });
@@ -574,6 +578,7 @@ const updateCvMinuteSection = async (
     let cvMinuteSection = null;
     let sectionInfo = null;
 
+    const { id } = req.params;
     const body: {
       sectionOrder?: number;
       sectionTitle?: string;
@@ -607,7 +612,10 @@ const updateCvMinuteSection = async (
       return;
     }
 
-    const { cvMinute } = res.locals;
+    const cvMinute = await prisma.cvMinute.findUnique({
+      where: { id: Number(id) },
+      include: { advices: true, evaluation: true },
+    });
 
     if (body.updateBg) {
       // update bg
@@ -626,6 +634,10 @@ const updateCvMinuteSection = async (
       // (create | update) contact
       cvMinuteSection = await prisma.cvMinuteSection.findUnique({
         where: { id: body.cvMinuteSectionId },
+        include: {
+          sectionInfos: { include: { evaluation: true, advices: true } },
+          advices: true,
+        },
       });
 
       if (!cvMinuteSection) {
@@ -690,7 +702,10 @@ const updateCvMinuteSection = async (
 
           cvMinuteSection = await prisma.cvMinuteSection.findUnique({
             where: { id: cvMinuteSection.id },
-            include: { sectionInfos: true },
+            include: {
+              sectionInfos: { include: { evaluation: true, advices: true } },
+              advices: true,
+            },
           });
 
           res.status(201).json({ cvMinuteSection });
@@ -723,7 +738,10 @@ const updateCvMinuteSection = async (
 
         cvMinuteSection = await prisma.cvMinuteSection.findUnique({
           where: { id: cvMinuteSection.id },
-          include: { sectionInfos: true },
+          include: {
+            sectionInfos: { include: { evaluation: true, advices: true } },
+            advices: true,
+          },
         });
 
         res.status(201).json({ section, cvMinuteSection });
@@ -772,7 +790,10 @@ const updateCvMinuteSection = async (
 
         cvMinuteSection = await prisma.cvMinuteSection.findUnique({
           where: { id: cvMinuteSection.id },
-          include: { sectionInfos: true },
+          include: {
+            sectionInfos: { include: { evaluation: true, advices: true } },
+            advices: true,
+          },
         });
 
         res.status(200).json({ cvMinuteSection });
@@ -820,12 +841,204 @@ const updateCvMinuteSection = async (
     cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: cvMinuteSection.id },
       include: {
-        sectionInfos: { include: { evaluation: true, advice: true } },
+        sectionInfos: { include: { evaluation: true, advices: true } },
         advices: true,
       },
     });
 
     res.status(200).json({ cvMinuteSection });
+    return;
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` });
+    return;
+  }
+};
+
+const generateCvMinuteSectionAdvice = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const cvMinute = await prisma.cvMinute.findUnique({
+      where: { id: Number(id) },
+      include: { advices: true },
+    });
+
+    const cvMinuteSections = await prisma.cvMinuteSection.findMany({
+      where: { cvMinuteId: cvMinute.id },
+      select: { sectionId: true, sectionTitle: true },
+    });
+
+    const sections = await prisma.section.findMany({
+      where: {
+        id: { in: cvMinuteSections.map((c) => c.sectionId) },
+        editable: true,
+      },
+    });
+
+    const getCvMinuteSection = (value: string) => {
+      const section = sections.find((s) => s.name === value);
+      return cvMinuteSections.find((c) => c.sectionId === section?.id);
+    };
+
+    const allCvMinuteSections = sections
+      .map((s) => {
+        const cvMinuteSection = getCvMinuteSection(s.name);
+        return cvMinuteSection.sectionTitle;
+      })
+      .join(', ');
+
+    const advice = cvMinute.advices.find(
+      (a: { type: string }) => a.type === 'advice',
+    );
+
+    const openaiResponse = await openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview',
+      messages: [
+        {
+          role: 'system',
+          content: `
+            Vous êtes un expert en redaction et optimisation de CV. 
+            Selon l'offre et les conseils, propose des nouvelles sections adaptées à part les existantes.
+            Règles à suivre:
+            1. Le retour doit contenir :
+              { sections: [ ] }
+            2. Donne 1 à 3 propositions.
+            3. Donne la réponse en json simple.
+          `,
+        },
+        {
+          content: `Sections existantes :\n${allCvMinuteSections}\n Conseils :\n${advice.content} \n Offre: ${cvMinute.position}`,
+          role: 'user',
+        },
+      ],
+    });
+
+    if (openaiResponse.id) {
+      for (const r of openaiResponse.choices) {
+        await prisma.openaiResponse.create({
+          data: {
+            responseId: openaiResponse.id,
+            cvMinuteId: cvMinute.id,
+            request: 'matching-score',
+            response: r.message.content,
+            index: r.index,
+          },
+        });
+
+        const match = r.message.content.match(/```json\s*([\s\S]*?)\s*```/);
+        if (match) {
+          const jsonString = match[1];
+          const jsonData: { sections: string[] } = JSON.parse(jsonString);
+
+          for (const s of jsonData.sections) {
+            await prisma.advice.create({
+              data: {
+                cvMinuteId: cvMinute.id,
+                content: s,
+                type: 'suggestion',
+              },
+            });
+          }
+        }
+      }
+    }
+
+    const updatedCvMinute = await prisma.cvMinute.findUnique({
+      where: { id: cvMinute.id },
+      include: { advices: true },
+    });
+    res.status(200).json({ cvMinute: updatedCvMinute });
+    return;
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` });
+    return;
+  }
+};
+
+const generateSectionInfoAdvice = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    let sectionInfo = null;
+    const { cvMinute } = res.locals;
+    const { sectionInfoId } = req.params;
+
+    sectionInfo = await prisma.sectionInfo.findUnique({
+      where: { id: Number(sectionInfoId) },
+      include: { advices: true },
+    });
+
+    if (!sectionInfo) {
+      res.json({ sectionInfoNotFound: true });
+      return;
+    }
+
+    const advice = sectionInfo?.advices.find(
+      (a: AdviceInterface) => a.type === 'advice',
+    )?.content;
+
+    const openaiResponse = await openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview',
+      messages: [
+        {
+          role: 'system',
+          content: `
+            Vous êtes un expert en redaction et optimisation de CV. 
+            Selon l'offre et les conseils, donne des propositions adaptées pour remplacer le contenu existant. 
+            Règles à suivre:
+            1. Le retour doit contenir :
+              { advices: [] }
+            2. Donne 1 à 3 propositions${sectionInfo.title ? ' explicites.' : ' .'}.
+            3. Donne directement les propositions sans contenu introductive ou explicative.
+            4. Donne la réponse en json simple.
+          `,
+        },
+        {
+          content: `Contenu existant :\n${htmlToText(sectionInfo.content)}\n Conseils :\n${advice} \n Offre: ${cvMinute.position}`,
+          role: 'user',
+        },
+      ],
+    });
+
+    if (openaiResponse.id) {
+      for (const r of openaiResponse.choices) {
+        await prisma.openaiResponse.create({
+          data: {
+            responseId: openaiResponse.id,
+            cvMinuteId: cvMinute.id,
+            request: 'matching-score',
+            response: r.message.content,
+            index: r.index,
+          },
+        });
+
+        const match = r.message.content.match(/```json\s*([\s\S]*?)\s*```/);
+        if (match) {
+          const jsonString = match[1];
+          const jsonData: { advices: string[] } = JSON.parse(jsonString);
+
+          for (const item of jsonData.advices) {
+            await prisma.advice.create({
+              data: {
+                sectionInfoId: sectionInfo.id,
+                content: item,
+                type: 'suggestion',
+              },
+            });
+          }
+        }
+      }
+    }
+
+    sectionInfo = await prisma.sectionInfo.findUnique({
+      where: { id: Number(sectionInfoId) },
+      include: { advices: true },
+    });
+    res.status(200).json({ sectionInfo });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
@@ -854,7 +1067,7 @@ const updateCvMinuteScore = async (
     const cvMinuteSections = await prisma.cvMinuteSection.findMany({
       where: { cvMinuteId: cvMinute.id },
       include: {
-        sectionInfos: { include: { evaluation: true, advice: true } },
+        sectionInfos: { include: { evaluation: true, advices: true } },
         advices: true,
       },
     });
@@ -898,7 +1111,7 @@ const updateCvMinuteScore = async (
             1. Le retour doit contenir :
             { 
               globalScore: score de compatibilité global du contenu,
-              recommendations: 1 à 3 phrases explicites de recommendations par rapport à l'offre en dépit du score, met '\n' entre les phrases
+              recommendations: 1 à 3 phrases de recommendations par rapport à l'offre en dépit du score, met à la ligne chaque phrase
             }
             2. Les scores seront des valeurs entre 0 et 100.
             3. Donne la réponse en json simple.
@@ -959,17 +1172,11 @@ const updateSectionInfoOrder = async (
 
     section = await prisma.sectionInfo.findUnique({
       where: { id: body.sectionInfoId },
-      include: {
-        evaluation: true,
-        advice: true,
-      },
+      select: { id: true, order: true },
     });
     targetSection = await prisma.sectionInfo.findUnique({
       where: { id: body.targetSectionInfoId },
-      include: {
-        evaluation: true,
-        advice: true,
-      },
+      select: { id: true, order: true },
     });
 
     const tempOrder = section.order;
@@ -1002,7 +1209,7 @@ const updateSectionInfoScore = async (
 
     sectionInfo = await prisma.sectionInfo.findUnique({
       where: { id: Number(sectionInfoId) },
-      include: { evaluation: true, advice: true },
+      include: { evaluation: true, advices: true },
     });
 
     if (!sectionInfo) {
@@ -1031,11 +1238,11 @@ const updateSectionInfoScore = async (
             1. Le retour doit contenir :
             { 
               score: score de compatibilité global du contenu,
-              postHigh: 1 à 3 phrases explicites expliquant les points forts de l'expérience en dépit du score,
-              postWeak: 1 à 3 phrases explicites expliquant les points à améliorer à l'expérience en dépit du score
+              postHigh: 1 à 3 phrases expliquant les points forts de l'expérience en dépit du score,
+              postWeak: 1 à 3 phrases expliquant les points à améliorer à l'expérience en dépit du score
             }
             2. Le score est une valeur entre 0 et 100.
-            3. Met toujours des '\n' entre les phrases d'explications.
+            3. Met toujours à la ligne chaque phrase pour les explications.
             4. Donne la réponse en json simple.
           `,
         },
@@ -1098,15 +1305,11 @@ const updateCvMinuteSectionOrder = async (
 
     cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: body.cvMinuteSectionId },
-      include: {
-        sectionInfos: { include: { evaluation: true, advice: true } },
-      },
+      select: { id: true, sectionOrder: true },
     });
     targetCvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: body.targetCvMinuteSectionId },
-      include: {
-        sectionInfos: { include: { evaluation: true, advice: true } },
-      },
+      select: { id: true, sectionOrder: true },
     });
 
     const tempOrder = cvMinuteSection.sectionOrder;
@@ -1178,6 +1381,8 @@ export {
   addCvMinute,
   updateCvMinuteProfile,
   updateCvMinuteSection,
+  generateCvMinuteSectionAdvice,
+  generateSectionInfoAdvice,
   updateCvMinuteScore,
   updateSectionInfoOrder,
   updateSectionInfoScore,

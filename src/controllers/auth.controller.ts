@@ -17,7 +17,12 @@ const login = async (
 ): Promise<void> => {
   try {
     let user = null;
-    const body = req.body;
+    const body: {
+      email: string;
+      password: string;
+      role: string;
+      remember: boolean;
+    } = req.body;
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -82,7 +87,12 @@ const register = async (
 ): Promise<void> => {
   try {
     let user = null;
-    const body = req.body;
+    const body: {
+      name: string;
+      email: string;
+      password: string;
+      role: string;
+    } = req.body;
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

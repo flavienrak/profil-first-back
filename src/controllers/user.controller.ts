@@ -57,7 +57,7 @@ const updateUser = async (
   try {
     let user = null;
     let fileName = null;
-    const body = req.body;
+    const body: { name?: string; password?: string } = req.body;
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
