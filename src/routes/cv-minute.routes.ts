@@ -10,7 +10,8 @@ import {
   updateSectionInfoOrder,
   deleteSectionInfo,
   deleteCvMinuteSection,
-  openaiController,
+  updateSectionInfoScore,
+  updateCvMinuteScore,
 } from '../controllers/cv-minute.controller';
 import {
   addCvMinuteValidation,
@@ -18,16 +19,17 @@ import {
   updateCvMinuteSectionOrderValidation,
   updateCvMinuteProfileValidation,
   updateSectionInfoOrderValidation,
+  sectionInfoIdValidation,
 } from '../validations/cv-minute.validation';
 import { checkCvMinuteOwner } from '../middlewares/cvMinute.middleware';
 
 const upload = multer();
 const router = express.Router();
 
-router.get('/:id', checkCvMinuteOwner, getCvMinute);
 router.post('/', upload.single('file'), addCvMinuteValidation, addCvMinute);
 
-router.post('/openai', openaiController);
+router.get('/:id', checkCvMinuteOwner, getCvMinute);
+router.put('/:id', checkCvMinuteOwner, updateCvMinuteScore);
 
 router.put(
   '/:id/section',
@@ -50,6 +52,7 @@ router.put(
   updateCvMinuteSectionOrderValidation,
   updateCvMinuteSectionOrder,
 );
+
 router.put(
   '/:id/section-info/order',
   checkCvMinuteOwner,
@@ -60,11 +63,20 @@ router.put(
 router.delete(
   '/:id/section/:cvMinuteSectionId',
   checkCvMinuteOwner,
+  sectionInfoIdValidation,
   deleteCvMinuteSection,
+);
+
+router.put(
+  '/:id/section-info/:sectionInfoId',
+  checkCvMinuteOwner,
+  sectionInfoIdValidation,
+  updateSectionInfoScore,
 );
 router.delete(
   '/:id/section-info/:sectionInfoId',
   checkCvMinuteOwner,
+  sectionInfoIdValidation,
   deleteSectionInfo,
 );
 

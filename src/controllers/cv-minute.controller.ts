@@ -19,7 +19,12 @@ const getCvMinute = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    const { cvMinute } = res.locals;
+    const { id } = req.params;
+
+    const cvMinute = await prisma.cvMinute.findUnique({
+      where: { id: Number(id) },
+      include: { advices: true, evaluation: true },
+    });
 
     const files = await prisma.file.findMany({
       where: { cvMinuteId: cvMinute.id },
@@ -27,7 +32,10 @@ const getCvMinute = async (
 
     const cvMinuteSections = await prisma.cvMinuteSection.findMany({
       where: { cvMinuteId: cvMinute.id },
-      include: { sectionInfos: true, advices: true },
+      include: {
+        sectionInfos: { include: { evaluation: true, advice: true } },
+        advices: true,
+      },
     });
 
     const sections = await prisma.section.findMany({
@@ -124,24 +132,70 @@ const addCvMinute = async (
         messages: [
           {
             role: 'system',
-            content: `Vous êtes un expert en redaction de CV. 
-          Identifie toutes les informations contenues dans le CV.
-          Règles à suivre:
-          1. name: nom de la personne
-          2. firstname: prénom de la personne
-          4. contacts: tout les contacts, liens et/ou adresse de la personne. contactIcon: le nom de l'icone associé au contenu tiré de lucide-static, contactContent: contenu du contact/lien/adresse, contactOrder: commencant par 1 et s'incremente selon le nombre de contact, lien et adresse
-          5. title: titre du cv
-          6. presentation: presentation du profil de la personne
-          7. experiences: 
-          - postTitle: titre du poste
-          - postDate: date de début et/ou fin, avec le mois et le jour si precisé
-          - postCompany: nom de l'entreprise
-          - postContrat: type de contrat
-          - postDescription: description du poste
-          - postOrder: commencant par 1 et s'incremente selon le nombre d'experiences
-          5. Les restes seront consideres comme des sections. Une section aura un titre sectionTitle, sectionOrder commencant par 1 et s'incremente selon le nombre de sections, sectionContent qui regroupe l'ensemble des contenus, garde les '\n' lors du regroupement
-          6. S'il n'y a pas de contenu ou si le contenu est non determiné met 'à ajouter'.
-          7. Donne la réponse en json simple.`,
+            content: `
+              Vous êtes un expert en redaction et optimisation de CV. 
+              Identifie toutes les informations contenues dans le CV. 
+              Faite les calculs pour avoir les scores de compatibilité.
+              Règles à suivre:
+              1. Le retour doit contenir :
+              {
+                name: nom de la personne,
+                firstname: prénom de la personne,
+                cvTitle: 
+                  {
+                    title: titre du cv,
+                    titleAdvice: 1 à 3 phrases de suggestions pour améliorer le titre
+                  },
+                profilePresentation:
+                  {
+                    presentation: presentation du profil de la personne,
+                    presentationAdvice: 1 à 3 phrases de suggestions pour améliorer la présenation du profil
+                  },
+                contacts:  
+                  [
+                    {
+                      contactIcon: nom de l'icone associé au contenu tiré de lucide-static,
+                      contactContent: contenu du contact/lien/adresse,
+                      contactOrder: commencant par 1 et s'incremente selon le nombre de contact, lien et adresse
+                    }
+                  ], 
+                experiences: 
+                  [
+                    {
+                      postTitle: titre du poste,
+                      postDate: date de début et/ou fin, avec le mois et le jour si precisé,
+                      postCompany: nom de l'entreprise,
+                      postContrat: type de contrat,
+                      postDescription: description du poste,
+                      postOrder: commencant par 1 et s'incremente selon le nombre d'experiences,
+                      postScore: score de compatibilité de l'expérience avec l'offre,
+                      postHigh: 1 à 3 phrases explicites expliquant les points forts de l'expérience en dépit du score,
+                      postWeak: 1 à 3 phrases explicites expliquant les points à améliorer à l'expérience en dépit du score
+                    }
+                  ],
+                sections: 
+                  [
+                    {
+                      sectionTitle: titre de la section,
+                      sectionContent: regroupe l'ensemble des contenus, garde les '\n' lors du regroupement,
+                      sectionOrder: commencant par 1 et s'incremente selon le nombre de sections,
+                      sectionAdvice: 1 à 3 phrases explicites de suggestions pour améliorer la section actuelle par rapport à l'offre
+                    }
+                  ],
+                newSectionsAdvice: 1 à 3 phrases explicites de suggestions pour l'ajout de nouvelles sections qu'on appelera rubrique,
+                evaluations:
+                  {
+                    globalScore: score de compatibilité global du contenu par rapport à l'offre,
+                    recommendations: 1 à 3 phrases explicites de recommendations d'améliorations en dépit du score 
+                  } 
+              }
+              2. La partie contacts contient tout les contacts, liens et/ou adresse de la personne.
+              3. Les restes du contenu seront considérés comme des sections.
+              4. S'il n'y a pas de contenu ou si le contenu est non determiné met 'à ajouter'.
+              5. Met toujours des '\n' entre les phrases de suggestions, explications ou de recommendations.
+              6. Les scores seront des valeurs entre 0 et 100.
+              7. Donne la réponse en json simple.
+            `,
           },
           {
             role: 'user',
@@ -173,8 +227,14 @@ const addCvMinute = async (
                 contactContent?: string;
                 contactOrder?: string;
               }[];
-              title: string;
-              presentation: string;
+              cvTitle?: {
+                title?: string;
+                titleAdvice?: string;
+              };
+              profilePresentation?: {
+                presentation?: string;
+                presentationAdvice?: string;
+              };
               experiences: {
                 postTitle?: string;
                 postDate?: string;
@@ -182,13 +242,21 @@ const addCvMinute = async (
                 postContrat?: string;
                 postDescription?: string;
                 postOrder?: string;
+                postScore?: string;
+                postHigh?: string;
+                postWeak?: string;
               }[];
               sections: {
                 sectionTitle?: string;
                 sectionContent?: string;
                 sectionOrder?: string;
-                sectionEditable?: boolean;
+                sectionAdvice?: string;
               }[];
+              newSectionsAdvice?: string;
+              evaluations?: {
+                globalScore?: string;
+                recommendations?: string;
+              };
             } = JSON.parse(jsonString);
 
             const allSections: {
@@ -196,6 +264,7 @@ const addCvMinute = async (
               title?: string;
               order?: string;
               editable?: boolean;
+              advice?: string;
               content?:
                 | string
                 | {
@@ -207,7 +276,15 @@ const addCvMinute = async (
                     icon?: string;
                     iconSize?: number;
                     order?: string;
+
+                    score?: string;
+                    high?: string;
+                    weak?: string;
                   }[];
+              withAdvice?: {
+                content?: string;
+                advice?: string;
+              };
             }[] = [
               { name: 'profile', content: 'cv-profile' },
               { name: 'name', content: jsonData.name },
@@ -221,8 +298,20 @@ const addCvMinute = async (
                   order: c.contactOrder,
                 })),
               },
-              { name: 'title', content: jsonData.title },
-              { name: 'presentation', content: jsonData.presentation },
+              {
+                name: 'title',
+                withAdvice: {
+                  content: jsonData.cvTitle.title,
+                  advice: jsonData.cvTitle.titleAdvice,
+                },
+              },
+              {
+                name: 'presentation',
+                withAdvice: {
+                  content: jsonData.profilePresentation.presentation,
+                  advice: jsonData.profilePresentation.presentationAdvice,
+                },
+              },
               {
                 name: 'experiences',
                 content: jsonData.experiences.map((item) => ({
@@ -232,6 +321,9 @@ const addCvMinute = async (
                   contrat: item.postContrat,
                   content: item.postDescription,
                   order: item.postOrder,
+                  score: item.postScore,
+                  high: item.postHigh,
+                  weak: item.postWeak,
                 })),
               },
               ...jsonData.sections.map((section) => ({
@@ -239,6 +331,7 @@ const addCvMinute = async (
                 title: section.sectionTitle.trim().toLocaleLowerCase(),
                 content: section.sectionContent.trim(),
                 order: section.sectionOrder,
+                advice: section.sectionAdvice,
                 editable: true,
               })),
             ];
@@ -267,6 +360,16 @@ const addCvMinute = async (
                 },
               });
 
+              if (s.advice) {
+                await prisma.advice.create({
+                  data: {
+                    cvMinuteSectionId: cvMinuteSection.id,
+                    content: s.advice,
+                    type: 'existSection',
+                  },
+                });
+              }
+
               // SectionInfo
               if (typeof s.content === 'string') {
                 await prisma.sectionInfo.create({
@@ -275,9 +378,24 @@ const addCvMinute = async (
                     content: s.content,
                   },
                 });
+              } else if (s.withAdvice) {
+                const sectionInfo = await prisma.sectionInfo.create({
+                  data: {
+                    cvMinuteSectionId: cvMinuteSection.id,
+                    content: s.withAdvice.content,
+                  },
+                });
+
+                await prisma.advice.create({
+                  data: {
+                    sectionInfoId: sectionInfo.id,
+                    content: s.withAdvice.advice,
+                    type: 'existSection',
+                  },
+                });
               } else {
                 for (const item of s.content) {
-                  await prisma.sectionInfo.create({
+                  const sectionInfo = await prisma.sectionInfo.create({
                     data: {
                       cvMinuteSectionId: cvMinuteSection.id,
                       title: item.title,
@@ -290,9 +408,36 @@ const addCvMinute = async (
                       order: Number(item.order),
                     },
                   });
+
+                  if (item.score) {
+                    await prisma.evaluation.create({
+                      data: {
+                        sectionInfoId: sectionInfo.id,
+                        initialScore: Number(item.score),
+                        content: item.high,
+                        weakContent: item.weak,
+                      },
+                    });
+                  }
                 }
               }
             }
+
+            await prisma.evaluation.create({
+              data: {
+                cvMinuteId: cvMinute.id,
+                initialScore: Number(jsonData.evaluations.globalScore),
+                content: jsonData.evaluations.recommendations,
+              },
+            });
+
+            await prisma.advice.create({
+              data: {
+                cvMinuteId: cvMinute.id,
+                content: jsonData.newSectionsAdvice,
+                type: 'newSection',
+              },
+            });
           }
         }
       }
@@ -408,7 +553,9 @@ const updateCvMinuteProfile = async (
 
     cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: cvMinuteSection.id },
-      include: { sectionInfos: true },
+      include: {
+        sectionInfos: { include: { evaluation: true, advice: true } },
+      },
     });
     res.status(200).json({ cvMinuteSection, file });
     return;
@@ -672,10 +819,127 @@ const updateCvMinuteSection = async (
 
     cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: cvMinuteSection.id },
-      include: { sectionInfos: true, advices: true },
+      include: {
+        sectionInfos: { include: { evaluation: true, advice: true } },
+        advices: true,
+      },
     });
 
     res.status(200).json({ cvMinuteSection });
+    return;
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` });
+    return;
+  }
+};
+
+const updateCvMinuteScore = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    let evaluation = null;
+    const { id } = req.params;
+
+    const cvMinute = await prisma.cvMinute.findUnique({
+      where: { id: Number(id) },
+      include: { advices: true, evaluation: true },
+    });
+
+    if (!cvMinute.evaluation) {
+      res.json({ evaluationNotFound: true });
+      return;
+    }
+
+    const cvMinuteSections = await prisma.cvMinuteSection.findMany({
+      where: { cvMinuteId: cvMinute.id },
+      include: {
+        sectionInfos: { include: { evaluation: true, advice: true } },
+        advices: true,
+      },
+    });
+
+    const sections = await prisma.section.findMany({
+      where: { id: { in: cvMinuteSections.map((c) => c.sectionId) } },
+    });
+
+    const getCvMinuteSection = (value: string) => {
+      const section = sections.find((s) => s.name === value);
+      return cvMinuteSections.find((c) => c.sectionId === section?.id);
+    };
+
+    const title = getCvMinuteSection('title');
+    const presentation = getCvMinuteSection('presentation');
+    const experiences = getCvMinuteSection('experiences');
+    const editableSections = sections.filter((s) => s.editable);
+    const allCvMinuteSections = editableSections
+      .map((s) => {
+        const cvMinuteSection = getCvMinuteSection(s.name);
+        return `${cvMinuteSection.sectionTitle}: ${cvMinuteSection.sectionInfos[0].content}`;
+      })
+      .join('\n');
+
+    const cvDetails = `
+      cvTitle: ${title.sectionInfos[0].content}, 
+      profilePresentation: ${presentation.sectionInfos[0].content}, 
+      experiences: ${experiences.sectionInfos.map((item, index) => `${index}. poste: ${item.title}, contrat: ${item.contrat}, description: ${item.content}`).join('\n')}, 
+      ${allCvMinuteSections}
+    `;
+
+    const openaiResponse = await openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview',
+      messages: [
+        {
+          role: 'system',
+          content: `
+            Vous êtes un expert en redaction et optimisation de CV. 
+            Faite les calculs pour avoir les scores de compatibilité.
+            Règles à suivre:
+            1. Le retour doit contenir :
+            { 
+              globalScore: score de compatibilité global du contenu,
+              recommendations: 1 à 3 phrases explicites de recommendations par rapport à l'offre en dépit du score, met '\n' entre les phrases
+            }
+            2. Les scores seront des valeurs entre 0 et 100.
+            3. Donne la réponse en json simple.
+          `,
+        },
+        {
+          content: `Contenu du CV :\n${cvDetails}\n Offre: ${cvMinute.position}`,
+          role: 'user',
+        },
+      ],
+    });
+
+    if (openaiResponse.id) {
+      for (const r of openaiResponse.choices) {
+        await prisma.openaiResponse.create({
+          data: {
+            responseId: openaiResponse.id,
+            cvMinuteId: cvMinute.id,
+            request: 'matching-score',
+            response: r.message.content,
+            index: r.index,
+          },
+        });
+        const match = r.message.content.match(/```json\s*([\s\S]*?)\s*```/);
+        if (match) {
+          const jsonString = match[1];
+          const jsonData: { globalScore: string; recommendations: string } =
+            JSON.parse(jsonString);
+
+          evaluation = await prisma.evaluation.update({
+            where: { id: cvMinute.evaluation.id },
+            data: {
+              actualScore: Number(jsonData.globalScore),
+              content: jsonData.recommendations,
+            },
+          });
+        }
+      }
+    }
+
+    res.status(200).json({ evaluation });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
@@ -695,9 +959,17 @@ const updateSectionInfoOrder = async (
 
     section = await prisma.sectionInfo.findUnique({
       where: { id: body.sectionInfoId },
+      include: {
+        evaluation: true,
+        advice: true,
+      },
     });
     targetSection = await prisma.sectionInfo.findUnique({
       where: { id: body.targetSectionInfoId },
+      include: {
+        evaluation: true,
+        advice: true,
+      },
     });
 
     const tempOrder = section.order;
@@ -718,6 +990,102 @@ const updateSectionInfoOrder = async (
   }
 };
 
+const updateSectionInfoScore = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    let sectionInfo = null;
+    let evaluation = null;
+    const { cvMinute } = res.locals;
+    const { sectionInfoId } = req.params;
+
+    sectionInfo = await prisma.sectionInfo.findUnique({
+      where: { id: Number(sectionInfoId) },
+      include: { evaluation: true, advice: true },
+    });
+
+    if (!sectionInfo) {
+      res.json({ sectionInfoNotFound: true });
+      return;
+    } else if (!sectionInfo.evaluation) {
+      res.json({ evaluationNotFound: true });
+      return;
+    }
+
+    const experience = `
+      titre: ${sectionInfo.title}, 
+      contrat: ${sectionInfo.contrat}, 
+      description: ${sectionInfo.content}
+    `;
+
+    const openaiResponse = await openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview',
+      messages: [
+        {
+          role: 'system',
+          content: `
+          Vous êtes un expert en redaction et optimisation de CV. 
+          Faite les calculs pour avoir le score de compatibilité entre une expérience et une offre.
+          Règles à suivre:
+            1. Le retour doit contenir :
+            { 
+              score: score de compatibilité global du contenu,
+              postHigh: 1 à 3 phrases explicites expliquant les points forts de l'expérience en dépit du score,
+              postWeak: 1 à 3 phrases explicites expliquant les points à améliorer à l'expérience en dépit du score
+            }
+            2. Le score est une valeur entre 0 et 100.
+            3. Met toujours des '\n' entre les phrases d'explications.
+            4. Donne la réponse en json simple.
+          `,
+        },
+        {
+          content: `Contenu de l'expérience :\n${experience}\n Offre: ${cvMinute.position}`,
+          role: 'user',
+        },
+      ],
+    });
+
+    if (openaiResponse.id) {
+      for (const r of openaiResponse.choices) {
+        await prisma.openaiResponse.create({
+          data: {
+            responseId: openaiResponse.id,
+            cvMinuteId: cvMinute.id,
+            request: 'matching-score',
+            response: r.message.content,
+            index: r.index,
+          },
+        });
+        const match = r.message.content.match(/```json\s*([\s\S]*?)\s*```/);
+        if (match) {
+          const jsonString = match[1];
+          const jsonData: {
+            score: string;
+            postHigh: string;
+            postWeak: string;
+          } = JSON.parse(jsonString);
+
+          evaluation = await prisma.evaluation.update({
+            where: { id: sectionInfo.evaluation.id },
+            data: {
+              actualScore: Number(jsonData.score),
+              content: jsonData.postHigh,
+              weakContent: jsonData.postWeak,
+            },
+          });
+        }
+      }
+    }
+
+    res.status(200).json({ evaluation });
+    return;
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` });
+    return;
+  }
+};
+
 const updateCvMinuteSectionOrder = async (
   req: express.Request,
   res: express.Response,
@@ -730,9 +1098,15 @@ const updateCvMinuteSectionOrder = async (
 
     cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: body.cvMinuteSectionId },
+      include: {
+        sectionInfos: { include: { evaluation: true, advice: true } },
+      },
     });
     targetCvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: body.targetCvMinuteSectionId },
+      include: {
+        sectionInfos: { include: { evaluation: true, advice: true } },
+      },
     });
 
     const tempOrder = cvMinuteSection.sectionOrder;
@@ -799,38 +1173,15 @@ const deleteCvMinuteSection = async (
   }
 };
 
-// OPENAI
-const openaiController = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
-  try {
-    let jsonData;
-    const jsonResponse =
-      '```json\n{\n  "name": "MARTIN",\n  "firstname": "Raphaël",\n  "title": "DIRECTEUR COMMERCIAL",\n  "presentation": "Commercial diplômé, j’ai une expérience de 3 ans en tant qu’Assistant Commercial, et 4 ans en tant que Commercial chez DIOR. Je suis passionné et ai un bon sens relationnel que je saurai mettre au service de votre entreprise.",\n  "contacts": [\n    {\n      "contactIcon": "phone",\n      "contactContent": "06 06 06 06 06"\n    },\n    {\n      "contactIcon": "mail",\n      "contactContent": "raphael.martin@gnail.com"\n    },\n    {\n      "contactIcon": "mapPin",\n      "contactContent": "Paris, France"\n    },\n    {\n      "contactIcon": "linkedin",\n      "contactContent": "linkedin.com/raphael-martin"\n    }\n  ],\n  "experiences": [\n    {\n      "postTitle": "Commercial",\n      "postDate": "2019 – 2022",\n      "postCompany": "DIOR, Paris",\n      "postContrat": "CDI",\n      "postDescription": "Prospection commercial et gestion d’un portefeuille client.\\nDéveloppement de nouveaux produits et projets innovants.\\nGarantir le bon déroulement des formations, aussi bien à leur démarrage qu’à leur aboutissement.\\nParticiper au développement de marque via l’organisation de la communication et d’évènements locaux.",\n      "postCompatibility": "Haute"\n    },\n    {\n      "postTitle": "Assistant Commercial Export",\n      "postDate": "2016-2019",\n      "postCompany": "ORANGE, Paris",\n      "postContrat": "CDI",\n      "postDescription": "Assurer la mise à jour des coordonnées administrative relatives au compte client.\\nTraiter les demandes d’échantillon depuis la saisie jusqu’à l’expédition.\\nAssurer l\'interface entreprise-client export pour tout service sollicité.",\n      "postCompatibility": "Moyenne"\n    },\n    {\n      "postTitle": "Assistant Commercial Export",\n      "postDate": "2015",\n      "postCompany": "DANONE, Paris",\n      "postContrat": "Stage",\n      "postDescription": "Etablir des documents nécessaires à l\'expédition des commandes en fonction de son pays de destination, de l’incoterm ainsi que du mode de règlement convenu.\\nAssurer l\'accueil téléphonique des clients, fournisseurs et autres tiers.",\n      "postCompatibility": "Moyenne"\n    }\n  ],\n  "sections": [\n    {\n      "sectionTitle": "LANGUES",\n      "sectionContent": "Français\\nAnglais\\nEspagnol"\n    },\n    {\n      "sectionTitle": "COMPÉTENCES",\n      "sectionContent": "Sens du contact\\nCommunication\\nCapacité d’adaptation\\nPolyvalence\\nLogique\\nRigueur\\nAutonomie"\n    },\n    {\n      "sectionTitle": "CENTRES D’INTÉRÊT",\n      "sectionContent": "Triathlon\\nRandonnée\\nBénévolat\\nVoyage en sac à dos\\nThéâtre et concerts"\n    },\n    {\n      "sectionTitle": "FORMATION",\n      "sectionContent": "BTS Négociations et digitalisation relation client, Université Sorbonne, Paris | 2012 - 2015\\nLicence Pro Commerce et Distribution, ESUP, Paris | 2012 - 2015"\n    }\n  ]\n}\n```';
-
-    const match = jsonResponse.match(/```json\s*([\s\S]*?)\s*```/);
-    if (match) {
-      const jsonString = match[1];
-      jsonData = JSON.parse(jsonString);
-    }
-
-    res.status(200).json({ jsonData });
-    return;
-  } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
-    return;
-  }
-};
-
 export {
   getCvMinute,
   addCvMinute,
   updateCvMinuteProfile,
   updateCvMinuteSection,
+  updateCvMinuteScore,
   updateSectionInfoOrder,
+  updateSectionInfoScore,
   updateCvMinuteSectionOrder,
   deleteSectionInfo,
   deleteCvMinuteSection,
-  openaiController,
 };

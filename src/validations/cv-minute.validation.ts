@@ -1,5 +1,5 @@
 import isEmpty from '../utils/isEmpty';
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 
 const addCvMinuteValidation = [
   body('position')
@@ -102,10 +102,19 @@ const updateSectionInfoOrderValidation = [
     .withMessage('invalid targetSectionInfoId'),
 ];
 
+const sectionInfoIdValidation = [
+  param('sectionInfoId')
+    .notEmpty()
+    .withMessage('sectionInfoId required')
+    .isInt()
+    .withMessage('invalid sectionInfoId'),
+];
+
 export {
   addCvMinuteValidation,
   updateCvMinuteProfileValidation,
   updateCvMinuteSectionValidation,
   updateCvMinuteSectionOrderValidation,
   updateSectionInfoOrderValidation,
+  sectionInfoIdValidation,
 };
