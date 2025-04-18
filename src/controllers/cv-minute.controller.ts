@@ -44,7 +44,13 @@ const getCvMinute = async (
     });
 
     const sections = await prisma.section.findMany({
-      where: { id: { in: cvMinuteSections.map((c) => c.sectionId) } },
+      where: {
+        id: {
+          in: cvMinuteSections.map(
+            (c: CvMinuteSectionInterface) => c.sectionId,
+          ),
+        },
+      },
     });
 
     res.status(200).json({
@@ -227,39 +233,39 @@ const addCvMinute = async (
               name: string;
               firstname: string;
               contacts: {
-                contactIcon?: string;
-                contactContent?: string;
-                contactOrder?: string;
+                contactIcon: string;
+                contactContent: string;
+                contactOrder: string;
               }[];
-              cvTitle?: {
-                title?: string;
-                titleAdvice?: string;
+              cvTitle: {
+                title: string;
+                titleAdvice: string;
               };
-              profilePresentation?: {
-                presentation?: string;
-                presentationAdvice?: string;
+              profilePresentation: {
+                presentation: string;
+                presentationAdvice: string;
               };
               experiences: {
-                postTitle?: string;
-                postDate?: string;
-                postCompany?: string;
-                postContrat?: string;
-                postDescription?: string;
-                postOrder?: string;
-                postScore?: string;
-                postHigh?: string;
-                postWeak?: string;
+                postTitle: string;
+                postDate: string;
+                postCompany: string;
+                postContrat: string;
+                postDescription: string;
+                postOrder: string;
+                postScore: string;
+                postHigh: string;
+                postWeak: string;
               }[];
               sections: {
-                sectionTitle?: string;
-                sectionContent?: string;
-                sectionOrder?: string;
-                sectionAdvice?: string;
+                sectionTitle: string;
+                sectionContent: string;
+                sectionOrder: string;
+                sectionAdvice: string;
               }[];
-              newSectionsAdvice?: string;
-              evaluations?: {
-                globalScore?: string;
-                recommendations?: string;
+              newSectionsAdvice: string;
+              evaluations: {
+                globalScore: string;
+                recommendations: string;
               };
             } = JSON.parse(jsonString);
 
@@ -286,8 +292,8 @@ const addCvMinute = async (
                     weak?: string;
                   }[];
               withAdvice?: {
-                content?: string;
-                advice?: string;
+                content: string;
+                advice: string;
               };
             }[] = [
               { name: 'profile', content: 'cv-profile' },
@@ -295,12 +301,18 @@ const addCvMinute = async (
               { name: 'firstname', content: jsonData.firstname },
               {
                 name: 'contacts',
-                content: jsonData.contacts.map((c) => ({
-                  icon: c.contactIcon,
-                  iconSize: 16,
-                  content: c.contactContent,
-                  order: c.contactOrder,
-                })),
+                content: jsonData.contacts.map(
+                  (c: {
+                    contactIcon: string;
+                    contactContent: string;
+                    contactOrder: string;
+                  }) => ({
+                    icon: c.contactIcon,
+                    iconSize: 16,
+                    content: c.contactContent,
+                    order: c.contactOrder,
+                  }),
+                ),
               },
               {
                 name: 'title',
@@ -318,17 +330,29 @@ const addCvMinute = async (
               },
               {
                 name: 'experiences',
-                content: jsonData.experiences.map((item) => ({
-                  title: item.postTitle,
-                  date: item.postDate,
-                  company: item.postCompany,
-                  contrat: item.postContrat,
-                  content: item.postDescription,
-                  order: item.postOrder,
-                  score: item.postScore,
-                  high: item.postHigh,
-                  weak: item.postWeak,
-                })),
+                content: jsonData.experiences.map(
+                  (item: {
+                    postTitle: string;
+                    postDate: string;
+                    postCompany: string;
+                    postContrat: string;
+                    postDescription: string;
+                    postOrder: string;
+                    postScore: string;
+                    postHigh: string;
+                    postWeak: string;
+                  }) => ({
+                    title: item.postTitle,
+                    date: item.postDate,
+                    company: item.postCompany,
+                    contrat: item.postContrat,
+                    content: item.postDescription,
+                    order: item.postOrder,
+                    score: item.postScore,
+                    high: item.postHigh,
+                    weak: item.postWeak,
+                  }),
+                ),
               },
               ...jsonData.sections.map((section) => ({
                 name: section.sectionTitle.trim().toLocaleLowerCase(),
@@ -1149,40 +1173,40 @@ const optimizeCvMinute = async (
         if (match) {
           const jsonString = match[1];
           const jsonData: {
-            cvTitle?: {
-              sectionInfoId?: string;
-              adviceId?: string;
-              title?: string;
-              titleAdvice?: string;
+            cvTitle: {
+              sectionInfoId: string;
+              adviceId: string;
+              title: string;
+              titleAdvice: string;
             };
-            profilePresentation?: {
-              sectionInfoId?: string;
-              adviceId?: string;
-              presentation?: string;
-              presentationAdvice?: string;
+            profilePresentation: {
+              sectionInfoId: string;
+              adviceId: string;
+              presentation: string;
+              presentationAdvice: string;
             };
             experiences: {
-              sectionInfoId?: string;
-              evaluationId?: string;
-              postTitle?: string;
-              postDescription?: string;
-              postOrder?: string;
-              postScore?: string;
-              postHigh?: string;
-              postWeak?: string;
+              sectionInfoId: string;
+              evaluationId: string;
+              postTitle: string;
+              postDescription: string;
+              postOrder: string;
+              postScore: string;
+              postHigh: string;
+              postWeak: string;
             }[];
             sections: {
-              cvMinuteSectionId?: string;
-              adviceId?: string;
-              sectionTitle?: string;
-              sectionContent?: string;
-              sectionOrder?: string;
-              sectionAdvice?: string;
+              cvMinuteSectionId: string;
+              adviceId: string;
+              sectionTitle: string;
+              sectionContent: string;
+              sectionOrder: string;
+              sectionAdvice: string;
             }[];
-            newSectionsAdvice?: string;
-            evaluations?: {
-              globalScore?: string;
-              recommendations?: string;
+            newSectionsAdvice: string;
+            evaluations: {
+              globalScore: string;
+              recommendations: string;
             };
           } = JSON.parse(jsonString);
 
@@ -1197,24 +1221,20 @@ const optimizeCvMinute = async (
             content?:
               | string
               | {
-                  sectionInfoId?: string;
-                  evaluationId?: string;
-                  adviceId?: string;
-                  title?: string;
-                  content?: string;
-                  date?: string;
-                  company?: string;
-                  order?: string;
-
-                  score?: string;
-                  high?: string;
-                  weak?: string;
+                  sectionInfoId: string;
+                  evaluationId: string;
+                  title: string;
+                  content: string;
+                  order: string;
+                  score: string;
+                  high: string;
+                  weak: string;
                 }[];
             withAdvice?: {
-              sectionInfoId?: string;
-              adviceId?: string;
-              content?: string;
-              advice?: string;
+              sectionInfoId: string;
+              adviceId: string;
+              content: string;
+              advice: string;
             };
           }[] = [
             {
@@ -1239,14 +1259,14 @@ const optimizeCvMinute = async (
               name: 'experiences',
               content: jsonData.experiences.map(
                 (item: {
-                  sectionInfoId?: string;
-                  evaluationId?: string;
-                  postTitle?: string;
-                  postDescription?: string;
-                  postOrder?: string;
-                  postScore?: string;
-                  postHigh?: string;
-                  postWeak?: string;
+                  sectionInfoId: string;
+                  evaluationId: string;
+                  postTitle: string;
+                  postDescription: string;
+                  postOrder: string;
+                  postScore: string;
+                  postHigh: string;
+                  postWeak: string;
                 }) => ({
                   sectionInfoId: item.sectionInfoId,
                   evaluationId: item.evaluationId,
@@ -1416,7 +1436,13 @@ const optimizeCvMinute = async (
     });
 
     sections = await prisma.section.findMany({
-      where: { id: { in: cvMinuteSections.map((c) => c.sectionId) } },
+      where: {
+        id: {
+          in: cvMinuteSections.map(
+            (c: CvMinuteSectionInterface) => c.sectionId,
+          ),
+        },
+      },
     });
 
     res.status(200).json({
@@ -1450,14 +1476,21 @@ const generateCvMinuteSectionAdvice = async (
 
     const sections = await prisma.section.findMany({
       where: {
-        id: { in: cvMinuteSections.map((c) => c.sectionId) },
+        id: {
+          in: cvMinuteSections.map(
+            (c: { sectionId: number; sectionTitle: string }) => c.sectionId,
+          ),
+        },
         editable: true,
       },
     });
 
     const getCvMinuteSection = (value: string) => {
-      const section = sections.find((s) => s.name === value);
-      return cvMinuteSections.find((c) => c.sectionId === section?.id);
+      const section = sections.find((s: SectionInterface) => s.name === value);
+      return cvMinuteSections.find(
+        (c: { sectionId: number; sectionTitle: string }) =>
+          c.sectionId === section?.id,
+      );
     };
 
     const allCvMinuteSections = sections
@@ -1691,12 +1724,20 @@ const updateCvMinuteScore = async (
     });
 
     const sections = await prisma.section.findMany({
-      where: { id: { in: cvMinuteSections.map((c) => c.sectionId) } },
+      where: {
+        id: {
+          in: cvMinuteSections.map(
+            (c: CvMinuteSectionInterface) => c.sectionId,
+          ),
+        },
+      },
     });
 
     const getCvMinuteSection = (value: string) => {
-      const section = sections.find((s) => s.name === value);
-      return cvMinuteSections.find((c) => c.sectionId === section?.id);
+      const section = sections.find((s: SectionInterface) => s.name === value);
+      return cvMinuteSections.find(
+        (c: CvMinuteSectionInterface) => c.sectionId === section?.id,
+      );
     };
 
     const title = getCvMinuteSection('title');
