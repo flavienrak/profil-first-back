@@ -21,7 +21,7 @@ RUN npm run build
 FROM node:20-slim AS runner
 
 # Installer OpenSSL aussi en prod
-RUN apk add --no-cache openssl
+RUN apt-get update && apt-get install -y openssl
 
 WORKDIR /app
 
