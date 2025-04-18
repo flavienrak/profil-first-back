@@ -1053,10 +1053,10 @@ const optimizeCvMinute = async (
     `;
 
     const existSections = editableSections
-      .map((s) => {
+      .map((s: SectionInterface) => {
         const cvMinuteSection = getCvMinuteSection(s.name);
         const cvMinuteSectionAdvice = cvMinuteSection.advices.find(
-          (a) =>
+          (a: AdviceInterface) =>
             a.cvMinuteSectionId === cvMinuteSection.id && a.type === 'advice',
         );
 
@@ -1494,7 +1494,7 @@ const generateCvMinuteSectionAdvice = async (
     };
 
     const allCvMinuteSections = sections
-      .map((s) => {
+      .map((s: SectionInterface) => {
         const cvMinuteSection = getCvMinuteSection(s.name);
         return cvMinuteSection.sectionTitle;
       })
@@ -1743,9 +1743,11 @@ const updateCvMinuteScore = async (
     const title = getCvMinuteSection('title');
     const presentation = getCvMinuteSection('presentation');
     const experiences = getCvMinuteSection('experiences');
-    const editableSections = sections.filter((s) => s.editable);
+    const editableSections = sections.filter(
+      (s: SectionInterface) => s.editable,
+    );
     const allCvMinuteSections = editableSections
-      .map((s) => {
+      .map((s: SectionInterface) => {
         const cvMinuteSection = getCvMinuteSection(s.name);
         return `${cvMinuteSection.sectionTitle}: ${cvMinuteSection.sectionInfos[0].content}`;
       })
