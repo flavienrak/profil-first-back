@@ -4,13 +4,6 @@ FROM node:20-slim AS builder
 # Répertoire de travail
 WORKDIR /app
 
-# Installer OpenSSL et libssl-dev
-RUN apt update && \
-    apt install -y --no-install-recommends \
-      openssl \
-      libssl-dev && \
-    rm -rf /var/lib/apt/lists/*
-
 # Copier les fichiers nécessaires
 COPY package*.json tsconfig.json ./
 RUN npm install
