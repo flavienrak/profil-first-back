@@ -2,3 +2,5 @@
 dist
 src/uploads
 /node_modules
+
+docker-compose.yml

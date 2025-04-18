@@ -12,6 +12,9 @@ import { validationResult } from 'express-validator';
 import { imageMimeTypes } from '../utils/constants';
 import { openai } from '../socket';
 import { AdviceInterface } from 'interfaces/advice.interface';
+import { CvMinuteSectionInterface } from 'interfaces/cvMinuteSection.interface';
+import { SectionInterface } from 'interfaces/section.interface';
+import { SectionInfoInterface } from 'interfaces/sectionInfo.interface';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -974,18 +977,28 @@ const optimizeCvMinute = async (
     });
 
     let sections = await prisma.section.findMany({
-      where: { id: { in: cvMinuteSections.map((c) => c.sectionId) } },
+      where: {
+        id: {
+          in: cvMinuteSections.map(
+            (c: CvMinuteSectionInterface) => c.sectionId,
+          ),
+        },
+      },
     });
 
     const getCvMinuteSection = (value: string) => {
-      const section = sections.find((s) => s.name === value);
-      return cvMinuteSections.find((c) => c.sectionId === section?.id);
+      const section = sections.find((s: SectionInterface) => s.name === value);
+      return cvMinuteSections.find(
+        (c: CvMinuteSectionInterface) => c.sectionId === section?.id,
+      );
     };
 
     const title = getCvMinuteSection('title');
     const presentation = getCvMinuteSection('presentation');
     const experiences = getCvMinuteSection('experiences');
-    const editableSections = sections.filter((s) => s.editable);
+    const editableSections = sections.filter(
+      (s: SectionInterface) => s.editable,
+    );
 
     const titleAdvice = title?.sectionInfos[0].advices.find(
       (a: AdviceInterface) => a.type === 'advice',
@@ -1034,7 +1047,7 @@ const optimizeCvMinute = async (
       .join('\n');
 
     const existExperiences = experiences.sectionInfos
-      .map((item) => {
+      .map((item: any) => {
         return `
           sectionInfoId:${item.id},
           evaluationId: ${item.evaluation.id}, 
@@ -1224,27 +1237,47 @@ const optimizeCvMinute = async (
             },
             {
               name: 'experiences',
-              content: jsonData.experiences.map((item) => ({
-                sectionInfoId: item.sectionInfoId,
-                evaluationId: item.evaluationId,
-                title: item.postTitle,
-                content: item.postDescription,
-                order: item.postOrder,
-                score: item.postScore,
-                high: item.postHigh,
-                weak: item.postWeak,
-              })),
+              content: jsonData.experiences.map(
+                (item: {
+                  sectionInfoId?: string;
+                  evaluationId?: string;
+                  postTitle?: string;
+                  postDescription?: string;
+                  postOrder?: string;
+                  postScore?: string;
+                  postHigh?: string;
+                  postWeak?: string;
+                }) => ({
+                  sectionInfoId: item.sectionInfoId,
+                  evaluationId: item.evaluationId,
+                  title: item.postTitle,
+                  content: item.postDescription,
+                  order: item.postOrder,
+                  score: item.postScore,
+                  high: item.postHigh,
+                  weak: item.postWeak,
+                }),
+              ),
             },
-            ...jsonData.sections.map((section) => ({
-              cvMinuteSectionId: section.cvMinuteSectionId,
-              adviceId: section.adviceId,
-              name: section.sectionTitle.trim().toLocaleLowerCase(),
-              title: section.sectionTitle.trim().toLocaleLowerCase(),
-              content: section.sectionContent.trim(),
-              order: section.sectionOrder,
-              advice: section.sectionAdvice,
-              editable: true,
-            })),
+            ...jsonData.sections.map(
+              (section: {
+                cvMinuteSectionId: string;
+                adviceId: string;
+                sectionTitle: string;
+                sectionContent: string;
+                sectionOrder: string;
+                sectionAdvice: string;
+              }) => ({
+                cvMinuteSectionId: section.cvMinuteSectionId,
+                adviceId: section.adviceId,
+                name: section.sectionTitle.trim().toLocaleLowerCase(),
+                title: section.sectionTitle.trim().toLocaleLowerCase(),
+                content: section.sectionContent.trim(),
+                order: section.sectionOrder,
+                advice: section.sectionAdvice,
+                editable: true,
+              }),
+            ),
           ];
 
           // CvMinuteSection
@@ -1680,7 +1713,7 @@ const updateCvMinuteScore = async (
     const cvDetails = `
       cvTitle: ${title.sectionInfos[0].content}, 
       profilePresentation: ${presentation.sectionInfos[0].content}, 
-      experiences: ${experiences.sectionInfos.map((item, index) => `${index}. poste: ${item.title}, contrat: ${item.contrat}, description: ${item.content}`).join('\n')}, 
+      experiences: ${experiences.sectionInfos.map((item: SectionInfoInterface, index: number) => `${index}. poste: ${item.title}, contrat: ${item.contrat}, description: ${item.content}`).join('\n')}, 
       ${allCvMinuteSections}
     `;
 
