@@ -27,6 +27,12 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 
+# Copier aussi le client Prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+# Copier le fichier schema.prisma (nécessaire pour Prisma Client)
+COPY --from=builder /app/src/prisma/schema.prisma ./src/prisma/schema.prisma
+
 # Exposer le port utilisé par Express
 EXPOSE 5000
 
