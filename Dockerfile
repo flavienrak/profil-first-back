@@ -5,8 +5,8 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # Installer OpenSSL et libssl-dev
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt update && \
+    apt install -y --no-install-recommends \
       libssl1.1 \
       libssl-dev && \
     rm -rf /var/lib/apt/lists/*
