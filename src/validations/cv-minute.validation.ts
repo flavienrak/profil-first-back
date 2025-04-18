@@ -53,18 +53,11 @@ const updateCvMinuteSectionValidation = [
         !isNaN(Number(body.iconSize))
       );
     } else if (body.newSection) {
-      return (
-        !isEmpty(body.cvMinuteSectionId) &&
-        !isNaN(body.cvMinuteSectionId) &&
-        !isEmpty(body.content) &&
-        !isEmpty(body.title)
-      );
+      return !isEmpty(body.content) && !isEmpty(body.title);
     } else if (body.updateExperience) {
       return (
         !isEmpty(body.cvMinuteSectionId) &&
         !isNaN(body.cvMinuteSectionId) &&
-        !isEmpty(body.sectionInfoOrder) &&
-        !isNaN(body.sectionInfoOrder) &&
         !isEmpty(body.title) &&
         !isEmpty(body.content) &&
         !isEmpty(body.company) &&
@@ -110,6 +103,15 @@ const sectionInfoIdValidation = [
     .withMessage('invalid sectionInfoId'),
 ];
 
+const generateSectionInfoAdviceValidation = [
+  param('sectionInfoId')
+    .notEmpty()
+    .withMessage('sectionInfoId required')
+    .isInt()
+    .withMessage('invalid sectionInfoId'),
+  body('section').trim().notEmpty().withMessage('section required'),
+];
+
 export {
   addCvMinuteValidation,
   updateCvMinuteProfileValidation,
@@ -117,4 +119,5 @@ export {
   updateCvMinuteSectionOrderValidation,
   updateSectionInfoOrderValidation,
   sectionInfoIdValidation,
+  generateSectionInfoAdviceValidation,
 };

@@ -14,6 +14,7 @@ import {
   updateCvMinuteScore,
   generateCvMinuteSectionAdvice,
   generateSectionInfoAdvice,
+  optimizeCvMinute,
 } from '../controllers/cv-minute.controller';
 import {
   addCvMinuteValidation,
@@ -22,6 +23,7 @@ import {
   updateCvMinuteProfileValidation,
   updateSectionInfoOrderValidation,
   sectionInfoIdValidation,
+  generateSectionInfoAdviceValidation,
 } from '../validations/cv-minute.validation';
 import { checkCvMinuteOwner } from '../middlewares/cvMinute.middleware';
 
@@ -40,6 +42,8 @@ router.put(
   updateCvMinuteSectionValidation,
   updateCvMinuteSection,
 );
+
+router.post('/:id/optimize', checkCvMinuteOwner, optimizeCvMinute);
 
 router.post(
   '/:id/profile',
@@ -72,7 +76,7 @@ router.put(
 router.post(
   '/:id/section-info/:sectionInfoId',
   checkCvMinuteOwner,
-  sectionInfoIdValidation,
+  generateSectionInfoAdviceValidation,
   generateSectionInfoAdvice,
 );
 router.put(
