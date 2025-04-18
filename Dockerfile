@@ -20,9 +20,6 @@ RUN npm run build
 # Étape 2 : Exécution en production
 FROM node:20-slim AS runner
 
-# Installer OpenSSL aussi en prod
-RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 # Copier les fichiers nécessaires à l'exécution
