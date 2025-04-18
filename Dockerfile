@@ -7,7 +7,7 @@ WORKDIR /app
 # Installer OpenSSL et libssl-dev
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      openssl \
+      libssl1.1 \
       libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 
