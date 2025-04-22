@@ -19,8 +19,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  files     File[]
-  cvMinutes CvMinute[]
+  files                  File[]
+  cvMinutes              CvMinute[]
+  qualiCarriereQuestions QualiCarriereQuestion[]
+  qualiCarriereResponses QualiCarriereResponse[]
+  openaiResponses        OpenaiResponse[]
+  qualiCarriereResume    QualiCarriereResume?
+  qualiCarriereChat      QualiCarriereChat[]
 }
 
 model File {
@@ -145,6 +150,7 @@ model OpenaiResponse {
   id         Int    @id @default(autoincrement())
   responseId String
   cvMinuteId Int?
+  userId     Int?
   request    String
   response   String
   index      Int
@@ -153,4 +159,62 @@ model OpenaiResponse {
   updatedAt DateTime @updatedAt
 
   cvMinute CvMinute? @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id])
+}
+
+model Question {
+  id      Int    @id @default(autoincrement())
+  content String
+
+  qualiCarriereQuestions QualiCarriereQuestion[]
+}
+
+model QualiCarriereQuestion {
+  id         Int @id @default(autoincrement())
+  order      Int
+  questionId Int
+  userId     Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  question              Question               @relation(fields: [questionId], references: [id])
+  user                  User                   @relation(fields: [userId], references: [id])
+  qualiCarriereResponse QualiCarriereResponse?
+}
+
+model QualiCarriereResponse {
+  id         Int    @id @default(autoincrement())
+  content    String
+  questionId Int    @unique
+  userId     Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  qualiCarriereQuestion QualiCarriereQuestion @relation(fields: [questionId], references: [id])
+  user                  User                  @relation(fields: [userId], references: [id])
+}
+
+model QualiCarriereResume {
+  id      Int    @id @default(autoincrement())
+  content String
+  userId  Int    @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model QualiCarriereChat {
+  id      Int    @id @default(autoincrement())
+  role    String
+  content String
+  userId  Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
 }

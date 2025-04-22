@@ -20,6 +20,7 @@
     "@eslint/eslintrc": "^3.3.1",
     "@prisma/client": "^6.6.0",
     "ajv": "^8.17.1",
+    "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
     "body-parser": "^2.2.0",
     "compression": "^1.8.0",

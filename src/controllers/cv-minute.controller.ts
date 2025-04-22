@@ -11,10 +11,10 @@ import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
 import { imageMimeTypes } from '../utils/constants';
 import { openai } from '../socket';
-import { AdviceInterface } from 'interfaces/advice.interface';
-import { CvMinuteSectionInterface } from 'interfaces/cvMinuteSection.interface';
-import { SectionInterface } from 'interfaces/section.interface';
-import { SectionInfoInterface } from 'interfaces/sectionInfo.interface';
+import { AdviceInterface } from '../interfaces/cv-minute/advice.interface';
+import { CvMinuteSectionInterface } from '../interfaces/cv-minute/cvMinuteSection.interface';
+import { SectionInterface } from '../interfaces/cv-minute/section.interface';
+import { SectionInfoInterface } from '../interfaces/cv-minute/sectionInfo.interface';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -909,18 +909,18 @@ const updateCvMinuteSection = async (
             {
               role: 'system',
               content: `
-              Vous êtes un expert en redaction et optimisation de CV. 
-              Faite les calculs pour avoir le score de compatibilité de l'experience par rapport à l'offre.
-              Règles à suivre:
-              - Le retour doit contenir :
-                {
-                  postScore: string, score de compatibilité de l'expérience avec l'offre,
-                  postHigh: string, 1 à 3 phrases expliquant les points forts de l'expérience en dépit du score, met à la ligne les phrases
-                  postWeak: string, 1 à 3 phrases expliquant les points à améliorer à l'expérience en dépit du score, met à la ligne les phrases
-                }
-              - Le score est une valeur entre 0 et 100.
-              - Donne la réponse en json simple.
-            `,
+                Vous êtes un expert en redaction et optimisation de CV. 
+                Faite les calculs pour avoir le score de compatibilité de l'experience par rapport à l'offre.
+                Règles à suivre:
+                - Le retour doit contenir :
+                  {
+                    postScore: string, score de compatibilité de l'expérience avec l'offre,
+                    postHigh: string, 1 à 3 phrases expliquant les points forts de l'expérience en dépit du score, met à la ligne les phrases
+                    postWeak: string, 1 à 3 phrases expliquant les points à améliorer à l'expérience en dépit du score, met à la ligne les phrases
+                  }
+                - Le score est une valeur entre 0 et 100.
+                - Donne la réponse en json simple.
+              `,
             },
             {
               role: 'user',
@@ -1090,65 +1090,65 @@ const optimizeCvMinute = async (
         {
           role: 'system',
           content: `
-              Vous êtes un expert en redaction et optimisation de CV. 
-              Selon l'offre et les conseils, optimize les contenus actuels.
-              Faite les calculs pour avoir les scores de compatibilité.
-              Eviter les pertes de données, les données en sorties doivent être supérieurs ou égales au nombres de données en entrées.
-              Règles à suivre:
-              - Le retour doit contenir :
-              {
-                cvTitle: 
-                  {
-                    sectionInfoId: en pas changer, sectionInfoId en entrée,
-                    adviceId: ne pas changer, adviceId en entrée,
-                    title: string, titre du cv, courte et qui reflète bien l'offre, 
-                    titleAdvice: string, 1 à 3 phrases de suggestions pour améliorer le titre, met à la ligne les phrases
-                  },
-                profilePresentation:
+            Vous êtes un expert en redaction et optimisation de CV. 
+            Selon l'offre et les conseils, optimize les contenus actuels.
+            Faite les calculs pour avoir les scores de compatibilité.
+            Eviter les pertes de données, les données en sorties doivent être supérieurs ou égales au nombres de données en entrées.
+            Règles à suivre:
+            - Le retour doit contenir :
+            {
+              cvTitle: 
+                {
+                  sectionInfoId: en pas changer, sectionInfoId en entrée,
+                  adviceId: ne pas changer, adviceId en entrée,
+                  title: string, titre du cv, courte et qui reflète bien l'offre, 
+                  titleAdvice: string, 1 à 3 phrases de suggestions pour améliorer le titre, met à la ligne les phrases
+                },
+              profilePresentation:
+                {
+                  sectionInfoId: ne pas changer, sectionInfoId en entrée,
+                  adviceId: ne pas changer, adviceId en entrée,
+                  presentation: string, presentation du profil de la personne, à refaire, très explicite, 
+                  presentationAdvice: string, 1 à 3 phrases de suggestions pour améliorer la présenation du profil, met à la ligne les phrases
+                },
+              experiences: 
+                [
                   {
                     sectionInfoId: ne pas changer, sectionInfoId en entrée,
-                    adviceId: ne pas changer, adviceId en entrée,
-                    presentation: string, presentation du profil de la personne, à refaire, très explicite, 
-                    presentationAdvice: string, 1 à 3 phrases de suggestions pour améliorer la présenation du profil, met à la ligne les phrases
-                  },
-                experiences: 
-                  [
-                    {
-                      sectionInfoId: ne pas changer, sectionInfoId en entrée,
-                      evaluationId: ne pas changer, evaluationId en entrée,
-                      postTitle: ne pas changer, postTitle en entrée,
-                      postDescription: string, description du poste, à refaire, très explicite, 
-                      postDate: ne pas changer, postDate en entrée, 
-                      postOrder: string, commencant par 1 du plus récent au plus ancien, 
-                      postScore: string, score de compatibilité de l'expérience avec l'offre,
-                      postHigh: string, 1 à 3 phrases expliquant les points forts de l'expérience en dépit du score, met à la ligne les phrases
-                      postWeak: string, 1 à 3 phrases expliquant les points à améliorer à l'expérience en dépit du score, met à la ligne les phrases
-                    }
-                  ],
-                sections: 
-                  [
-                    {
-                      cvMinuteSectionId: ne pas changer, cvMinuteSectionId en entrée, met 'new' à la place si c'est nouvelle,
-                      adviceId: ne pas changer, adviceId en entrée, met 'new' à la place si c'est nouvelle, 
-                      sectionTitle: string, titre de la section,
-                      sectionContent: string, regroupe l'ensemble des contenus, garde les à la ligne lors du regroupement, explicite, 
-                      sectionOrder: string, commencant par 1 et s'incremente selon le nombre de sections,
-                      sectionAdvice: string, 1 à 3 phrases de suggestions pour améliorer la section actuelle par rapport à l'offre, met à la ligne les phrases
-                    }
-                  ],
-                newSectionsAdvice:  string, 1 à 3 phrases de suggestions pour l'ajout de nouvelles sections qu'on appelera rubrique,
-                evaluations:
+                    evaluationId: ne pas changer, evaluationId en entrée,
+                    postTitle: ne pas changer, postTitle en entrée,
+                    postDescription: string, description du poste, à refaire, très explicite, 
+                    postDate: ne pas changer, postDate en entrée, 
+                    postOrder: string, commencant par 1 du plus récent au plus ancien, 
+                    postScore: string, score de compatibilité de l'expérience avec l'offre,
+                    postHigh: string, 1 à 3 phrases expliquant les points forts de l'expérience en dépit du score, met à la ligne les phrases
+                    postWeak: string, 1 à 3 phrases expliquant les points à améliorer à l'expérience en dépit du score, met à la ligne les phrases
+                  }
+                ],
+              sections: 
+                [
                   {
-                    globalScore: string, score de compatibilité global du nouveau contenu par rapport à l'offre,
-                    recommendations: string, 1 à 3 phrases de recommendations d'améliorations en dépit du score, met à la ligne les phrases
-                  } 
-              }
-              - Ne pas changer les sections formations, centres d'intérêt, certification et diplômes, renvoi juste les données en entrées, 
-              - Génére des nouvelles sections avec leurs contenus selon les conseils.
-              - Les scores seront des valeurs entre 0 et 100.
-              - Optimiser tout les contenus pour que les scores soient au maximum.
-              - Donne la réponse en json simple.
-            `,
+                    cvMinuteSectionId: ne pas changer, cvMinuteSectionId en entrée, met 'new' à la place si c'est nouvelle,
+                    adviceId: ne pas changer, adviceId en entrée, met 'new' à la place si c'est nouvelle, 
+                    sectionTitle: string, titre de la section,
+                    sectionContent: string, regroupe l'ensemble des contenus, garde les à la ligne lors du regroupement, explicite, 
+                    sectionOrder: string, commencant par 1 et s'incremente selon le nombre de sections,
+                    sectionAdvice: string, 1 à 3 phrases de suggestions pour améliorer la section actuelle par rapport à l'offre, met à la ligne les phrases
+                  }
+                ],
+              newSectionsAdvice:  string, 1 à 3 phrases de suggestions pour l'ajout de nouvelles sections qu'on appelera rubrique,
+              evaluations:
+                {
+                  globalScore: string, score de compatibilité global du nouveau contenu par rapport à l'offre,
+                  recommendations: string, 1 à 3 phrases de recommendations d'améliorations en dépit du score, met à la ligne les phrases
+                } 
+            }
+            - Ne pas changer les sections formations, centres d'intérêt, certification et diplômes, renvoi juste les données en entrées, 
+            - Génére des nouvelles sections avec leurs contenus selon les conseils.
+            - Les scores seront des valeurs entre 0 et 100.
+            - Optimiser tout les contenus pour que les scores soient au maximum.
+            - Donne la réponse en json simple.
+          `,
         },
         {
           role: 'user',
