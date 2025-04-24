@@ -8,6 +8,4 @@ const imageMimeTypes = [
   'image/heif',
 ];
 
-const questionNumber = 50;
-
-export { maxAgeAuthToken, imageMimeTypes, questionNumber };
+export { maxAgeAuthToken, imageMimeTypes };

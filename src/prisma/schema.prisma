@@ -19,13 +19,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  files                  File[]
-  cvMinutes              CvMinute[]
-  qualiCarriereQuestions QualiCarriereQuestion[]
-  qualiCarriereResponses QualiCarriereResponse[]
-  openaiResponses        OpenaiResponse[]
-  qualiCarriereResume    QualiCarriereResume?
-  qualiCarriereChat      QualiCarriereChat[]
+  files                    File[]
+  cvMinutes                CvMinute[]
+  qualiCarriereQuestions   QualiCarriereQuestion[]
+  qualiCarriereResponses   QualiCarriereResponse[]
+  openaiResponses          OpenaiResponse[]
+  qualiCarriereChat        QualiCarriereChat[]
+  qualiCarriereResumes     QualiCarriereResume[]
+  qualiCarriereCompetences QualiCarriereCompetence[]
 }
 
 model File {
@@ -41,23 +42,24 @@ model File {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user        User         @relation(fields: [userId], references: [id])
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvMinute    CvMinute?    @relation(fields: [cvMinuteId], references: [id])
   sectionInfo SectionInfo? @relation(fields: [sectionInfoId], references: [id])
 }
 
 model CvMinute {
-  id          Int    @id @default(autoincrement())
-  position    String
-  primaryBg   String @default("#2A7F8B")
-  secondaryBg String @default("#1A5F6B")
-  tertiaryBg  String @default("#BEDBFF")
-  userId      Int
+  id               Int     @id @default(autoincrement())
+  position         String
+  primaryBg        String  @default("#2A7F8B")
+  secondaryBg      String  @default("#1A5F6B")
+  tertiaryBg       String  @default("#BEDBFF")
+  userId           Int
+  qualiCarriereRef Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   files            File[]
   advices          Advice[]
@@ -84,7 +86,7 @@ model CvMinuteSection {
   cvMinuteId   Int
   sectionId    Int
 
-  cvMinute CvMinute @relation(fields: [cvMinuteId], references: [id])
+  cvMinute CvMinute @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
   section  Section  @relation(fields: [sectionId], references: [id])
 
   advices      Advice[]
@@ -108,10 +110,14 @@ model SectionInfo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  file            File?
-  advices         Advice[]
-  evaluation      Evaluation?
-  cvMinuteSection CvMinuteSection @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
+  file                     File?
+  advices                  Advice[]
+  evaluation               Evaluation?
+  cvMinuteSection          CvMinuteSection           @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
+  qualiCarriereQuestions   QualiCarriereQuestion[]
+  qualiCarriereResponses   QualiCarriereResponse[]
+  qualiCarriereResumes     QualiCarriereResume[]
+  qualiCarriereCompetences QualiCarriereCompetence[]
 }
 
 model Advice {
@@ -159,52 +165,63 @@ model OpenaiResponse {
   updatedAt DateTime @updatedAt
 
   cvMinute CvMinute? @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
-  user     User?     @relation(fields: [userId], references: [id])
-}
-
-model Question {
-  id      Int    @id @default(autoincrement())
-  content String
-
-  qualiCarriereQuestions QualiCarriereQuestion[]
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model QualiCarriereQuestion {
-  id         Int @id @default(autoincrement())
-  order      Int
-  questionId Int
-  userId     Int
+  id            Int    @id @default(autoincrement())
+  order         Int
+  content       String
+  sectionInfoId Int
+  userId        Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  question              Question               @relation(fields: [questionId], references: [id])
-  user                  User                   @relation(fields: [userId], references: [id])
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sectionInfo           SectionInfo            @relation(fields: [sectionInfoId], references: [id], onDelete: Cascade)
   qualiCarriereResponse QualiCarriereResponse?
 }
 
 model QualiCarriereResponse {
-  id         Int    @id @default(autoincrement())
-  content    String
-  questionId Int    @unique
-  userId     Int
+  id            Int    @id @default(autoincrement())
+  content       String
+  questionId    Int    @unique
+  sectionInfoId Int
+  userId        Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  qualiCarriereQuestion QualiCarriereQuestion @relation(fields: [questionId], references: [id])
-  user                  User                  @relation(fields: [userId], references: [id])
+  qualiCarriereQuestion QualiCarriereQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  SectionInfo           SectionInfo?          @relation(fields: [sectionInfoId], references: [id], onDelete: Cascade)
 }
 
 model QualiCarriereResume {
-  id      Int    @id @default(autoincrement())
-  content String
-  userId  Int    @unique
+  id            Int    @id @default(autoincrement())
+  content       String
+  sectionInfoId Int
+  userId        Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  sectionInfo SectionInfo @relation(fields: [sectionInfoId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QualiCarriereCompetence {
+  id            Int    @id @default(autoincrement())
+  content       String
+  sectionInfoId Int
+  userId        Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sectionInfo SectionInfo @relation(fields: [sectionInfoId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model QualiCarriereChat {
@@ -216,5 +233,5 @@ model QualiCarriereChat {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

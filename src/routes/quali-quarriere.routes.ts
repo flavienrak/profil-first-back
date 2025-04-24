@@ -2,10 +2,10 @@ import express from 'express';
 import multer from 'multer';
 
 import {
-  getQualiCarriereQuestion,
   respondQualiCarriereQuestion,
   sendQualiCarriereMessage,
 } from '../controllers/quali-carriere.controller';
+import { getQualiCarriereQuestion } from '../controllers/quali-carriere/get-question.controller';
 import {
   respondQualiCarriereQuestionValidation,
   senndQualiCarriereMessageValidation,

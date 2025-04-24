@@ -7,231 +7,25 @@ import FormData from 'form-data';
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
 import { openai } from '../socket';
-import { questionNumber } from '../utils/constants';
+import { SectionInterface } from '../interfaces/cv-minute/section.interface';
+import { CvMinuteSectionInterface } from '../interfaces/cv-minute/cvMinuteSection.interface';
+import { SectionInfoInterface } from '../interfaces/cv-minute/sectionInfo.interface';
+import {
+  extractJson,
+  questionNumber,
+  questionNumberByIndex,
+  questionRangeByIndex,
+} from '../utils/functions';
 
 const prisma = new PrismaClient();
-
-const getQualiCarriereQuestion = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
-  try {
-    let question = null;
-    let qualiCarriereQuestion = null;
-    let qualiCarriereResume = null;
-    const { user } = res.locals;
-
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return;
-    }
-
-    const qualiCarriereQuestions = await prisma.qualiCarriereQuestion.findMany({
-      where: { userId: user.id },
-    });
-
-    if (qualiCarriereQuestions.length > 0) {
-      const lastQuestionRes = await prisma.qualiCarriereResponse.findFirst({
-        where: { userId: user.id },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-
-      if (lastQuestionRes) {
-        const questionIndex = qualiCarriereQuestions.findIndex(
-          (q) => q.questionId === lastQuestionRes.id,
-        );
-        if (questionIndex === qualiCarriereQuestions.length - 1) {
-          qualiCarriereResume = await prisma.qualiCarriereResume.findUnique({
-            where: { userId: user.id },
-          });
-
-          if (!qualiCarriereResume) {
-            const qualiCarriereQuestions =
-              await prisma.qualiCarriereQuestion.findMany({
-                where: { userId: user.id },
-                include: { qualiCarriereResponse: true },
-              });
-
-            const questions = await prisma.question.findMany({
-              where: {
-                id: { in: qualiCarriereQuestions.map((q) => q.questionId) },
-              },
-            });
-
-            const userMessage = questions
-              .map(
-                (q, index: number) =>
-                  `${index + 1}: ${q.content}: ${qualiCarriereQuestions[index].qualiCarriereResponse.content}`,
-              )
-              .join('\n');
-
-            const openaiResponse = await openai.chat.completions.create({
-              model: 'gpt-4-turbo-preview',
-              messages: [
-                {
-                  role: 'system',
-                  content: `
-                    Vous êtes un expert en redaction et optimisation de CV. 
-                    Selon les questions posées à l'utilisateur et les réponses, génère le résumé détaillé.
-                    Règles à suivre:
-                    - Le retour doit contenir :
-                      { resume:  }
-                    - Aérer le contenu en mettant à la ligne les phrases quand c'est nécessaire.
-                    - Donne la réponse en json simple.
-                  `,
-                },
-                {
-                  role: 'user',
-                  content: userMessage,
-                },
-              ],
-            });
-
-            if (openaiResponse.id) {
-              for (const r of openaiResponse.choices) {
-                await prisma.openaiResponse.create({
-                  data: {
-                    responseId: openaiResponse.id,
-                    userId: user.id,
-                    request: 'quali-carriere-resume',
-                    response: r.message.content,
-                    index: r.index,
-                  },
-                });
-
-                const match = r.message.content.match(
-                  /```json\s*([\s\S]*?)\s*```/,
-                );
-                if (match) {
-                  const jsonString = match[1];
-                  const jsonData: { resume: string } = JSON.parse(jsonString);
-
-                  qualiCarriereResume = await prisma.qualiCarriereResume.create(
-                    { data: { userId: user.id, content: jsonData.resume } },
-                  );
-                }
-              }
-            }
-          }
-
-          const messages = await prisma.qualiCarriereChat.findMany({
-            where: { userId: user.id },
-            orderBy: {
-              createdAt: 'asc',
-            },
-          });
-
-          res
-            .status(200)
-            .json({ nextStep: true, qualiCarriereResume, messages });
-          return;
-        } else {
-          qualiCarriereQuestion = qualiCarriereQuestions[questionIndex + 1];
-        }
-      } else {
-        qualiCarriereQuestion = qualiCarriereQuestions[0];
-      }
-
-      if (!qualiCarriereQuestion) {
-        res.json({ nextStep: true });
-        return;
-      }
-
-      question = await prisma.question.findUnique({
-        where: { id: qualiCarriereQuestion.questionId },
-      });
-    } else {
-      const openaiResponse = await openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
-        messages: [
-          {
-            role: 'system',
-            content: `
-              Vous êtes un expert en redaction et optimisation de CV. 
-              Donne ${questionNumber} questions sur lesquelles on peut tirer le maximum d'informations sur une personne.
-              Règles à suivre:
-              - Le retour doit contenir :
-                { questions: [] }
-              - Pas de questions personnelles.
-              - Plus de 15 questions sur les 5 dernieres expériences.
-              - Plus 5 questions sur les autres expériences.
-              - Donne la réponse en json simple.
-            `,
-          },
-        ],
-      });
-
-      if (openaiResponse.id) {
-        for (const r of openaiResponse.choices) {
-          await prisma.openaiResponse.create({
-            data: {
-              responseId: openaiResponse.id,
-              userId: user.id,
-              request: 'quali-carriere-question',
-              response: r.message.content,
-              index: r.index,
-            },
-          });
-
-          const match = r.message.content.match(/```json\s*([\s\S]*?)\s*```/);
-          if (match) {
-            const jsonString = match[1];
-            const jsonData: { questions: string[] } = JSON.parse(jsonString);
-
-            for (let i = 0; i < jsonData.questions.length; i++) {
-              const q = jsonData.questions[i];
-              if (i === 0) {
-                question = jsonData.questions[0];
-              }
-
-              const existQuestion = await prisma.question.findFirst({
-                where: { content: q.trim().toLocaleLowerCase() },
-              });
-
-              if (existQuestion) {
-                qualiCarriereQuestion =
-                  await prisma.qualiCarriereQuestion.create({
-                    data: {
-                      userId: user.id,
-                      questionId: existQuestion.id,
-                      order: i + 1,
-                    },
-                  });
-              } else {
-                const newQuestion = await prisma.question.create({
-                  data: { content: q.trim().toLocaleLowerCase() },
-                });
-                qualiCarriereQuestion =
-                  await prisma.qualiCarriereQuestion.create({
-                    data: {
-                      userId: user.id,
-                      questionId: newQuestion.id,
-                      order: i + 1,
-                    },
-                  });
-              }
-            }
-          }
-        }
-      }
-    }
-
-    res.status(200).json({ question, qualiCarriereQuestion });
-    return;
-  } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
-    return;
-  }
-};
 
 const respondQualiCarriereQuestion = async (
   req: express.Request,
   res: express.Response,
 ): Promise<void> => {
   try {
+    let qualiCarriereQuestion = null;
+    let sectionInfos: SectionInfoInterface[] = [];
     const { user } = res.locals;
     const { id } = req.params;
     const body: { content?: string } = req.body;
@@ -242,36 +36,46 @@ const respondQualiCarriereQuestion = async (
       return;
     }
 
+    const cvMinute = await prisma.cvMinute.findFirst({
+      where: { qualiCarriereRef: true },
+    });
+    if (!cvMinute) {
+      res.json({ cvMinuteNotFound: true });
+      return;
+    }
+
     const qualiCarriereQuestions = await prisma.qualiCarriereQuestion.findMany({
       where: { userId: user.id },
     });
-
-    const qualiCarriereQuestion = qualiCarriereQuestions.find(
+    const actualQuestion = qualiCarriereQuestions.find(
       (q) => q.id === Number(id),
     );
-
-    if (!qualiCarriereQuestion) {
+    if (!actualQuestion) {
       res.json({ qualiCarriereQuestionNotFound: true });
       return;
     }
 
-    const qualiCarriereResponse = await prisma.qualiCarriereResponse.findUnique(
-      { where: { questionId: Number(id) } },
+    const qualiCarriereResponses = await prisma.qualiCarriereResponse.findMany({
+      where: { userId: user.id },
+    });
+    const qualiCarriereResponse = qualiCarriereResponses.find(
+      (r) => r.questionId === actualQuestion.id,
     );
-
     if (qualiCarriereResponse) {
       res.json({ alreadyResponded: true });
       return;
     }
 
     if (body.content) {
-      await prisma.qualiCarriereResponse.create({
+      const qualiCarriereResponse = await prisma.qualiCarriereResponse.create({
         data: {
-          questionId: qualiCarriereQuestion.id,
+          sectionInfoId: actualQuestion.sectionInfoId,
+          questionId: actualQuestion.id,
           userId: user.id,
           content: body.content,
         },
       });
+      qualiCarriereResponses.push(qualiCarriereResponse);
     } else if (req.file) {
       const extension = path.extname(req.file.originalname) || '.wav';
       const fileName = `audio-${res.locals.user.id}-${Date.now()}${extension}`;
@@ -303,35 +107,258 @@ const respondQualiCarriereQuestion = async (
       );
 
       if (response.data) {
-        await prisma.qualiCarriereResponse.create({
-          data: {
-            questionId: qualiCarriereQuestion.id,
-            userId: user.id,
-            content: response.data.text,
+        const qualiCarriereResponse = await prisma.qualiCarriereResponse.create(
+          {
+            data: {
+              sectionInfoId: actualQuestion.sectionInfoId,
+              userId: user.id,
+              questionId: actualQuestion.id,
+              content: response.data.text,
+            },
           },
-        });
+        );
+        qualiCarriereResponses.push(qualiCarriereResponse);
       }
 
       fs.unlinkSync(filePath);
     }
 
-    const nextQuestion =
-      qualiCarriereQuestions[
-        qualiCarriereQuestions.findIndex(
-          (q) => q.questionId === qualiCarriereQuestion.id,
-        ) + 1
-      ];
-
-    if (!nextQuestion) {
-      res.json({ nextStep: true });
-      return;
-    }
-
-    const question = await prisma.question.findUnique({
-      where: { id: nextQuestion.questionId },
+    const cvMinuteSections = await prisma.cvMinuteSection.findMany({
+      where: { cvMinuteId: cvMinute.id },
+      include: { sectionInfos: true },
     });
 
-    res.status(200).json({ question, qualiCarriereQuestion: nextQuestion });
+    const sections = await prisma.section.findMany({
+      where: {
+        id: {
+          in: cvMinuteSections.map(
+            (section: CvMinuteSectionInterface) => section.sectionId,
+          ),
+        },
+      },
+    });
+
+    const getCvMinuteSection = (value: string) => {
+      const section = sections.find(
+        (s: SectionInterface) => s.name.toLowerCase() === value.toLowerCase(),
+      );
+      return cvMinuteSections.find(
+        (s: CvMinuteSectionInterface) => s.sectionId === section?.id,
+      );
+    };
+
+    const experiences = getCvMinuteSection('experiences');
+    sectionInfos = experiences.sectionInfos;
+
+    const totalQuestions = questionNumber(sectionInfos.length);
+
+    for (let i = 0; i < sectionInfos.length; i++) {
+      const s = sectionInfos[i];
+      const userExperience = `title: ${s.title}, date: ${s.date}, company: ${s.company}, contrat: ${s.contrat}, description: ${s.content}`;
+
+      const restQuestions = questionNumberByIndex(i);
+      const range = questionRangeByIndex(i);
+      const prevQuestions = qualiCarriereQuestions
+        .slice(range.start)
+        .map(
+          (q) =>
+            `question: ${q.content}, réponse: ${qualiCarriereResponses.find((r) => r.questionId === q.id)?.content}`,
+        )
+        .join('\n');
+
+      if (qualiCarriereQuestions.length === restQuestions) {
+        const qualiCarriereResume = await prisma.qualiCarriereResume.findFirst({
+          where: { sectionInfoId: s.id },
+        });
+
+        if (!qualiCarriereResume) {
+          const openaiResponse = await openai.chat.completions.create({
+            model: 'gpt-4-turbo-preview',
+            messages: [
+              {
+                role: 'system',
+                content: `
+                  Rôle : Tu es un expert RH et coach carrière pragmatique et réputé pour ton efficacité avec une
+                  expertise poussée en design de CV à fort impact et en repositionnement professionnel.
+                  Tu dois générer une description complète de 2500 caractères minimum et 3 500 caractères
+                  maximum, précise et valorisante d’une expérience professionnelle, à partir des réponses du
+                  candidat durant un entretien structuré (Quali Carrière).
+                  Cette description a un double usage : Elle doit être relue et validée par le candidat : donc elle
+                  doit rester fidèle à ce qu’il a dit, dans un ton neutre mais valorisant.
+                  Elle sera utilisée par une IA pour générer des CV puissants, adaptés aux offres d’emploi : elle
+                  doit donc être riche, précise, exploitable.
+                  Voici les règles fondamentales : Tu réutilises l'intégralité des infos contenues dans
+                  l’entretien, sans rien oublier.
+                  Ton objectif dans la rédaction : donner des éléments ultra professionnels et ultra mobilisable en
+                  termes de mots clés du domaine pour valoriser au maximum le profil sans mentir. Toute la
+                  description doit être construite pour faciliter l’IA dans la génération de contenu pour le CV.
+                  Tu transformes les phrases orales en contenu écrit clair, bien structuré. Structure la synthèse en
+                  6 parties :
+                  Contexte et enjeux du poste
+                  Missions concrètes réalisées
+                  Méthodes, outils, canaux et organisation
+                  Résultats, apprentissages et posture
+                  Vision large du poste (pour ouvrir sur des postes/missions proches)
+                  Vision ultra précise du poste (pour fermer sur une ultra spécialisation particulière)
+                  Adopte un style précis, professionnel mais accessible.
+                  ➤ Pas de tournures vides, pas de bullshit.
+                  ➤ Chaque phrase doit pouvoir être utile pour un recruteur. Ne cherche ni à survaloriser
+                  artificiellement, ni à édulcorer.
+                  ➤ Si c’est du junior, assume-le mais valorise la progression, le goût et le potentiel
+                  ➤ Si c’est flou, synthétise avec prudence. Utilise des termes marché à chaque fois que
+                  possible.
+                  ➤ Si certains éléments sont un peu faibles ou flous, tu les reformules pour les rendre plus clairs
+                  et lisibles, sans trahir le fond.
+                  Utilisation des anglicismes :
+                  Tu es autorisé à employer des termes anglais si le candidat en a utilisé et qu’ils sont :
+                  • Couramment utilisés dans le secteur
+                  • Et réellement **différenciants** ou **plus lisibles** que leur équivalent français.
+                  Intègre-les **uniquement si cela renforce la précision ou la crédibilité métier** (ex : SEA, SEO,
+                  landing page, content strategy, brand awareness, lead generation, copywriting…).
+                  Ne dépasse **jamais 10% à 20 % de termes en anglais** dans la totalité de la description.
+                  Ne remplace pas un mot français pertinent par un anglicisme superflu. Privilégie toujours la clarté
+                  et l’impact pour un recruteur français.
+                  Règles à suivre:
+                  - Basé sur les expériences de l'utilisateur et les entretiens.
+                  - Donne 30 compétences tirés des entretiens.
+                  - Le retour doit contenir :
+                    { resume: , competences: [] }
+                  - Donne la réponse en json simple.
+                `,
+              },
+              {
+                role: 'user',
+                content: `Expérience: ${userExperience}\n Entretien: ${prevQuestions}`,
+              },
+            ],
+          });
+
+          if (openaiResponse.id) {
+            for (const r of openaiResponse.choices) {
+              await prisma.openaiResponse.create({
+                data: {
+                  responseId: openaiResponse.id,
+                  userId: user.id,
+                  request: 'quali-carriere-resume',
+                  response: r.message.content,
+                  index: r.index,
+                },
+              });
+              const jsonData: { resume: string; competences: string[] } =
+                extractJson(r.message.content);
+
+              await prisma.qualiCarriereResume.create({
+                data: {
+                  sectionInfoId: s.id,
+                  userId: user.id,
+                  content: jsonData.resume.trim().toLocaleLowerCase(),
+                },
+              });
+
+              for (let i = 0; i < jsonData.competences.length; i++) {
+                const c = jsonData.competences[i];
+                await prisma.qualiCarriereCompetence.create({
+                  data: {
+                    userId: user.id,
+                    sectionInfoId: s.id,
+                    content: c,
+                  },
+                });
+              }
+            }
+          }
+        }
+
+        if (totalQuestions === restQuestions) {
+          res.status(201).json({ nextStep: true });
+          return;
+        } else {
+          continue;
+        }
+      } else if (qualiCarriereQuestions.length < totalQuestions) {
+        const openaiResponse = await openai.chat.completions.create({
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            {
+              role: 'system',
+              content: `
+                    Rôle : Tu es un expert RH/coach carrière avec une obsession pour la précision, l’impact et
+                    le positionnement de haut niveau dans les CV.
+                    Tu dois mener un échange conversationnel avec un candidat afin de qualifier en profondeur
+                    une expérience professionnelle et produire la matière brute nécessaire à la rédaction de
+                    bullet points puissants pour un CV.
+                    Mantra
+                    Ta mission principale est de faire parler au maximum le candidat en l’aidant à utiliser les bons
+                    mots : ceux qui collent aux attentes du marché et donnent du poids à son parcours. Tu dois :
+                    • Détecter les soft et hard skills cachés
+                    • Extraire des termes techniques ou les vulgariser
+                    • Récupérer des résultats chiffrés ou mesurables
+                    • Identifier le niveau de responsabilité réel
+                    • Traduire en langage “sexy” ce qui est souvent sous-estimé
+                    Logique de l’entretien :
+                    1. Contextualisation complète : Où, quand, pourquoi ? Quel enjeu business ? Quelle temporalité ?
+                    2. Clarification des tâches : Qu’as-tu fait concrètement ? En autonomie ou pilotage ?
+                    3. Précision des outils et méthodes : Avec quoi ? Comment ?
+                    4. Interaction & posture : Avec qui ? Quel rôle dans l’équipe ? En transverse ? En frontal ?
+                    5. Impacts & résultats : Qu’est-ce qui a changé ? Comment le mesurer ? Témoignage ou effet visible ?
+                    6. Lexique CV : Recaler le vocabulaire utilisé vers celui du marché
+                    Structure de chaque relance :
+                    • Toujours rebondir sur les réponses précédentes (pas de questions en rafale)
+                    • Si la réponse est vague : creuse avec “Peux-tu me donner un exemple ?” ou “Comment tu t’y es pris concrètement ?”
+                    • Si la personne banalise : valorise, reformule, puis repose une version augmentée
+                    • Si c’est trop long ou flou : reformule pour clarifier, puis valide avec “Tu veux dire que…”
+                    Objectif final :
+                    Réponses riches, concrètes, avec un wording orienté CV, pour rédiger des expériences qui
+                    respirent la posture, l’expertise et la clarté de valeur.
+                    Règles à suivre:
+                    - Basé sur l'expérience de l'utilisateur et les entretiens précédents, poser la question suivante.
+                    - Le retour doit contenir :
+                      { question: }
+                    - Donne la réponse en json simple.
+                  `,
+            },
+            {
+              role: 'user',
+              content: `Expérience: ${userExperience}\n Entretien: ${prevQuestions}`,
+            },
+          ],
+        });
+
+        if (openaiResponse.id) {
+          for (const r of openaiResponse.choices) {
+            await prisma.openaiResponse.create({
+              data: {
+                responseId: openaiResponse.id,
+                userId: user.id,
+                request: 'quali-carriere-question',
+                response: r.message.content,
+                index: r.index,
+              },
+            });
+
+            const jsonData: { question: string } = extractJson(
+              r.message.content,
+            );
+
+            qualiCarriereQuestion = await prisma.qualiCarriereQuestion.create({
+              data: {
+                userId: user.id,
+                sectionInfoId: s.id,
+                content: jsonData.question.trim().toLocaleLowerCase(),
+                order: qualiCarriereQuestions.length + 1,
+              },
+            });
+
+            res.status(201).json({
+              experience: s,
+              qualiCarriereQuestion,
+            });
+            return;
+          }
+        }
+      }
+    }
+
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
@@ -362,7 +389,7 @@ const sendQualiCarriereMessage = async (
       },
     });
 
-    const qualiCarriereResume = await prisma.qualiCarriereResume.findUnique({
+    const qualiCarriereResumes = await prisma.qualiCarriereResume.findMany({
       where: { userId: user.id },
     });
 
@@ -371,7 +398,7 @@ const sendQualiCarriereMessage = async (
     });
 
     const resume = `
-      Résumé: ${qualiCarriereResume.content}\n 
+      Résumé: ${qualiCarriereResumes.map((r) => r.content).join('\n')}\n 
       Messages:\n 
         1. system: ${'Bonjour ! Je suis là pour vous aider à valoriser vos expériences professionnelles.'}\n
         ${prevMessages.map((m, index: number) => `${index + 2} ${m.role}: ${m.content} \n`).join('\n')}
@@ -400,8 +427,6 @@ const sendQualiCarriereMessage = async (
       ],
     });
 
-    console.log(openaiResponse);
-
     if (openaiResponse.id) {
       for (const r of openaiResponse.choices) {
         await prisma.openaiResponse.create({
@@ -414,19 +439,15 @@ const sendQualiCarriereMessage = async (
           },
         });
 
-        const match = r.message.content.match(/```json\s*([\s\S]*?)\s*```/);
-        if (match) {
-          const jsonString = match[1];
-          const jsonData: { response: string } = JSON.parse(jsonString);
+        const jsonData: { response: string } = extractJson(r.message.content);
 
-          response = await prisma.qualiCarriereChat.create({
-            data: {
-              userId: user.id,
-              role: 'system',
-              content: jsonData.response,
-            },
-          });
-        }
+        response = await prisma.qualiCarriereChat.create({
+          data: {
+            userId: user.id,
+            role: 'system',
+            content: jsonData.response,
+          },
+        });
       }
     }
 
@@ -438,8 +459,4 @@ const sendQualiCarriereMessage = async (
   }
 };
 
-export {
-  getQualiCarriereQuestion,
-  respondQualiCarriereQuestion,
-  sendQualiCarriereMessage,
-};
+export { respondQualiCarriereQuestion, sendQualiCarriereMessage };
