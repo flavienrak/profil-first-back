@@ -127,8 +127,9 @@ const register = async (
 };
 
 const logout = async (req: express.Request, res: express.Response) => {
-  res.cookie(authTokenName, '', { maxAge: -1 });
-  res.redirect('/');
+  res.clearCookie(authTokenName);
+  res.status(200).json({ loggedOut: true });
+  return;
 };
 
 export { login, register, logout };
