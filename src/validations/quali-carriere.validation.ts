@@ -27,7 +27,37 @@ const senndQualiCarriereMessageValidation = [
   body('message').trim().notEmpty().withMessage('message required'),
 ];
 
+const updateQualiCarriereResumeValidation = [
+  param('id')
+    .notEmpty()
+    .withMessage('id required')
+    .isInt()
+    .withMessage('invalid id'),
+  body('content').trim().notEmpty().withMessage('content required'),
+];
+
+const updateQualiCarriereCompetenceValidation = [
+  body('competences')
+    .isArray({ min: 1 })
+    .withMessage('competences must be a non-empty array'),
+
+  body('competences.*.id')
+    .notEmpty()
+    .withMessage('id is required')
+    .isInt()
+    .withMessage('id must be an integer'),
+
+  body('competences.*.content')
+    .notEmpty()
+    .withMessage('content is required')
+    .isString()
+    .withMessage('content must be a string')
+    .trim(),
+];
+
 export {
   respondQualiCarriereQuestionValidation,
   senndQualiCarriereMessageValidation,
+  updateQualiCarriereResumeValidation,
+  updateQualiCarriereCompetenceValidation,
 };
