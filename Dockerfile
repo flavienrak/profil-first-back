@@ -1,35 +1,38 @@
-# Étape 1 : Builder avec TypeScript
+# Étape 1 : build TS
 FROM node:20-slim AS builder
 
-# Répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers nécessaires
+# On installe toutes les dépendances et on génère le client Prisma
 COPY package*.json tsconfig.json ./
-RUN npm install
+RUN npm install --frozen-lockfile
+COPY prisma ./prisma
+RUN npx prisma generate --schema=prisma/schema.prisma
 
-# Copier le code source
-COPY ./src ./src
-
-# Génére le client Prisma
-RUN npx prisma generate --schema=src/prisma/schema.prisma
-
-# Compiler TypeScript → JavaScript (dans /dist)
+# On compile le TS en JS
+COPY src ./src
 RUN npm run build
 
-# Étape 2 : Exécution en production
+
+# Étape 2 : runtime minimal
 FROM node:20-slim AS runner
 
 WORKDIR /app
 
-# Copier les fichiers nécessaires à l'exécution
+# On copie uniquement ce dont on a besoin en prod :
+# - package.json (pour npm ci)
+# - node_modules (seulement prod deps)
+# - le JS compilé dans dist
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/src       ./src
+COPY --from=builder /app/dist ./dist
 
-# Exposer le port utilisé par Express
+# (Optionnel) si vous avez besoin d'autres fichiers,
+# vous pouvez les copier ici (ex. .env, certificats, etc.)
+
+ENV NODE_ENV=production
 EXPOSE 5000
 
-# Commande de démarrage
-CMD ["npm", "run", "serve"]
+# On lance directement le JS compilé.
+# Remplacez "index.js" par le point d'entrée réel de votre app.
+CMD ["node", "dist/index.js"]

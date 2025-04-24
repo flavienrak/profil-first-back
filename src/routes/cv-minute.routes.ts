@@ -3,7 +3,6 @@ import multer from 'multer';
 
 import {
   getCvMinute,
-  addCvMinute,
   updateCvMinuteSection,
   updateCvMinuteSectionOrder,
   updateCvMinuteProfile,
@@ -14,8 +13,9 @@ import {
   updateCvMinuteScore,
   generateCvMinuteSectionAdvice,
   generateSectionInfoAdvice,
-  optimizeCvMinute,
 } from '../controllers/cv-minute.controller';
+import { addCvMinute } from '../controllers/cv-minute/add-cv-minute.controller';
+import { optimizeCvMinute } from '../controllers/cv-minute/optimize-cv-minute.controller';
 import {
   addCvMinuteValidation,
   updateCvMinuteSectionValidation,
