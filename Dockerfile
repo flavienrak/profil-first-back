@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package*.json tsconfig.json ./
 RUN npm install --frozen-lockfile
 COPY src/prisma ./prisma
+RUN apt-get update -y && apt-get install -y openssl
 RUN npx prisma migrate deploy --schema=prisma/schema.prisma
 RUN npx prisma generate --schema=prisma/schema.prisma
 
