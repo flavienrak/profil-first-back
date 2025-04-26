@@ -7,7 +7,6 @@ WORKDIR /app
 COPY package*.json tsconfig.json ./
 RUN npm install --frozen-lockfile
 COPY src/prisma ./prisma
-RUN npx prisma migrate deploy --schema=prisma/schema.prisma
 RUN npx prisma generate --schema=prisma/schema.prisma
 
 # On compile le TS en JS
@@ -27,6 +26,7 @@ WORKDIR /app
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/prisma ./src/prisma
 
 EXPOSE 5000
 
