@@ -16,6 +16,23 @@ const addCvMinuteValidation = [
   }),
 ];
 
+const updateCvMinuteNameValidation = [
+  param('id')
+    .notEmpty()
+    .withMessage('id required')
+    .isInt()
+    .withMessage('invalid id'),
+  body('name').trim().notEmpty().withMessage('name required'),
+];
+
+const updateCvMinuteVisibilityValidation = [
+  param('id')
+    .notEmpty()
+    .withMessage('id required')
+    .isInt()
+    .withMessage('invalid id'),
+];
+
 const updateCvMinuteProfileValidation = [
   body('cvMinuteSectionId')
     .notEmpty()
@@ -114,6 +131,8 @@ const generateSectionInfoAdviceValidation = [
 
 export {
   addCvMinuteValidation,
+  updateCvMinuteNameValidation,
+  updateCvMinuteVisibilityValidation,
   updateCvMinuteProfileValidation,
   updateCvMinuteSectionValidation,
   updateCvMinuteSectionOrderValidation,

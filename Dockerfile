@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package*.json tsconfig.json ./
 RUN npm install --frozen-lockfile
 COPY src/prisma ./prisma
+RUN npx prisma migrate deploy --schema=prisma/schema.prisma
 RUN npx prisma generate --schema=prisma/schema.prisma
 
 # On compile le TS en JS
@@ -26,12 +27,7 @@ WORKDIR /app
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
 
-# (Optionnel) si vous avez besoin d'autres fichiers,
-# vous pouvez les copier ici (ex. .env, certificats, etc.)
-
-ENV NODE_ENV=production
 EXPOSE 5000
 
 # On lance directement le JS compilé.

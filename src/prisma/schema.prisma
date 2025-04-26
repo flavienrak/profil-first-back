@@ -15,6 +15,7 @@ model User {
   password         String
   acceptConditions Boolean @default(false)
   role             String  @default("user")
+  qualiCarriere    String  @default("")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -49,11 +50,13 @@ model File {
 
 model CvMinute {
   id               Int     @id @default(autoincrement())
+  name             String  @default("CV")
   position         String
   primaryBg        String  @default("#2A7F8B")
   secondaryBg      String  @default("#1A5F6B")
   tertiaryBg       String  @default("#BEDBFF")
   userId           Int
+  visible          Boolean @default(true)
   qualiCarriereRef Boolean @default(false)
 
   createdAt DateTime @default(now())

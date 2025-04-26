@@ -26,7 +26,6 @@ const getQualiCarriereQuestion = async (
 ): Promise<void> => {
   try {
     let cvMinute = null;
-    let sectionInfos: SectionInfoInterface[] = [];
     let maxExperienceCount = 0;
     let qualiCarriereQuestion = null;
     const { user } = res.locals;
@@ -38,10 +37,12 @@ const getQualiCarriereQuestion = async (
     }
 
     cvMinute = await prisma.cvMinute.findFirst({
-      where: { qualiCarriereRef: true },
+      where: { qualiCarriereRef: true, userId: user.id },
     });
 
     if (!cvMinute) {
+      let allCvMinuteSections: CvMinuteSectionInterface[] = [];
+
       const cvMinutes = await prisma.cvMinute.findMany({
         where: { userId: user.id },
       });
@@ -84,45 +85,81 @@ const getQualiCarriereQuestion = async (
           experiences.sectionInfos.length > maxExperienceCount
         ) {
           maxExperienceCount = experiences.sectionInfos.length;
-          sectionInfos = experiences.sectionInfos;
+          allCvMinuteSections = cvMinuteSections;
           cvMinute = c;
         }
       }
 
-      cvMinute = await prisma.cvMinute.update({
-        where: { id: cvMinute.id },
-        data: { qualiCarriereRef: true },
-      });
-    } else {
-      const cvMinuteSections = await prisma.cvMinuteSection.findMany({
-        where: { cvMinuteId: cvMinute.id },
-        include: { sectionInfos: true },
-      });
-
-      const sections = await prisma.section.findMany({
-        where: {
-          id: {
-            in: cvMinuteSections.map(
-              (section: CvMinuteSectionInterface) => section.sectionId,
-            ),
-          },
+      // CREATE COPY CVMINUTE
+      const newCvMinute = await prisma.cvMinute.create({
+        data: {
+          position: cvMinute.position,
+          name: cvMinute.name,
+          primaryBg: cvMinute.primaryBg,
+          secondaryBg: cvMinute.secondaryBg,
+          tertiaryBg: cvMinute.tertiaryBg,
+          userId: cvMinute.userId,
+          visible: cvMinute.visible,
+          qualiCarriereRef: true,
         },
       });
 
-      const getCvMinuteSection = (value: string) => {
-        const section = sections.find(
-          (s: SectionInterface) => s.name.toLowerCase() === value.toLowerCase(),
-        );
-        return cvMinuteSections.find(
-          (s: CvMinuteSectionInterface) => s.sectionId === section?.id,
-        );
-      };
+      // CREATE COPY CVMINUTESECTION & SECTIONINFO
+      for (const s of allCvMinuteSections) {
+        const newCvMinuteSection = await prisma.cvMinuteSection.create({
+          data: {
+            cvMinuteId: newCvMinute.id,
+            sectionId: s.sectionId,
+            sectionOrder: s.sectionOrder,
+            sectionTitle: s.sectionTitle,
+          },
+        });
 
-      const experiences = getCvMinuteSection('experiences');
+        for (const sInfo of s.sectionInfos) {
+          await prisma.sectionInfo.create({
+            data: {
+              cvMinuteSectionId: newCvMinuteSection.id,
+              title: sInfo.title,
+              content: sInfo.content,
+              date: sInfo.date,
+              company: sInfo.company,
+              contrat: sInfo.contrat,
+              icon: sInfo.icon,
+              iconSize: sInfo.iconSize,
+              order: sInfo.order,
+            },
+          });
+        }
+      }
 
-      maxExperienceCount = experiences.sectionInfos.length;
-      sectionInfos = experiences.sectionInfos;
+      cvMinute = newCvMinute;
     }
+
+    const cvMinuteSections = await prisma.cvMinuteSection.findMany({
+      where: { cvMinuteId: cvMinute.id },
+      include: { sectionInfos: true },
+    });
+
+    const sections = await prisma.section.findMany({
+      where: {
+        id: {
+          in: cvMinuteSections.map(
+            (section: CvMinuteSectionInterface) => section.sectionId,
+          ),
+        },
+      },
+    });
+
+    const getCvMinuteSection = (value: string) => {
+      const section = sections.find(
+        (s: SectionInterface) => s.name.toLowerCase() === value.toLowerCase(),
+      );
+      return cvMinuteSections.find(
+        (s: CvMinuteSectionInterface) => s.sectionId === section?.id,
+      );
+    };
+
+    const { sectionInfos } = getCvMinuteSection('experiences');
 
     if (sectionInfos.length === 0) {
       res.json({ noExperiences: true });
@@ -367,7 +404,7 @@ const getQualiCarriereQuestion = async (
           )
           .join('\n');
 
-        if (qualiCarriereQuestions.length === restQuestions) {
+        if (qualiCarriereQuestions.length >= restQuestions) {
           const qualiCarriereResume =
             await prisma.qualiCarriereResume.findFirst({
               where: { sectionInfoId: s.id },
@@ -420,9 +457,35 @@ const getQualiCarriereQuestion = async (
                     Ne dépasse **jamais 10% à 20 % de termes en anglais** dans la totalité de la description.
                     Ne remplace pas un mot français pertinent par un anglicisme superflu. Privilégie toujours la clarté
                     et l’impact pour un recruteur français.
+
+                    Objectif : Génère une liste de 30 compétences clés qui ont été réellement mobilisées dans
+                    cette expérience, mais qui n’ont pas été explicitement formulées par le candidat. Inclue au
+                    moins 10 compétences totalement invisibilisées dans son discours, dont une qui est
+                    directement liée à la conception ou la réussite d’un projet, et que le candidat n’a pas
+                    conscience d’avoir activée.
+                    Règles fondamentales :
+                    Tu réutilises l'intégralité des informations contenues dans l'entretien, sans rien omettre.
+                    Pour les noms des compétences tu utilises un maximum de termes techniques liés au
+                    domaine d'activité (jargon métier).
+                    Chaque compétence doit être précise, actionnable, et directement issue des faits observés
+                    dans l'expérience.
+                    Tu ne dois pas lister des soft skills creuses ou attendues par défaut (ex. : autonomie, rigueur,
+                    sens de l’organisation, curiosité, etc.).
+                    Évite les termes génériques (ex. : “gestion de projet”, “communication”, « organisation ») sauf
+                    s’ils sont précisés avec un angle métier clair .
+                    Ne reformule pas 3 fois la même compétence sous des angles différents.
+                    Privilégie l’étendue du champ métier couvert
+                    . Chaque ligne doit suivre ce format exact : (nom de la compétence) = (illustration concrète,
+                    directement issue des actions menées par le candidat durant cette mission)
+                    Tu ne dois pas mentionner dans ta réponse que ce sont des compétences invisibilisées.
+                    Intègre-les naturellement dans la liste, mais assure-toi qu’il y en a au moins 10 qui ne sont ni
+                    formulées, ni même suggérées dans les propos du candidat, et qui peuvent changer la
+                    perception de son niveau réel.
+                    Objectif final : Faire émerger la valeur opérationnelle réelle du profil pour un recruteur ou
+                    une IA, au-delà de la narration du candidat. 
+
                     Règles à suivre:
                     - Basé sur les expériences de l'utilisateur et les entretiens.
-                    - Donne 30 compétences tirés des entretiens.
                     - Le retour doit contenir :
                       { resume: , competences: [] }
                     - Donne la réponse en json simple.
@@ -472,7 +535,9 @@ const getQualiCarriereQuestion = async (
           }
 
           continue;
-        } else if (qualiCarriereQuestions.length < totalQuestions) {
+        }
+
+        if (qualiCarriereQuestions.length < totalQuestions) {
           const openaiResponse = await openai.chat.completions.create({
             model: 'gpt-4-turbo-preview',
             messages: [
@@ -642,6 +707,7 @@ const getQualiCarriereQuestion = async (
       }
     }
 
+    res.status(200).json({ nextStep: true });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });

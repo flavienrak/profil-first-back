@@ -1,7 +1,10 @@
 import express from 'express';
 import multer from 'multer';
 
-import { respondQualiCarriereQuestion } from '../controllers/quali-carriere.controller';
+import {
+  changeQualiCarriereStatus,
+  respondQualiCarriereQuestion,
+} from '../controllers/quali-carriere/quali-carriere.controller';
 import { getQualiCarriereQuestion } from '../controllers/quali-carriere/get-question.controller';
 import {
   editQualiCarriereCompetence,
@@ -20,6 +23,7 @@ const upload = multer();
 
 router.get('/', getQualiCarriereQuestion);
 
+router.post('/status', changeQualiCarriereStatus);
 router.post(
   '/message',
   senndQualiCarriereMessageValidation,

@@ -4,13 +4,15 @@ import JSON5 from 'json5';
 const questionNumber = (value: number) => {
   let total = 0;
 
-  if (value <= 3) {
-    total = value * 15;
-  } else if (value <= 6) {
-    total = 3 * 15 + (value - 3) * 7;
-  } else {
-    total = 3 * 15 + 3 * 7 + (value - 6) * 4;
-  }
+  // if (value <= 3) {
+  //   total = value * 15;
+  // } else if (value <= 6) {
+  //   total = 3 * 15 + (value - 3) * 7;
+  // } else {
+  //   total = 3 * 15 + 3 * 7 + (value - 6) * 4;
+  // }
+
+  total = value * 3;
 
   return total;
 };
@@ -19,14 +21,17 @@ const questionNumber = (value: number) => {
 const questionNumberByIndex = (value: number) => {
   let total = 0;
 
+  // for (let i = 0; i <= value; i++) {
+  //   if (i < 3) {
+  //     total += 15;
+  //   } else if (i < 6) {
+  //     total += 7;
+  //   } else {
+  //     total += 4;
+  //   }
+  // }
   for (let i = 0; i <= value; i++) {
-    if (i < 3) {
-      total += 15;
-    } else if (i < 6) {
-      total += 7;
-    } else {
-      total += 4;
-    }
+    total += 3;
   }
 
   return total;
@@ -37,16 +42,18 @@ const questionRangeByIndex = (value: number) => {
   let start = 0;
   let count = 0;
 
-  if (value < 3) {
-    count = 15;
-    start = value * 15;
-  } else if (value < 6) {
-    count = 7;
-    start = 3 * 15 + (value - 3) * 7;
-  } else {
-    count = 4;
-    start = 3 * 15 + 3 * 7 + (value - 6) * 4;
-  }
+  // if (value < 3) {
+  //   count = 15;
+  //   start = value * 15;
+  // } else if (value < 6) {
+  //   count = 7;
+  //   start = 3 * 15 + (value - 3) * 7;
+  // } else {
+  //   count = 4;
+  //   start = 3 * 15 + 3 * 7 + (value - 6) * 4;
+  // }
+  count = 3;
+  start = value * 3;
 
   const end = start + count - 1;
 
