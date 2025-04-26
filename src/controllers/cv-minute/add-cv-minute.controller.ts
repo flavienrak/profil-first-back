@@ -12,6 +12,8 @@ import { extractJson } from '../../utils/functions';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
+const today = new Date();
+const formattedDate = today.toLocaleDateString('fr-FR');
 
 const addCvMinute = async (
   req: express.Request,
@@ -27,10 +29,13 @@ const addCvMinute = async (
       return;
     }
 
+    const name = `CV du ${formattedDate}`;
+
     const cvMinute = await prisma.cvMinute.create({
       data: {
         position: body.position.trim(),
         userId,
+        name,
       },
     });
 
@@ -94,6 +99,7 @@ const addCvMinute = async (
               Vous êtes un expert en redaction et optimisation de CV. 
               Identifie toutes les informations contenues dans le CV. 
               Faite les calculs pour avoir les scores de compatibilité.
+              Eviter les pertes de données.
               Règles à suivre:
               - Le retour doit contenir :
               {
@@ -425,7 +431,6 @@ const addCvMinute = async (
     res.status(201).json({ cvMinuteId: cvMinute.id, cvMinuteCount });
     return;
   } catch (error) {
-    console.log('error:', error);
     res.status(500).json({ error: `${error.message}` });
     return;
   }

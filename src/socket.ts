@@ -44,12 +44,12 @@ const io = new Server(server, {
   },
 });
 
-const allUsers = new Map<string | number, { socket: Socket; count: number }>();
+const allUsers = new Map<string, { socket: Socket; count: number }>();
 
 io.on('connection', (socket: Socket) => {
-  const userId = socket.handshake.query.id as string | number | undefined;
+  const userId = socket.handshake.query.id as string | undefined;
 
-  if (userId && userId != 'undefined') {
+  if (userId) {
     if (allUsers.has(userId)) {
       const userData = allUsers.get(userId);
       userData.count += 1;
@@ -57,6 +57,8 @@ io.on('connection', (socket: Socket) => {
     } else {
       allUsers.set(userId, { socket, count: 1 });
     }
+
+    socket.join(`user-${userId}`);
 
     io.emit('getOnlineUsers', Array.from(allUsers.keys()));
 
@@ -77,8 +79,8 @@ io.on('connection', (socket: Socket) => {
   }
 });
 
-function getReceiverSocketId(id: string | number) {
-  return allUsers.get(id);
+function getReceiver(id: string | number) {
+  return allUsers.get(String(id));
 }
 
 const logger = winston.createLogger({
@@ -87,4 +89,4 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-export { app, openai, logger, io, server, getReceiverSocketId };
+export { app, openai, logger, io, server, getReceiver };

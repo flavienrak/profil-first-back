@@ -6,18 +6,48 @@ import FormData from 'form-data';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { openai } from '../socket';
-import { SectionInterface } from '../interfaces/cv-minute/section.interface';
-import { CvMinuteSectionInterface } from '../interfaces/cv-minute/cvMinuteSection.interface';
-import { SectionInfoInterface } from '../interfaces/cv-minute/sectionInfo.interface';
+import { openai } from '../../socket';
+import { SectionInterface } from '../../interfaces/cv-minute/section.interface';
+import { CvMinuteSectionInterface } from '../../interfaces/cv-minute/cvMinuteSection.interface';
+import { SectionInfoInterface } from '../../interfaces/cv-minute/sectionInfo.interface';
 import {
   extractJson,
   questionNumber,
   questionNumberByIndex,
   questionRangeByIndex,
-} from '../utils/functions';
+} from '../../utils/functions';
 
 const prisma = new PrismaClient();
+
+const changeQualiCarriereStatus = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    let updatedUser = null;
+    const { user } = res.locals;
+
+    if (user.qualiCarriere === '' || user.qualiCarriere === 'inactive') {
+      updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: { qualiCarriere: 'active' },
+      });
+    } else if (user.qualiCarriere === 'active') {
+      updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: { qualiCarriere: 'inactive' },
+      });
+    }
+
+    res
+      .status(200)
+      .json({ user: { qualiCarriere: updatedUser.qualiCarriere } });
+    return;
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` });
+    return;
+  }
+};
 
 const respondQualiCarriereQuestion = async (
   req: express.Request,
@@ -25,7 +55,6 @@ const respondQualiCarriereQuestion = async (
 ): Promise<void> => {
   try {
     let qualiCarriereQuestion = null;
-    let sectionInfos: SectionInfoInterface[] = [];
     const { user } = res.locals;
     const { id } = req.params;
     const body: { content?: string } = req.body;
@@ -37,7 +66,7 @@ const respondQualiCarriereQuestion = async (
     }
 
     const cvMinute = await prisma.cvMinute.findFirst({
-      where: { qualiCarriereRef: true },
+      where: { qualiCarriereRef: true, userId: user.id },
     });
     if (!cvMinute) {
       res.json({ cvMinuteNotFound: true });
@@ -147,8 +176,7 @@ const respondQualiCarriereQuestion = async (
       );
     };
 
-    const experiences = getCvMinuteSection('experiences');
-    sectionInfos = experiences.sectionInfos;
+    const { sectionInfos } = getCvMinuteSection('experiences');
 
     const totalQuestions = questionNumber(sectionInfos.length);
 
@@ -166,7 +194,7 @@ const respondQualiCarriereQuestion = async (
         )
         .join('\n');
 
-      if (qualiCarriereQuestions.length === restQuestions) {
+      if (qualiCarriereQuestions.length >= restQuestions) {
         const qualiCarriereResume = await prisma.qualiCarriereResume.findFirst({
           where: { sectionInfoId: s.id },
         });
@@ -218,9 +246,35 @@ const respondQualiCarriereQuestion = async (
                   Ne dépasse **jamais 10% à 20 % de termes en anglais** dans la totalité de la description.
                   Ne remplace pas un mot français pertinent par un anglicisme superflu. Privilégie toujours la clarté
                   et l’impact pour un recruteur français.
+
+                  Objectif : Génère une liste de 30 compétences clés qui ont été réellement mobilisées dans
+                  cette expérience, mais qui n’ont pas été explicitement formulées par le candidat. Inclue au
+                  moins 10 compétences totalement invisibilisées dans son discours, dont une qui est
+                  directement liée à la conception ou la réussite d’un projet, et que le candidat n’a pas
+                  conscience d’avoir activée.
+                  Règles fondamentales :
+                  Tu réutilises l'intégralité des informations contenues dans l'entretien, sans rien omettre.
+                  Pour les noms des compétences tu utilises un maximum de termes techniques liés au
+                  domaine d'activité (jargon métier).
+                  Chaque compétence doit être précise, actionnable, et directement issue des faits observés
+                  dans l'expérience.
+                  Tu ne dois pas lister des soft skills creuses ou attendues par défaut (ex. : autonomie, rigueur,
+                  sens de l’organisation, curiosité, etc.).
+                  Évite les termes génériques (ex. : “gestion de projet”, “communication”, « organisation ») sauf
+                  s’ils sont précisés avec un angle métier clair .
+                  Ne reformule pas 3 fois la même compétence sous des angles différents.
+                  Privilégie l’étendue du champ métier couvert
+                  . Chaque ligne doit suivre ce format exact : (nom de la compétence) = (illustration concrète,
+                  directement issue des actions menées par le candidat durant cette mission)
+                  Tu ne dois pas mentionner dans ta réponse que ce sont des compétences invisibilisées.
+                  Intègre-les naturellement dans la liste, mais assure-toi qu’il y en a au moins 10 qui ne sont ni
+                  formulées, ni même suggérées dans les propos du candidat, et qui peuvent changer la
+                  perception de son niveau réel.
+                  Objectif final : Faire émerger la valeur opérationnelle réelle du profil pour un recruteur ou
+                  une IA, au-delà de la narration du candidat. 
+
                   Règles à suivre:
                   - Basé sur les expériences de l'utilisateur et les entretiens.
-                  - Donne 30 compétences tirés des entretiens.
                   - Le retour doit contenir :
                     { resume: , competences: [] }
                   - Donne la réponse en json simple.
@@ -244,8 +298,9 @@ const respondQualiCarriereQuestion = async (
                   index: r.index,
                 },
               });
-              const jsonData: { resume: string; competences: string[] } =
-                extractJson(r.message.content);
+              const jsonData: { resume: string; competences: [] } = extractJson(
+                r.message.content,
+              );
 
               await prisma.qualiCarriereResume.create({
                 data: {
@@ -269,53 +324,50 @@ const respondQualiCarriereQuestion = async (
           }
         }
 
-        if (totalQuestions === restQuestions) {
-          res.status(201).json({ nextStep: true });
-          return;
-        } else {
-          continue;
-        }
-      } else if (qualiCarriereQuestions.length < totalQuestions) {
+        continue;
+      }
+
+      if (qualiCarriereQuestions.length < totalQuestions) {
         const openaiResponse = await openai.chat.completions.create({
           model: 'gpt-4-turbo-preview',
           messages: [
             {
               role: 'system',
               content: `
-                    Rôle : Tu es un expert RH/coach carrière avec une obsession pour la précision, l’impact et
-                    le positionnement de haut niveau dans les CV.
-                    Tu dois mener un échange conversationnel avec un candidat afin de qualifier en profondeur
-                    une expérience professionnelle et produire la matière brute nécessaire à la rédaction de
-                    bullet points puissants pour un CV.
-                    Mantra
-                    Ta mission principale est de faire parler au maximum le candidat en l’aidant à utiliser les bons
-                    mots : ceux qui collent aux attentes du marché et donnent du poids à son parcours. Tu dois :
-                    • Détecter les soft et hard skills cachés
-                    • Extraire des termes techniques ou les vulgariser
-                    • Récupérer des résultats chiffrés ou mesurables
-                    • Identifier le niveau de responsabilité réel
-                    • Traduire en langage “sexy” ce qui est souvent sous-estimé
-                    Logique de l’entretien :
-                    1. Contextualisation complète : Où, quand, pourquoi ? Quel enjeu business ? Quelle temporalité ?
-                    2. Clarification des tâches : Qu’as-tu fait concrètement ? En autonomie ou pilotage ?
-                    3. Précision des outils et méthodes : Avec quoi ? Comment ?
-                    4. Interaction & posture : Avec qui ? Quel rôle dans l’équipe ? En transverse ? En frontal ?
-                    5. Impacts & résultats : Qu’est-ce qui a changé ? Comment le mesurer ? Témoignage ou effet visible ?
-                    6. Lexique CV : Recaler le vocabulaire utilisé vers celui du marché
-                    Structure de chaque relance :
-                    • Toujours rebondir sur les réponses précédentes (pas de questions en rafale)
-                    • Si la réponse est vague : creuse avec “Peux-tu me donner un exemple ?” ou “Comment tu t’y es pris concrètement ?”
-                    • Si la personne banalise : valorise, reformule, puis repose une version augmentée
-                    • Si c’est trop long ou flou : reformule pour clarifier, puis valide avec “Tu veux dire que…”
-                    Objectif final :
-                    Réponses riches, concrètes, avec un wording orienté CV, pour rédiger des expériences qui
-                    respirent la posture, l’expertise et la clarté de valeur.
-                    Règles à suivre:
-                    - Basé sur l'expérience de l'utilisateur et les entretiens précédents, poser la question suivante.
-                    - Le retour doit contenir :
-                      { question: }
-                    - Donne la réponse en json simple.
-                  `,
+                Rôle : Tu es un expert RH/coach carrière avec une obsession pour la précision, l’impact et
+                le positionnement de haut niveau dans les CV.
+                Tu dois mener un échange conversationnel avec un candidat afin de qualifier en profondeur
+                une expérience professionnelle et produire la matière brute nécessaire à la rédaction de
+                bullet points puissants pour un CV.
+                Mantra
+                Ta mission principale est de faire parler au maximum le candidat en l’aidant à utiliser les bons
+                mots : ceux qui collent aux attentes du marché et donnent du poids à son parcours. Tu dois :
+                • Détecter les soft et hard skills cachés
+                • Extraire des termes techniques ou les vulgariser
+                • Récupérer des résultats chiffrés ou mesurables
+                • Identifier le niveau de responsabilité réel
+                • Traduire en langage “sexy” ce qui est souvent sous-estimé
+                Logique de l’entretien :
+                1. Contextualisation complète : Où, quand, pourquoi ? Quel enjeu business ? Quelle temporalité ?
+                2. Clarification des tâches : Qu’as-tu fait concrètement ? En autonomie ou pilotage ?
+                3. Précision des outils et méthodes : Avec quoi ? Comment ?
+                4. Interaction & posture : Avec qui ? Quel rôle dans l’équipe ? En transverse ? En frontal ?
+                5. Impacts & résultats : Qu’est-ce qui a changé ? Comment le mesurer ? Témoignage ou effet visible ?
+                6. Lexique CV : Recaler le vocabulaire utilisé vers celui du marché
+                Structure de chaque relance :
+                • Toujours rebondir sur les réponses précédentes (pas de questions en rafale)
+                • Si la réponse est vague : creuse avec “Peux-tu me donner un exemple ?” ou “Comment tu t’y es pris concrètement ?”
+                • Si la personne banalise : valorise, reformule, puis repose une version augmentée
+                • Si c’est trop long ou flou : reformule pour clarifier, puis valide avec “Tu veux dire que…”
+                Objectif final :
+                Réponses riches, concrètes, avec un wording orienté CV, pour rédiger des expériences qui
+                respirent la posture, l’expertise et la clarté de valeur.
+                Règles à suivre:
+                - Basé sur l'expérience de l'utilisateur et les entretiens précédents, poser la question suivante.
+                - Le retour doit contenir :
+                  { question: }
+                - Donne la réponse en json simple.
+              `,
             },
             {
               role: 'user',
@@ -359,6 +411,7 @@ const respondQualiCarriereQuestion = async (
       }
     }
 
+    res.status(200).json({ nextStep: true });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
@@ -366,4 +419,4 @@ const respondQualiCarriereQuestion = async (
   }
 };
 
-export { respondQualiCarriereQuestion };
+export { respondQualiCarriereQuestion, changeQualiCarriereStatus };

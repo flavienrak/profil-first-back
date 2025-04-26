@@ -2,7 +2,7 @@ import express from 'express';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { openai } from '../../socket';
+import { io, openai } from '../../socket';
 import { extractJson } from '../../utils/functions';
 
 const prisma = new PrismaClient();
@@ -22,6 +22,15 @@ const sendQualiCarriereMessage = async (
       return;
     }
 
+    const cvMinute = await prisma.cvMinute.findFirst({
+      where: { userId: user.id, qualiCarriereRef: true },
+    });
+
+    if (!cvMinute) {
+      res.json({ cvMinuteNotFound: true });
+      return;
+    }
+
     const message = await prisma.qualiCarriereChat.create({
       data: {
         userId: user.id,
@@ -29,6 +38,8 @@ const sendQualiCarriereMessage = async (
         content: body.message,
       },
     });
+
+    io.to(`user-${user.id}`).emit('qualiCarriereMessage', message);
 
     const qualiCarriereResumes = await prisma.qualiCarriereResume.findMany({
       where: { userId: user.id },
@@ -40,6 +51,7 @@ const sendQualiCarriereMessage = async (
 
     const resume = `
       Résumé: ${qualiCarriereResumes.map((r) => r.content).join('\n')}\n 
+      Offre: ${cvMinute.position}\n
       Messages:\n 
         1. system: ${'Bonjour ! Je suis là pour vous aider à valoriser vos expériences professionnelles.'}\n
         ${prevMessages.map((m, index: number) => `${index + 2} ${m.role}: ${m.content} \n`).join('\n')}
@@ -52,7 +64,7 @@ const sendQualiCarriereMessage = async (
           role: 'system',
           content: `
             Vous êtes un expert en redaction et optimisation de CV. 
-            Selon le résumé et les discussions, répond au message de l'utilisateur.
+            Selon le résumé, l'offre et les discussions, répond au message de l'utilisateur.
             \n${resume}\n
             Règles à suivre:
             - Le retour doit contenir :
@@ -92,7 +104,7 @@ const sendQualiCarriereMessage = async (
       }
     }
 
-    res.status(200).json({ message, response });
+    res.status(200).json({ response });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });

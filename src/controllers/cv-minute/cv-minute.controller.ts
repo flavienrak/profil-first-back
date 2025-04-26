@@ -1,184 +1,16 @@
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
 import express from 'express';
-import isEmpty from '../utils/isEmpty';
+import isEmpty from '../../utils/isEmpty';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import { imageMimeTypes } from '../utils/constants';
-import { openai } from '../socket';
-import { AdviceInterface } from '../interfaces/cv-minute/advice.interface';
-import { CvMinuteSectionInterface } from '../interfaces/cv-minute/cvMinuteSection.interface';
-import { SectionInterface } from '../interfaces/cv-minute/section.interface';
-import { SectionInfoInterface } from '../interfaces/cv-minute/sectionInfo.interface';
-import { extractJson } from '../utils/functions';
+import { openai } from '../../socket';
+import { AdviceInterface } from '../../interfaces/cv-minute/advice.interface';
+import { CvMinuteSectionInterface } from '../../interfaces/cv-minute/cvMinuteSection.interface';
+import { SectionInterface } from '../../interfaces/cv-minute/section.interface';
+import { SectionInfoInterface } from '../../interfaces/cv-minute/sectionInfo.interface';
+import { extractJson } from '../../utils/functions';
 
 const prisma = new PrismaClient();
-const uniqueId = crypto.randomBytes(4).toString('hex');
-
-const getCvMinute = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
-  try {
-    const { id } = req.params;
-
-    const cvMinute = await prisma.cvMinute.findUnique({
-      where: { id: Number(id) },
-      include: { advices: true, evaluation: true },
-    });
-
-    const files = await prisma.file.findMany({
-      where: { cvMinuteId: cvMinute.id },
-    });
-
-    const cvMinuteSections = await prisma.cvMinuteSection.findMany({
-      where: { cvMinuteId: cvMinute.id },
-      include: {
-        sectionInfos: { include: { evaluation: true, advices: true } },
-        advices: true,
-      },
-    });
-
-    const sections = await prisma.section.findMany({
-      where: {
-        id: {
-          in: cvMinuteSections.map(
-            (c: CvMinuteSectionInterface) => c.sectionId,
-          ),
-        },
-      },
-    });
-
-    res.status(200).json({
-      cvMinute,
-      files,
-      sections,
-      cvMinuteSections,
-    });
-    return;
-  } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
-    return;
-  }
-};
-
-const updateCvMinuteProfile = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
-  try {
-    let file = null;
-    let sectionInfo = null;
-    let cvMinuteSection = null;
-    const userId = res.locals.user.id;
-    const body: {
-      cvMinuteSectionId: number | string;
-      sectionInfoId?: number | string;
-    } = req.body;
-    const { cvMinute } = res.locals;
-
-    if (
-      isNaN(Number(body.cvMinuteSectionId)) ||
-      (body.sectionInfoId && isNaN(Number(body.sectionInfoId)))
-    ) {
-      res.json({ invalidId: true });
-      return;
-    }
-
-    cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-      where: { id: Number(body.cvMinuteSectionId) },
-      select: { id: true },
-    });
-
-    if (!cvMinuteSection) {
-      res.json({ cvMinuteSectionNotFound: true });
-      return;
-    }
-
-    if (body.sectionInfoId) {
-      sectionInfo = await prisma.sectionInfo.findUnique({
-        where: { id: Number(body.sectionInfoId) },
-        select: { id: true },
-      });
-
-      if (!sectionInfo) {
-        res.json({ sectionInfoNotFound: true });
-        return;
-      }
-    } else {
-      sectionInfo = await prisma.sectionInfo.create({
-        data: {
-          cvMinuteSectionId: cvMinuteSection.id,
-          content: 'cv-profile',
-          order: 1,
-        },
-      });
-    }
-
-    file = await prisma.file.findUnique({
-      where: { sectionInfoId: sectionInfo.id },
-    });
-
-    if (!imageMimeTypes.includes(req.file.mimetype)) {
-      res.json({ invalidFormat: true });
-      return;
-    } else {
-      const extension = path.extname(req.file.originalname);
-      const fileName = `cv-profile-${userId}-${Date.now()}-${uniqueId}${extension}`;
-      const directoryPath = path.join(
-        __dirname,
-        `../uploads/files/user-${userId}`,
-      );
-
-      const filePath = path.join(directoryPath, fileName);
-
-      if (!fs.existsSync(directoryPath)) {
-        fs.mkdirSync(directoryPath, { recursive: true });
-      }
-      fs.writeFileSync(filePath, req.file.buffer);
-
-      if (file) {
-        const filePath = path.join(directoryPath, file.name);
-        fs.unlinkSync(filePath);
-
-        file = await prisma.file.update({
-          where: { id: file.id },
-          data: {
-            name: fileName,
-            extension,
-            originalName: req.file.originalname,
-          },
-        });
-      } else {
-        file = await prisma.file.create({
-          data: {
-            name: fileName,
-            extension,
-            originalName: req.file.originalname,
-            usage: 'cv-profile',
-            userId,
-            cvMinuteId: cvMinute.id,
-            sectionInfoId: sectionInfo.id,
-          },
-        });
-      }
-    }
-
-    cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-      where: { id: cvMinuteSection.id },
-      include: {
-        sectionInfos: { include: { evaluation: true, advices: true } },
-      },
-    });
-    res.status(200).json({ cvMinuteSection, file });
-    return;
-  } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
-    return;
-  }
-};
 
 const updateCvMinuteSection = async (
   req: express.Request,
@@ -238,7 +70,13 @@ const updateCvMinuteSection = async (
         },
       });
 
-      res.status(200).json({ cvMinute: updatedCvMinute });
+      res.status(200).json({
+        cvMinute: {
+          primaryBg: updatedCvMinute.primaryBg,
+          secondaryBg: updatedCvMinute.secondaryBg,
+          tertiaryBg: updatedCvMinute.tertiaryBg,
+        },
+      });
       return;
     } else if (body.updateContactSection) {
       // (create | update) contact
@@ -911,43 +749,6 @@ const updateCvMinuteScore = async (
   }
 };
 
-const updateSectionInfoOrder = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
-  try {
-    let section = null;
-    let targetSection = null;
-    const body: { sectionInfoId: number; targetSectionInfoId: number } =
-      req.body;
-
-    section = await prisma.sectionInfo.findUnique({
-      where: { id: body.sectionInfoId },
-      select: { id: true, order: true },
-    });
-    targetSection = await prisma.sectionInfo.findUnique({
-      where: { id: body.targetSectionInfoId },
-      select: { id: true, order: true },
-    });
-
-    const tempOrder = section.order;
-    section = await prisma.sectionInfo.update({
-      where: { id: section.id },
-      data: { order: targetSection.order },
-    });
-    targetSection = await prisma.sectionInfo.update({
-      where: { id: targetSection.id },
-      data: { order: tempOrder },
-    });
-
-    res.status(200).json({ section, targetSection });
-    return;
-  } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
-    return;
-  }
-};
-
 const updateSectionInfoScore = async (
   req: express.Request,
   res: express.Response,
@@ -1041,99 +842,10 @@ const updateSectionInfoScore = async (
   }
 };
 
-const updateCvMinuteSectionOrder = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
-  try {
-    let cvMinuteSection = null;
-    let targetCvMinuteSection = null;
-    const body: { cvMinuteSectionId: number; targetCvMinuteSectionId: number } =
-      req.body;
-
-    cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-      where: { id: body.cvMinuteSectionId },
-      select: { id: true, sectionOrder: true },
-    });
-    targetCvMinuteSection = await prisma.cvMinuteSection.findUnique({
-      where: { id: body.targetCvMinuteSectionId },
-      select: { id: true, sectionOrder: true },
-    });
-
-    const tempOrder = cvMinuteSection.sectionOrder;
-    cvMinuteSection = await prisma.cvMinuteSection.update({
-      where: { id: cvMinuteSection.id },
-      data: { sectionOrder: targetCvMinuteSection.sectionOrder },
-    });
-    targetCvMinuteSection = await prisma.cvMinuteSection.update({
-      where: { id: targetCvMinuteSection.id },
-      data: { sectionOrder: tempOrder },
-    });
-
-    res.status(200).json({ cvMinuteSection, targetCvMinuteSection });
-    return;
-  } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
-    return;
-  }
-};
-
-const deleteSectionInfo = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
-  try {
-    const { sectionInfoId } = req.params;
-
-    if (!sectionInfoId || isNaN(Number(sectionInfoId))) {
-      res.json({ invalidSectionInfoId: true });
-      return;
-    }
-    const section = await prisma.sectionInfo.delete({
-      where: { id: Number(sectionInfoId) },
-    });
-
-    res.status(200).json({ section });
-    return;
-  } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
-    return;
-  }
-};
-
-const deleteCvMinuteSection = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
-  try {
-    const { cvMinuteSectionId } = req.params;
-
-    if (!cvMinuteSectionId || isNaN(Number(cvMinuteSectionId))) {
-      res.json({ invalidCvMinuteSectionId: true });
-      return;
-    }
-    const cvMinuteSection = await prisma.cvMinuteSection.delete({
-      where: { id: Number(cvMinuteSectionId) },
-    });
-
-    res.status(200).json({ cvMinuteSection });
-    return;
-  } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
-    return;
-  }
-};
-
 export {
-  getCvMinute,
-  updateCvMinuteProfile,
   updateCvMinuteSection,
   generateCvMinuteSectionAdvice,
   generateSectionInfoAdvice,
   updateCvMinuteScore,
-  updateSectionInfoOrder,
   updateSectionInfoScore,
-  updateCvMinuteSectionOrder,
-  deleteSectionInfo,
-  deleteCvMinuteSection,
 };

@@ -2,19 +2,24 @@ import express from 'express';
 import multer from 'multer';
 
 import {
-  getCvMinute,
   updateCvMinuteSection,
-  updateCvMinuteSectionOrder,
-  updateCvMinuteProfile,
-  updateSectionInfoOrder,
-  deleteSectionInfo,
-  deleteCvMinuteSection,
   updateSectionInfoScore,
   updateCvMinuteScore,
   generateCvMinuteSectionAdvice,
   generateSectionInfoAdvice,
-} from '../controllers/cv-minute.controller';
+} from '../controllers/cv-minute/cv-minute.controller';
 import { addCvMinute } from '../controllers/cv-minute/add-cv-minute.controller';
+import {
+  deleteCvMinuteSection,
+  deleteSectionInfo,
+  getAllCvMinute,
+  getCvMinute,
+  updateCvMinuteName,
+  updateCvMinuteProfile,
+  updateCvMinuteSectionOrder,
+  updateCvMinuteVisibility,
+  updateSectionInfoOrder,
+} from '../controllers/cv-minute/crud-cv-minute.controller';
 import { optimizeCvMinute } from '../controllers/cv-minute/optimize-cv-minute.controller';
 import {
   addCvMinuteValidation,
@@ -24,17 +29,27 @@ import {
   updateSectionInfoOrderValidation,
   sectionInfoIdValidation,
   generateSectionInfoAdviceValidation,
+  updateCvMinuteNameValidation,
+  updateCvMinuteVisibilityValidation,
 } from '../validations/cv-minute.validation';
 import { checkCvMinuteOwner } from '../middlewares/cvMinute.middleware';
 
 const upload = multer();
 const router = express.Router();
 
+router.get('/', getAllCvMinute);
 router.post('/', upload.single('file'), addCvMinuteValidation, addCvMinute);
 
 router.get('/:id', checkCvMinuteOwner, getCvMinute);
 router.post('/:id', checkCvMinuteOwner, generateCvMinuteSectionAdvice);
 router.put('/:id', checkCvMinuteOwner, updateCvMinuteScore);
+
+router.put('/:id/name', updateCvMinuteNameValidation, updateCvMinuteName);
+router.put(
+  '/:id/visibility',
+  updateCvMinuteVisibilityValidation,
+  updateCvMinuteVisibility,
+);
 
 router.put(
   '/:id/section',
