@@ -5,7 +5,7 @@ WORKDIR /app
 
 # On installe toutes les dépendances et on génère le client Prisma
 COPY package*.json tsconfig.json ./
-RUN npm install --frozen-lockfile
+RUN npm install 
 COPY src/prisma ./prisma
 RUN npx prisma generate --schema=prisma/schema.prisma
 
