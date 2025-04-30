@@ -51,10 +51,8 @@ const addCvMinute = async (
     } else {
       const extension = path.extname(req.file.originalname);
       const fileName = `cv-${userId}-${Date.now()}-${uniqueId}${extension}`;
-      const directoryPath = path.join(
-        __dirname,
-        `../../uploads/files/user-${userId}`,
-      );
+      const uploadsBase = path.join(process.cwd(), 'uploads');
+      const directoryPath = path.join(uploadsBase, `/files/user-${userId}`);
       const filePath = path.join(directoryPath, fileName);
 
       if (!fs.existsSync(directoryPath)) {

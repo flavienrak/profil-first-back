@@ -1,6 +1,6 @@
 .env
 dist
-src/uploads
+uploads
 /node_modules
 
 docker-compose.yml

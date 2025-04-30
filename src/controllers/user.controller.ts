@@ -90,9 +90,10 @@ const updateUser = async (
       if (imageMimeTypes.includes(req.file.mimetype)) {
         const extension = path.extname(req.file.originalname);
         fileName = `profile-${res.locals.user.id}-${Date.now()}-${uniqueId}${extension}`;
+        const uploadsBase = path.join(process.cwd(), 'uploads');
         const directoryPath = path.join(
-          __dirname,
-          `../uploads/files/user-${res.locals.user.id}`,
+          uploadsBase,
+          `/files/user-${res.locals.user.id}`,
         );
         const filePath = path.join(directoryPath, fileName);
 
