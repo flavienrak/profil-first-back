@@ -2,8 +2,8 @@ import express from 'express';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { io, openai } from '../../socket';
-import { extractJson } from '../../utils/functions';
+import { io, openai } from '../../../socket';
+import { extractJson } from '../../../utils/functions';
 
 const prisma = new PrismaClient();
 
@@ -69,6 +69,7 @@ const sendQualiCarriereMessage = async (
             Règles à suivre:
             - Le retour doit contenir :
               { response:  }
+            - Max 300 caractères.
             - Aérer la réponse en mettant à la ligne les phrases quand c'est nécessaire.
             - Donne la réponse en json simple.
           `,
@@ -93,6 +94,11 @@ const sendQualiCarriereMessage = async (
         });
 
         const jsonData: { response: string } = extractJson(r.message.content);
+
+        if (!jsonData) {
+          res.json({ parsingError: true });
+          return;
+        }
 
         response = await prisma.qualiCarriereChat.create({
           data: {

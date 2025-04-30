@@ -1,6 +1,5 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import isEmpty from '../utils/isEmpty';
 
 import { PrismaClient } from '@prisma/client';
 
@@ -39,23 +38,6 @@ const checkUser = async (
   }
 };
 
-const requireAuth = (req: express.Request, res: express.Response): void => {
-  if (!isEmpty(res.locals.user)) {
-    const token = req.cookies?.[authTokenName];
-    if (!isEmpty(token)) {
-      const verify = jwt.verify(token, secretKey);
-      if ((verify as jwt.JwtPayload)?.infos) {
-        const userId = (verify as jwt.JwtPayload).infos.id;
-        res.status(200).json({ userId });
-        return;
-      }
-    }
-  }
-  res.cookie(authTokenName, '', { maxAge: -1 });
-  res.json({ notAuthenticated: true });
-  return;
-};
-
 const isAuthenticated = (
   req: express.Request,
   res: express.Response,
@@ -69,4 +51,4 @@ const isAuthenticated = (
   }
 };
 
-export { checkUser, requireAuth, isAuthenticated };
+export { checkUser, isAuthenticated };

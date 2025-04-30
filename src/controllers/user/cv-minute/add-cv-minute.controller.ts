@@ -7,13 +7,12 @@ import mammoth from 'mammoth';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import { openai } from '../../socket';
-import { extractJson } from '../../utils/functions';
+import { openai } from '../../../socket';
+import { extractJson } from '../../../utils/functions';
+import { formattedDate } from '../../../utils/constants';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
-const today = new Date();
-const formattedDate = today.toLocaleDateString('fr-FR');
 
 const addCvMinute = async (
   req: express.Request,
@@ -218,6 +217,11 @@ const addCvMinute = async (
               recommendations: string;
             };
           } = extractJson(r.message.content);
+
+          if (!jsonData) {
+            res.json({ parsingError: true });
+            return;
+          }
 
           const allSections: {
             name: string;

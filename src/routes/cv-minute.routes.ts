@@ -7,9 +7,10 @@ import {
   updateCvMinuteScore,
   generateCvMinuteSectionAdvice,
   generateSectionInfoAdvice,
-} from '../controllers/cv-minute/cv-minute.controller';
-import { addCvMinute } from '../controllers/cv-minute/add-cv-minute.controller';
+} from '../controllers/user/cv-minute/cv-minute.controller';
+import { addCvMinute } from '../controllers/user/cv-minute/add-cv-minute.controller';
 import {
+  copyCvMinute,
   deleteCvMinuteSection,
   deleteSectionInfo,
   getAllCvMinute,
@@ -19,8 +20,8 @@ import {
   updateCvMinuteSectionOrder,
   updateCvMinuteVisibility,
   updateSectionInfoOrder,
-} from '../controllers/cv-minute/crud-cv-minute.controller';
-import { optimizeCvMinute } from '../controllers/cv-minute/optimize-cv-minute.controller';
+} from '../controllers/user/cv-minute/crud-cv-minute.controller';
+import { optimizeCvMinute } from '../controllers/user/cv-minute/optimize-cv-minute.controller';
 import {
   addCvMinuteValidation,
   updateCvMinuteSectionValidation,
@@ -43,6 +44,8 @@ router.post('/', upload.single('file'), addCvMinuteValidation, addCvMinute);
 router.get('/:id', checkCvMinuteOwner, getCvMinute);
 router.post('/:id', checkCvMinuteOwner, generateCvMinuteSectionAdvice);
 router.put('/:id', checkCvMinuteOwner, updateCvMinuteScore);
+
+router.post('/:id/copy', checkCvMinuteOwner, copyCvMinute);
 
 router.put('/:id/name', updateCvMinuteNameValidation, updateCvMinuteName);
 router.put(

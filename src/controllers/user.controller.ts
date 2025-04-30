@@ -34,7 +34,7 @@ const getUser = async (
     });
 
     const cvMinuteCount = await prisma.cvMinute.count({
-      where: { userId: res.locals.user.id },
+      where: { userId: res.locals.user.id, qualiCarriereRef: false },
     });
 
     const { password, ...userWithoutPassword } = user;

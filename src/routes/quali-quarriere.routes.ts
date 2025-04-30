@@ -1,16 +1,14 @@
 import express from 'express';
 import multer from 'multer';
 
+import { respondQualiCarriereQuestion } from '../controllers/user/quali-carriere/respond-question.controller';
+import { getQualiCarriereQuestion } from '../controllers/user/quali-carriere/get-question.controller';
 import {
   changeQualiCarriereStatus,
-  respondQualiCarriereQuestion,
-} from '../controllers/quali-carriere/quali-carriere.controller';
-import { getQualiCarriereQuestion } from '../controllers/quali-carriere/get-question.controller';
-import {
   editQualiCarriereCompetence,
   editQualiCarriereResume,
-} from '../controllers/quali-carriere/edit-resume.controller';
-import { sendQualiCarriereMessage } from '../controllers/quali-carriere/chat.controller';
+} from '../controllers/user/quali-carriere/crud-quali-carriere.controller';
+import { sendQualiCarriereMessage } from '../controllers/user/quali-carriere/chat.controller';
 import {
   respondQualiCarriereQuestionValidation,
   senndQualiCarriereMessageValidation,

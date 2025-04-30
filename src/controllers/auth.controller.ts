@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import isEmpty from '../utils/isEmpty';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
@@ -10,6 +11,23 @@ const secretKey = process.env.JWT_SECRET_KEY;
 const authTokenName = process.env.AUTH_TOKEN_NAME;
 
 const prisma = new PrismaClient();
+
+const requireAuth = (req: express.Request, res: express.Response): void => {
+  if (!isEmpty(res.locals.user)) {
+    const token = req.cookies?.[authTokenName];
+    if (!isEmpty(token)) {
+      const verify = jwt.verify(token, secretKey);
+      if ((verify as jwt.JwtPayload)?.infos) {
+        const user = (verify as jwt.JwtPayload).infos;
+        res.status(200).json({ user: { id: user.id, role: user.role } });
+        return;
+      }
+    }
+  }
+  res.clearCookie(authTokenName);
+  res.json({ notAuthenticated: true });
+  return;
+};
 
 const login = async (
   req: express.Request,
@@ -50,6 +68,7 @@ const login = async (
 
     const infos = {
       id: user.id,
+      role: user.role,
       authToken: true,
     };
 
@@ -73,7 +92,7 @@ const login = async (
 
     res.cookie(authTokenName, authToken, cookieOptions);
 
-    res.status(200).json({ userId: user.id });
+    res.status(200).json({ user: { id: user.id, role: user.role } });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
@@ -132,4 +151,4 @@ const logout = async (req: express.Request, res: express.Response) => {
   return;
 };
 
-export { login, register, logout };
+export { requireAuth, login, register, logout };
