@@ -9,7 +9,7 @@ import userRoutes from './routes/user.routes';
 import cvMinuteRoutes from './routes/cv-minute.routes';
 import qualiCarriereRoutes from './routes/quali-quarriere.routes';
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use('/api/*', checkUser);
 
 app.get('/', (req: express.Request, res: express.Response) => {

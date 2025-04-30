@@ -76,9 +76,10 @@ const respondQualiCarriereQuestion = async (
     } else if (req.file) {
       const extension = path.extname(req.file.originalname) || '.wav';
       const fileName = `audio-${res.locals.user.id}-${Date.now()}${extension}`;
+      const uploadsBase = path.join(process.cwd(), 'uploads');
       const directoryPath = path.join(
-        __dirname,
-        `../uploads/files/user-${res.locals.user.id}`,
+        uploadsBase,
+        `/files/user-${res.locals.user.id}`,
       );
       const filePath = path.join(directoryPath, fileName);
 
