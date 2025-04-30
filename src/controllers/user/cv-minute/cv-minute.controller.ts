@@ -1,14 +1,14 @@
 import express from 'express';
-import isEmpty from '../../utils/isEmpty';
+import isEmpty from '../../../utils/isEmpty';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import { openai } from '../../socket';
-import { AdviceInterface } from '../../interfaces/cv-minute/advice.interface';
-import { CvMinuteSectionInterface } from '../../interfaces/cv-minute/cvMinuteSection.interface';
-import { SectionInterface } from '../../interfaces/cv-minute/section.interface';
-import { SectionInfoInterface } from '../../interfaces/cv-minute/sectionInfo.interface';
-import { extractJson } from '../../utils/functions';
+import { openai } from '../../../socket';
+import { AdviceInterface } from '../../../interfaces/cv-minute/advice.interface';
+import { CvMinuteSectionInterface } from '../../../interfaces/cv-minute/cvMinuteSection.interface';
+import { SectionInterface } from '../../../interfaces/cv-minute/section.interface';
+import { SectionInfoInterface } from '../../../interfaces/cv-minute/sectionInfo.interface';
+import { extractJson } from '../../../utils/functions';
 
 const prisma = new PrismaClient();
 
@@ -367,6 +367,11 @@ const updateCvMinuteSection = async (
               postWeak: string;
             } = extractJson(r.message.content);
 
+            if (!jsonData) {
+              res.json({ parsingError: true });
+              return;
+            }
+
             await prisma.evaluation.create({
               data: {
                 sectionInfoId: sectionInfo.id,
@@ -479,6 +484,11 @@ const generateCvMinuteSectionAdvice = async (
 
         const jsonData: { sections: string[] } = extractJson(r.message.content);
 
+        if (!jsonData) {
+          res.json({ parsingError: true });
+          return;
+        }
+
         for (const s of jsonData.sections) {
           await prisma.advice.create({
             data: {
@@ -558,7 +568,7 @@ const generateSectionInfoAdvice = async (
         - Donne 1 à 3 propositions explicites.
         - Donne directement les propositions sans contenu introductive ou explicative.
         - Donne la réponse en json simple.
-        `;
+      `;
 
       messageUser = `Présentation actuelle :\n${sectionInfo.content}\n Conseils :\n${advice} \n Offre: ${cvMinute.position}`;
     } else if (body.section === 'experience') {
@@ -568,7 +578,9 @@ const generateSectionInfoAdvice = async (
         Règles à suivre:
         - Le retour doit contenir :
         { advices: [] }
+        - Max 300 caractères.
         - Donne 1 à 3 propositions.
+        - Donne directement les propositions sans contenu introductive ou explicative au format suivant : "XXXXXXXX : xxxxxxx,xxxxxx,xxxxxxx,xxxxxxxxx,xxxxxxxxx etc.." (pour infos : ("XXXX" = mot clé sexy pour le recruteur et "xxxxxx, xxxxx, xxxxx" = descriptions liés au mot clé):
         - Donne directement les propositions sans contenu introductive ou explicative.
         - Donne la réponse en json simple.
       `;
@@ -603,6 +615,11 @@ const generateSectionInfoAdvice = async (
         });
 
         const jsonData: { advices: string[] } = extractJson(r.message.content);
+
+        if (!jsonData) {
+          res.json({ parsingError: true });
+          return;
+        }
 
         for (const item of jsonData.advices) {
           await prisma.advice.create({
@@ -731,6 +748,11 @@ const updateCvMinuteScore = async (
         const jsonData: { globalScore: string; recommendations: string } =
           extractJson(r.message.content);
 
+        if (!jsonData) {
+          res.json({ parsingError: true });
+          return;
+        }
+
         evaluation = await prisma.evaluation.update({
           where: { id: cvMinute.evaluation.id },
           data: {
@@ -822,6 +844,11 @@ const updateSectionInfoScore = async (
           postHigh: string;
           postWeak: string;
         } = extractJson(r.message.content);
+
+        if (!jsonData) {
+          res.json({ parsingError: true });
+          return;
+        }
 
         evaluation = await prisma.evaluation.update({
           where: { id: sectionInfo.evaluation.id },

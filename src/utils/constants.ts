@@ -8,4 +8,7 @@ const imageMimeTypes = [
   'image/heif',
 ];
 
-export { maxAgeAuthToken, imageMimeTypes };
+const today = new Date();
+const formattedDate = today.toLocaleDateString('fr-FR');
+
+export { maxAgeAuthToken, imageMimeTypes, formattedDate };

@@ -4,8 +4,8 @@ import crypto from 'crypto';
 import express from 'express';
 
 import { PrismaClient } from '@prisma/client';
-import { imageMimeTypes } from '../../utils/constants';
-import { CvMinuteSectionInterface } from '../../interfaces/cv-minute/cvMinuteSection.interface';
+import { formattedDate, imageMimeTypes } from '../../../utils/constants';
+import { CvMinuteSectionInterface } from '../../../interfaces/cv-minute/cvMinuteSection.interface';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -55,6 +55,161 @@ const getCvMinute = async (
       sections,
       cvMinuteSections,
     });
+    return;
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` });
+    return;
+  }
+};
+
+const copyCvMinute = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    const { user } = res.locals;
+    const { id } = req.params;
+
+    const cvMinute = await prisma.cvMinute.findUnique({
+      where: { id: Number(id), qualiCarriereRef: false },
+      include: { advices: true, evaluation: true },
+    });
+
+    if (!cvMinute) {
+      res.json({ cvMinuteNotFound: true });
+      return;
+    }
+
+    const files = await prisma.file.findMany({
+      where: { cvMinuteId: cvMinute.id },
+    });
+
+    const cvMinuteSections = await prisma.cvMinuteSection.findMany({
+      where: { cvMinuteId: cvMinute.id },
+      include: { sectionInfos: true },
+    });
+
+    // CREATE COPY CVMINUTE
+    const name = `CV COPY du ${formattedDate}`;
+    const newCvMinute = await prisma.cvMinute.create({
+      data: {
+        position: cvMinute.position,
+        name: name,
+        primaryBg: cvMinute.primaryBg,
+        secondaryBg: cvMinute.secondaryBg,
+        tertiaryBg: cvMinute.tertiaryBg,
+        userId: cvMinute.userId,
+        visible: cvMinute.visible,
+      },
+    });
+
+    const cvMinuteAdvices = await prisma.advice.findMany({
+      where: { cvMinuteId: cvMinute.id },
+    });
+
+    // CREATE COPY ADVICES
+    if (cvMinuteAdvices.length > 0) {
+      for (const a of cvMinuteAdvices) {
+        await prisma.advice.create({
+          data: {
+            cvMinuteId: newCvMinute.id,
+            content: a.content,
+            type: a.type,
+          },
+        });
+      }
+    }
+
+    // CREATE COPY EVALUATION
+    const cvMinuteEvaluation = await prisma.evaluation.findUnique({
+      where: { cvMinuteId: cvMinute.id },
+    });
+    if (cvMinuteEvaluation) {
+      await prisma.evaluation.create({
+        data: {
+          cvMinuteId: newCvMinute.id,
+          initialScore: cvMinuteEvaluation.initialScore,
+          actualScore: cvMinuteEvaluation.actualScore,
+          content: cvMinuteEvaluation.content,
+        },
+      });
+    }
+
+    // CREATE COPY CVMINUTESECTION & SECTIONINFO & ADVICE & EVALUATION
+    for (const s of cvMinuteSections) {
+      const newCvMinuteSection = await prisma.cvMinuteSection.create({
+        data: {
+          cvMinuteId: newCvMinute.id,
+          sectionId: s.sectionId,
+          sectionOrder: s.sectionOrder,
+          sectionTitle: s.sectionTitle,
+        },
+      });
+
+      for (const sInfo of s.sectionInfos) {
+        const newSectionInfo = await prisma.sectionInfo.create({
+          data: {
+            cvMinuteSectionId: newCvMinuteSection.id,
+            title: sInfo.title,
+            content: sInfo.content,
+            date: sInfo.date,
+            company: sInfo.company,
+            contrat: sInfo.contrat,
+            icon: sInfo.icon,
+            iconSize: sInfo.iconSize,
+            order: sInfo.order,
+          },
+        });
+
+        const sectionInfoAdvices = await prisma.advice.findMany({
+          where: { sectionInfoId: sInfo.id },
+        });
+
+        if (sectionInfoAdvices.length > 0) {
+          for (const sAdvice of sectionInfoAdvices) {
+            await prisma.advice.create({
+              data: {
+                sectionInfoId: newSectionInfo.id,
+                content: sAdvice.content,
+                type: 'advice',
+              },
+            });
+          }
+        }
+
+        const sectionInfoEvaluation = await prisma.evaluation.findUnique({
+          where: { sectionInfoId: sInfo.id },
+        });
+
+        if (sectionInfoEvaluation) {
+          await prisma.evaluation.create({
+            data: {
+              sectionInfoId: newSectionInfo.id,
+              initialScore: sectionInfoEvaluation.initialScore,
+              actualScore: sectionInfoEvaluation.actualScore,
+              content: sectionInfoEvaluation.content,
+              weakContent: sectionInfoEvaluation.weakContent,
+            },
+          });
+        }
+      }
+    }
+
+    // CREATE COPY FILES
+    for (const f of files) {
+      await prisma.file.create({
+        data: {
+          name: f.name,
+          extension: f.extension,
+          originalName: f.originalName,
+          usage: 'cv',
+          userId: user.id,
+          cvMinuteId: newCvMinute.id,
+        },
+      });
+    }
+
+    res.status(200).json({ cvMinute: { id: newCvMinute.id } });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
@@ -375,6 +530,7 @@ const deleteCvMinuteSection = async (
 
 export {
   getCvMinute,
+  copyCvMinute,
   getAllCvMinute,
   updateCvMinuteName,
   updateCvMinuteVisibility,

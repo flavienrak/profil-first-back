@@ -2,11 +2,7 @@ import express from 'express';
 import path from 'path';
 
 import { app, logger, server } from './socket';
-import {
-  checkUser,
-  isAuthenticated,
-  requireAuth,
-} from './middlewares/auth.middleware';
+import { checkUser, isAuthenticated } from './middlewares/auth.middleware';
 
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
@@ -19,7 +15,6 @@ app.use('/api/*', checkUser);
 app.get('/', (req: express.Request, res: express.Response) => {
   res.send('Backend running successfully!');
 });
-app.get('/api/jwtid', requireAuth);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', isAuthenticated, userRoutes);

@@ -2,11 +2,11 @@ import { Request, Response } from 'express';
 
 import { htmlToText } from 'html-to-text';
 import { PrismaClient } from '@prisma/client';
-import { openai } from '../../socket';
-import { AdviceInterface } from '../../interfaces/cv-minute/advice.interface';
-import { CvMinuteSectionInterface } from '../../interfaces/cv-minute/cvMinuteSection.interface';
-import { SectionInterface } from '../../interfaces/cv-minute/section.interface';
-import { extractJson } from '../../utils/functions';
+import { openai } from '../../../socket';
+import { AdviceInterface } from '../../../interfaces/cv-minute/advice.interface';
+import { CvMinuteSectionInterface } from '../../../interfaces/cv-minute/cvMinuteSection.interface';
+import { SectionInterface } from '../../../interfaces/cv-minute/section.interface';
+import { extractJson } from '../../../utils/functions';
 
 const prisma = new PrismaClient();
 
@@ -233,6 +233,11 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
             recommendations: string;
           };
         } = extractJson(r.message.content);
+
+        if (!jsonData) {
+          res.json({ parsingError: true });
+          return;
+        }
 
         const allSections: {
           name: string;
