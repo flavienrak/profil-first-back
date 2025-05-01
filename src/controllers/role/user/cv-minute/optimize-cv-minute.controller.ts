@@ -2,11 +2,11 @@ import { Request, Response } from 'express';
 
 import { htmlToText } from 'html-to-text';
 import { PrismaClient } from '@prisma/client';
-import { openai } from '../../../socket';
-import { AdviceInterface } from '../../../interfaces/cv-minute/advice.interface';
-import { CvMinuteSectionInterface } from '../../../interfaces/cv-minute/cvMinuteSection.interface';
-import { SectionInterface } from '../../../interfaces/cv-minute/section.interface';
-import { extractJson } from '../../../utils/functions';
+import { openai } from '../../../../socket';
+import { AdviceInterface } from '../../../../interfaces/role/cv-minute/advice.interface';
+import { CvMinuteSectionInterface } from '../../../../interfaces/role/cv-minute/cvMinuteSection.interface';
+import { SectionInterface } from '../../../../interfaces/role/cv-minute/section.interface';
+import { extractJson } from '../../../../utils/functions';
 
 const prisma = new PrismaClient();
 
@@ -38,21 +38,17 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
     });
 
     const getCvMinuteSection = (value: string) => {
-      const section = sections.find((s: SectionInterface) => s.name === value);
-      return cvMinuteSections.find(
-        (c: CvMinuteSectionInterface) => c.sectionId === section?.id,
-      );
+      const section = sections.find((s) => s.name === value);
+      return cvMinuteSections.find((c) => c.sectionId === section?.id);
     };
 
     const title = getCvMinuteSection('title');
     const presentation = getCvMinuteSection('presentation');
     const experiences = getCvMinuteSection('experiences');
-    const editableSections = sections.filter(
-      (s: SectionInterface) => s.editable,
-    );
+    const editableSections = sections.filter((s) => s.editable);
 
     const titleAdvice = title?.sectionInfos[0].advices.find(
-      (a: AdviceInterface) => a.type === 'advice',
+      (a) => a.type === 'advice',
     );
     const existTitle = `
       sectionInfoId: ${title?.sectionInfos[0]?.id}, 
@@ -62,7 +58,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
     `;
 
     const presentationAdvice = presentation?.sectionInfos[0].advices.find(
-      (a: AdviceInterface) => a.type === 'advice',
+      (a) => a.type === 'advice',
     );
     const existPresentation = `
       sectionInfoId:${presentation?.sectionInfos[0]?.id}, 
@@ -71,19 +67,17 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       advices: ${presentationAdvice?.content}
     `;
 
-    const newSectionsAdvice = cvMinute.advices.find(
-      (a: AdviceInterface) => a.type === 'advice',
-    );
+    const newSectionsAdvice = cvMinute.advices.find((a) => a.type === 'advice');
     const newSections = `
     adviceId: ${newSectionsAdvice?.id}, 
     newSectionsAdvice: ${newSectionsAdvice?.content}
     `;
 
     const existSections = editableSections
-      .map((s: SectionInterface) => {
+      .map((s) => {
         const cvMinuteSection = getCvMinuteSection(s.name);
         const cvMinuteSectionAdvice = cvMinuteSection.advices.find(
-          (a: AdviceInterface) =>
+          (a) =>
             a.cvMinuteSectionId === cvMinuteSection.id && a.type === 'advice',
         );
 
@@ -98,7 +92,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       .join('\n');
 
     const existExperiences = experiences.sectionInfos
-      .map((item: any) => {
+      .map((item) => {
         return `
           sectionInfoId:${item.id},
           evaluationId: ${item.evaluation.id}, 
@@ -466,9 +460,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
     sections = await prisma.section.findMany({
       where: {
         id: {
-          in: cvMinuteSections.map(
-            (c: CvMinuteSectionInterface) => c.sectionId,
-          ),
+          in: cvMinuteSections.map((c) => c.sectionId),
         },
       },
     });

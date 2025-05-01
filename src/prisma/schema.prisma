@@ -28,6 +28,7 @@ model User {
   qualiCarriereChat        QualiCarriereChat[]
   qualiCarriereResumes     QualiCarriereResume[]
   qualiCarriereCompetences QualiCarriereCompetence[]
+  CvCritere                CvCritere[]
 }
 
 model File {
@@ -237,4 +238,32 @@ model QualiCarriereChat {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CvCritere {
+  id           Int     @id @default(autoincrement())
+  position     String
+  description  String?
+  experience   Int?
+  diplome      String?
+  localisation String?
+  distance     Int?
+  userId       Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cvCritereCompetences CvCritereCompetence[]
+}
+
+model CvCritereCompetence {
+  id          Int    @id @default(autoincrement())
+  content     String
+  cvCritereId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  cvCritere CvCritere @relation(fields: [cvCritereId], references: [id], onDelete: Cascade)
 }

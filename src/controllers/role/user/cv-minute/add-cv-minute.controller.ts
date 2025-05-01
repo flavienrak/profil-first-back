@@ -7,9 +7,9 @@ import mammoth from 'mammoth';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import { openai } from '../../../socket';
-import { extractJson } from '../../../utils/functions';
-import { formattedDate } from '../../../utils/constants';
+import { openai } from '../../../../socket';
+import { extractJson } from '../../../../utils/functions';
+import { formattedDate } from '../../../../utils/constants';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');

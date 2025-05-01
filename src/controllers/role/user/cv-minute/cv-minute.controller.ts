@@ -1,14 +1,14 @@
 import express from 'express';
-import isEmpty from '../../../utils/isEmpty';
+import isEmpty from '../../../../utils/isEmpty';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import { openai } from '../../../socket';
-import { AdviceInterface } from '../../../interfaces/cv-minute/advice.interface';
-import { CvMinuteSectionInterface } from '../../../interfaces/cv-minute/cvMinuteSection.interface';
-import { SectionInterface } from '../../../interfaces/cv-minute/section.interface';
-import { SectionInfoInterface } from '../../../interfaces/cv-minute/sectionInfo.interface';
-import { extractJson } from '../../../utils/functions';
+import { openai } from '../../../../socket';
+import { AdviceInterface } from '../../../../interfaces/role/cv-minute/advice.interface';
+import { CvMinuteSectionInterface } from '../../../../interfaces/role/cv-minute/cvMinuteSection.interface';
+import { SectionInterface } from '../../../../interfaces/role/cv-minute/section.interface';
+import { SectionInfoInterface } from '../../../../interfaces/role/cv-minute/sectionInfo.interface';
+import { extractJson } from '../../../../utils/functions';
 
 const prisma = new PrismaClient();
 
@@ -415,38 +415,30 @@ const generateCvMinuteSectionAdvice = async (
 
     const cvMinuteSections = await prisma.cvMinuteSection.findMany({
       where: { cvMinuteId: cvMinute.id },
-      select: { sectionId: true, sectionTitle: true },
     });
 
     const sections = await prisma.section.findMany({
       where: {
         id: {
-          in: cvMinuteSections.map(
-            (c: { sectionId: number; sectionTitle: string }) => c.sectionId,
-          ),
+          in: cvMinuteSections.map((c) => c.sectionId),
         },
         editable: true,
       },
     });
 
     const getCvMinuteSection = (value: string) => {
-      const section = sections.find((s: SectionInterface) => s.name === value);
-      return cvMinuteSections.find(
-        (c: { sectionId: number; sectionTitle: string }) =>
-          c.sectionId === section?.id,
-      );
+      const section = sections.find((s) => s.name === value);
+      return cvMinuteSections.find((c) => c.sectionId === section?.id);
     };
 
     const allCvMinuteSections = sections
-      .map((s: SectionInterface) => {
+      .map((s) => {
         const cvMinuteSection = getCvMinuteSection(s.name);
         return cvMinuteSection.sectionTitle;
       })
       .join(', ');
 
-    const advice = cvMinute.advices.find(
-      (a: { type: string }) => a.type === 'advice',
-    );
+    const advice = cvMinute.advices.find((a) => a.type === 'advice');
 
     const openaiResponse = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
@@ -542,7 +534,7 @@ const generateSectionInfoAdvice = async (
     }
 
     const advice = sectionInfo?.advices.find(
-      (a: AdviceInterface) => a.type === 'advice',
+      (a) => a.type === 'advice',
     )?.content;
 
     if (body.section === 'title') {
@@ -674,28 +666,22 @@ const updateCvMinuteScore = async (
     const sections = await prisma.section.findMany({
       where: {
         id: {
-          in: cvMinuteSections.map(
-            (c: CvMinuteSectionInterface) => c.sectionId,
-          ),
+          in: cvMinuteSections.map((c) => c.sectionId),
         },
       },
     });
 
     const getCvMinuteSection = (value: string) => {
-      const section = sections.find((s: SectionInterface) => s.name === value);
-      return cvMinuteSections.find(
-        (c: CvMinuteSectionInterface) => c.sectionId === section?.id,
-      );
+      const section = sections.find((s) => s.name === value);
+      return cvMinuteSections.find((c) => c.sectionId === section?.id);
     };
 
     const title = getCvMinuteSection('title');
     const presentation = getCvMinuteSection('presentation');
     const experiences = getCvMinuteSection('experiences');
-    const editableSections = sections.filter(
-      (s: SectionInterface) => s.editable,
-    );
+    const editableSections = sections.filter((s) => s.editable);
     const allCvMinuteSections = editableSections
-      .map((s: SectionInterface) => {
+      .map((s) => {
         const cvMinuteSection = getCvMinuteSection(s.name);
         return `${cvMinuteSection.sectionTitle}: ${cvMinuteSection.sectionInfos[0].content}`;
       })
@@ -704,7 +690,7 @@ const updateCvMinuteScore = async (
     const cvDetails = `
       cvTitle: ${title.sectionInfos[0].content}, 
       profilePresentation: ${presentation.sectionInfos[0].content}, 
-      experiences: ${experiences.sectionInfos.map((item: SectionInfoInterface, index: number) => `${index}. poste: ${item.title}, contrat: ${item.contrat}, description: ${item.content}`).join('\n')}, 
+      experiences: ${experiences.sectionInfos.map((item, index) => `${index}. poste: ${item.title}, contrat: ${item.contrat}, description: ${item.content}`).join('\n')}, 
       ${allCvMinuteSections}
     `;
 

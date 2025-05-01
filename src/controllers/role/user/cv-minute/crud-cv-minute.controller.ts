@@ -4,8 +4,8 @@ import crypto from 'crypto';
 import express from 'express';
 
 import { PrismaClient } from '@prisma/client';
-import { formattedDate, imageMimeTypes } from '../../../utils/constants';
-import { CvMinuteSectionInterface } from '../../../interfaces/cv-minute/cvMinuteSection.interface';
+import { formattedDate, imageMimeTypes } from '../../../../utils/constants';
+import { CvMinuteSectionInterface } from '../../../../interfaces/role/cv-minute/cvMinuteSection.interface';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');

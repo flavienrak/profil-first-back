@@ -17,6 +17,7 @@ const getUser = async (
   res: express.Response,
 ): Promise<void> => {
   try {
+    let cvMinuteCount = 0;
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
@@ -33,9 +34,11 @@ const getUser = async (
       orderBy: { updatedAt: 'desc' },
     });
 
-    const cvMinuteCount = await prisma.cvMinute.count({
-      where: { userId: res.locals.user.id, qualiCarriereRef: false },
-    });
+    if (user.role === 'user') {
+      cvMinuteCount = await prisma.cvMinute.count({
+        where: { userId: res.locals.user.id, qualiCarriereRef: false },
+      });
+    }
 
     const { password, ...userWithoutPassword } = user;
 
@@ -134,22 +137,4 @@ const updateUser = async (
   }
 };
 
-const acceptConditions = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
-  try {
-    await prisma.user.update({
-      where: { id: res.locals.user.id },
-      data: { acceptConditions: true },
-    });
-
-    res.status(200).json({ user: { acceptConditions: true } });
-    return;
-  } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
-    return;
-  }
-};
-
-export { getUser, updateUser, acceptConditions };
+export { getUser, updateUser };

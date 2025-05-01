@@ -2,8 +2,8 @@ import express from 'express';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { io, openai } from '../../../socket';
-import { extractJson } from '../../../utils/functions';
+import { io, openai } from '../../../../socket';
+import { extractJson } from '../../../../utils/functions';
 
 const prisma = new PrismaClient();
 

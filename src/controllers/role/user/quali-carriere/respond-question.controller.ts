@@ -6,15 +6,15 @@ import FormData from 'form-data';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { io, openai } from '../../../socket';
-import { SectionInterface } from '../../../interfaces/cv-minute/section.interface';
-import { CvMinuteSectionInterface } from '../../../interfaces/cv-minute/cvMinuteSection.interface';
+import { io, openai } from '../../../../socket';
+import { SectionInterface } from '../../../../interfaces/role/cv-minute/section.interface';
+import { CvMinuteSectionInterface } from '../../../../interfaces/role/cv-minute/cvMinuteSection.interface';
 import {
   extractJson,
   questionNumber,
   questionNumberByIndex,
   questionRangeByIndex,
-} from '../../../utils/functions';
+} from '../../../../utils/functions';
 
 const prisma = new PrismaClient();
 
@@ -138,11 +138,9 @@ const respondQualiCarriereQuestion = async (
 
     const getCvMinuteSection = (value: string) => {
       const section = sections.find(
-        (s: SectionInterface) => s.name.toLowerCase() === value.toLowerCase(),
+        (s) => s.name.toLowerCase() === value.toLowerCase(),
       );
-      return cvMinuteSections.find(
-        (s: CvMinuteSectionInterface) => s.sectionId === section?.id,
-      );
+      return cvMinuteSections.find((s) => s.sectionId === section?.id);
     };
 
     const { sectionInfos } = getCvMinuteSection('experiences');

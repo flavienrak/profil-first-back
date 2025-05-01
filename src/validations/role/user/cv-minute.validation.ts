@@ -1,4 +1,4 @@
-import isEmpty from '../utils/isEmpty';
+import isEmpty from '../../../utils/isEmpty';
 import { body, param } from 'express-validator';
 
 const addCvMinuteValidation = [
