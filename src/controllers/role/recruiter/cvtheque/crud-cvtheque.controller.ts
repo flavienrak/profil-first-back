@@ -5,34 +5,16 @@ import { validationResult } from 'express-validator';
 
 const prisma = new PrismaClient();
 
-const getCvCritere = async (
+const addCvThequeCritere = async (
   req: express.Request,
   res: express.Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
-    const cvCritere = await prisma.cvCritere.findUnique({
-      where: { id: Number(id) },
-      include: { cvCritereCompetences: true },
-    });
-
-    res.status(200).json({ cvCritere });
-    return;
-  } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
-    return;
-  }
-};
-
-const addCvCritere = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
-  try {
-    let cvCritere = null;
+    let cvThequeCritere = null;
     const { user } = res.locals;
     const body: {
       position: string;
+      domain: string;
       description?: string;
       competences?: string[];
       experience?: number;
@@ -47,45 +29,29 @@ const addCvCritere = async (
       return;
     }
 
-    const cvCritereData: {
-      userId: number;
-      position: string;
-      description?: string;
-      experience?: number;
-      diplome?: string;
-      localisation?: string;
-      distance?: number;
-    } = {
+    const clean = (val?: string) => val?.trim() || undefined;
+
+    const cvCritereData = {
       userId: user.id,
-      position: body.position,
+      position: body.position.trim(),
+      domain: body.domain.trim(),
+      description: clean(body.description),
+      diplome: clean(body.diplome),
+      localisation: clean(body.localisation),
+      experience: body.experience || undefined,
+      distance: body.distance || undefined,
     };
 
-    if (body.description && body.description.trim().length > 0) {
-      cvCritereData.description = body.description.trim();
-    }
-    if (body.experience) {
-      cvCritereData.experience = body.experience;
-    }
-    if (body.diplome && body.diplome.trim().length > 0) {
-      cvCritereData.diplome = body.diplome.trim();
-    }
-    if (body.localisation && body.localisation.trim().length > 0) {
-      cvCritereData.localisation = body.localisation.trim();
-    }
-    if (body.distance) {
-      cvCritereData.distance = body.distance;
-    }
-
-    cvCritere = await prisma.cvCritere.create({
+    cvThequeCritere = await prisma.cvThequeCritere.create({
       data: cvCritereData,
     });
 
     if (body.competences && body.competences.length > 0) {
       for (const c of body.competences) {
         if (c.trim().length > 0) {
-          await prisma.cvCritereCompetence.create({
+          await prisma.cvThequeCompetence.create({
             data: {
-              cvCritereId: cvCritere.id,
+              cvThequeCritereId: cvThequeCritere.id,
               content: c.trim(),
             },
           });
@@ -93,7 +59,7 @@ const addCvCritere = async (
       }
     }
 
-    res.status(200).json({ cvCritere: { id: cvCritere.id } });
+    res.status(200).json({ cvThequeCritere: { id: cvThequeCritere.id } });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
@@ -101,16 +67,17 @@ const addCvCritere = async (
   }
 };
 
-const updateCvCritere = async (
+const updateCvThequeCritere = async (
   req: express.Request,
   res: express.Response,
 ): Promise<void> => {
   try {
     let updatedCvCritere = null;
-    const { user, cvCritere } = res.locals;
+    const { cvThequeCritere } = res.locals;
     const body: {
-      position: string;
+      position?: string;
       description?: string;
+      domain?: string;
       competences?: string[];
       experience?: number;
       diplome?: string;
@@ -124,47 +91,56 @@ const updateCvCritere = async (
       return;
     }
 
-    const cvCritereData: {
-      userId: number;
-      position: string;
-      description?: string;
-      experience?: number;
-      diplome?: string;
-      localisation?: string;
-      distance?: number;
-    } = {
-      userId: user.id,
-      position: body.position,
-    };
+    // Liste des champs textuels à comparer avec trim
+    const textFields: (keyof typeof body)[] = [
+      'position',
+      'description',
+      'diplome',
+      'localisation',
+    ];
+    const valueFields: (keyof typeof body)[] = [
+      'domain',
+      'experience',
+      'distance',
+    ];
 
-    if (body.description && body.description.trim().length > 0) {
-      cvCritereData.description = body.description.trim();
-    }
-    if (body.experience) {
-      cvCritereData.experience = body.experience;
-    }
-    if (body.diplome && body.diplome.trim().length > 0) {
-      cvCritereData.diplome = body.diplome.trim();
-    }
-    if (body.localisation && body.localisation.trim().length > 0) {
-      cvCritereData.localisation = body.localisation.trim();
-    }
-    if (body.distance) {
-      cvCritereData.distance = body.distance;
+    const cvCritereData: Record<string, any> = {};
+    const modifiedFields: Record<string, any> = {};
+
+    for (const field of textFields) {
+      const value = body[field];
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed.length > 0 && trimmed !== cvThequeCritere[field]) {
+          cvCritereData[field] = trimmed;
+          modifiedFields[field] = trimmed;
+        }
+      }
     }
 
-    updatedCvCritere = await prisma.cvCritere.update({
-      where: { id: cvCritere.id },
-      data: cvCritereData,
-    });
+    for (const field of valueFields) {
+      const newValue = body[field];
+      if (newValue !== undefined && newValue !== cvThequeCritere[field]) {
+        cvCritereData[field] = newValue;
+        modifiedFields[field] = newValue;
+      }
+    }
+
+    // Mise à jour des critères simples si changement
+    if (Object.keys(cvCritereData).length > 0) {
+      await prisma.cvThequeCritere.update({
+        where: { id: cvThequeCritere.id },
+        data: cvCritereData,
+      });
+    }
 
     if (body.competences && body.competences.length > 0) {
       const trimmedCompetences = body.competences
         .map((c) => c.trim())
         .filter((c) => c.length > 0);
 
-      const existing = await prisma.cvCritereCompetence.findMany({
-        where: { cvCritereId: cvCritere.id },
+      const existing = await prisma.cvThequeCompetence.findMany({
+        where: { cvThequeCritereId: cvThequeCritere.id },
       });
 
       const existingContents = existing.map((e) => e.content);
@@ -174,14 +150,14 @@ const updateCvCritere = async (
       );
 
       for (const item of toDelete) {
-        await prisma.cvCritereCompetence.delete({ where: { id: item.id } });
+        await prisma.cvThequeCompetence.delete({ where: { id: item.id } });
       }
 
       for (const c of trimmedCompetences) {
         if (!existingContents.includes(c)) {
-          await prisma.cvCritereCompetence.create({
+          await prisma.cvThequeCompetence.create({
             data: {
-              cvCritereId: cvCritere.id,
+              cvThequeCritereId: cvThequeCritere.id,
               content: c,
             },
           });
@@ -189,12 +165,12 @@ const updateCvCritere = async (
       }
     }
 
-    updatedCvCritere = await prisma.cvCritere.findUnique({
-      where: { id: cvCritere.id },
-      include: { cvCritereCompetences: true },
+    updatedCvCritere = await prisma.cvThequeCritere.findUnique({
+      where: { id: cvThequeCritere.id },
+      include: { cvThequeCompetences: true },
     });
 
-    res.status(200).json({ cvCritere: updatedCvCritere });
+    res.status(200).json({ cvThequeCritere: updatedCvCritere });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
@@ -202,4 +178,16 @@ const updateCvCritere = async (
   }
 };
 
-export { getCvCritere, addCvCritere, updateCvCritere };
+const addCvThequeHistory = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    const { cvThequeCritere } = res.locals;
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` });
+    return;
+  }
+};
+
+export { addCvThequeCritere, updateCvThequeCritere, addCvThequeHistory };

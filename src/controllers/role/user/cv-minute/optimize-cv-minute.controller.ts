@@ -3,9 +3,7 @@ import { Request, Response } from 'express';
 import { htmlToText } from 'html-to-text';
 import { PrismaClient } from '@prisma/client';
 import { openai } from '../../../../socket';
-import { AdviceInterface } from '../../../../interfaces/role/cv-minute/advice.interface';
-import { CvMinuteSectionInterface } from '../../../../interfaces/role/cv-minute/cvMinuteSection.interface';
-import { SectionInterface } from '../../../../interfaces/role/cv-minute/section.interface';
+import { CvMinuteSectionInterface } from '../../../../interfaces/role/user/cv-minute/cvMinuteSection.interface';
 import { extractJson } from '../../../../utils/functions';
 
 const prisma = new PrismaClient();
@@ -16,21 +14,22 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
 
     let cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
-      include: { advices: true, evaluation: true },
-    });
-
-    let cvMinuteSections = await prisma.cvMinuteSection.findMany({
-      where: { cvMinuteId: cvMinute.id },
       include: {
-        sectionInfos: { include: { evaluation: true, advices: true } },
         advices: true,
+        evaluation: true,
+        cvMinuteSections: {
+          include: {
+            sectionInfos: { include: { evaluation: true, advices: true } },
+            advices: true,
+          },
+        },
       },
     });
 
     let sections = await prisma.section.findMany({
       where: {
         id: {
-          in: cvMinuteSections.map(
+          in: cvMinute.cvMinuteSections.map(
             (c: CvMinuteSectionInterface) => c.sectionId,
           ),
         },
@@ -39,7 +38,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
 
     const getCvMinuteSection = (value: string) => {
       const section = sections.find((s) => s.name === value);
-      return cvMinuteSections.find((c) => c.sectionId === section?.id);
+      return cvMinute.cvMinuteSections.find((c) => c.sectionId === section?.id);
     };
 
     const title = getCvMinuteSection('title');
@@ -51,26 +50,26 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       (a) => a.type === 'advice',
     );
     const existTitle = `
-      sectionInfoId: ${title?.sectionInfos[0]?.id}, 
-      adviceId: ${titleAdvice?.id}, 
-      cvTitle: ${title?.sectionInfos[0]?.content}, 
-      advices: ${titleAdvice?.content}
+      sectionInfoId : ${title?.sectionInfos[0]?.id}, 
+      adviceId : ${titleAdvice?.id}, 
+      cvTitle : ${title?.sectionInfos[0]?.content}, 
+      advices : ${titleAdvice?.content}
     `;
 
     const presentationAdvice = presentation?.sectionInfos[0].advices.find(
       (a) => a.type === 'advice',
     );
     const existPresentation = `
-      sectionInfoId:${presentation?.sectionInfos[0]?.id}, 
-      adviceId: ${presentationAdvice.id}, 
-      profilePresentation: ${presentation?.sectionInfos[0]?.content}, 
-      advices: ${presentationAdvice?.content}
+      sectionInfoId :${presentation?.sectionInfos[0]?.id}, 
+      adviceId : ${presentationAdvice.id}, 
+      profilePresentation : ${presentation?.sectionInfos[0]?.content}, 
+      advices : ${presentationAdvice?.content}
     `;
 
     const newSectionsAdvice = cvMinute.advices.find((a) => a.type === 'advice');
     const newSections = `
-    adviceId: ${newSectionsAdvice?.id}, 
-    newSectionsAdvice: ${newSectionsAdvice?.content}
+      adviceId : ${newSectionsAdvice?.id}, 
+      newSectionsAdvice : ${newSectionsAdvice?.content}
     `;
 
     const existSections = editableSections
@@ -82,11 +81,11 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
         );
 
         return `
-          cvMinuteSectionId: ${cvMinuteSection?.id}, 
-          adviceId: ${cvMinuteSectionAdvice?.id}, 
-          sectionTitle: ${cvMinuteSection.sectionTitle}, 
-          sectionContent: ${cvMinuteSection?.sectionInfos[0]?.content}, 
-          sectionAdvice: ${cvMinuteSectionAdvice?.content}
+          cvMinuteSectionId : ${cvMinuteSection?.id}, 
+          adviceId : ${cvMinuteSectionAdvice?.id}, 
+          sectionTitle : ${cvMinuteSection.sectionTitle}, 
+          sectionContent : ${cvMinuteSection?.sectionInfos[0]?.content}, 
+          sectionAdvice : ${cvMinuteSectionAdvice?.content}
         `;
       })
       .join('\n');
@@ -94,86 +93,90 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
     const existExperiences = experiences.sectionInfos
       .map((item) => {
         return `
-          sectionInfoId:${item.id},
-          evaluationId: ${item.evaluation.id}, 
-          postTitle: ${item.title}, 
-          postDate: ${item.date},
-          postDescription: ${htmlToText(item.content)}, 
-          postHigh: ${item.evaluation.content},
-          postWeak: ${item.evaluation.weakContent}
+          sectionInfoId :${item.id},
+          evaluationId : ${item.evaluation.id}, 
+          postTitle : ${item.title}, 
+          postDate : ${item.date},
+          postDescription : ${htmlToText(item.content)}, 
+          postHigh : ${item.evaluation.content},
+          postWeak : ${item.evaluation.weakContent}
         `;
       })
       .join('\n');
 
     const openaiResponse = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4-turbo-preview',
       messages: [
         {
           role: 'system',
           content: `
-            Vous êtes un expert en redaction et optimisation de CV. 
-            Selon l'offre et les conseils, optimize les contenus actuels.
-            Faite les calculs pour avoir les scores de compatibilité.
-            Eviter les pertes de données, les données en sorties doivent être supérieurs ou égales au nombres de données en entrées.
-            Règles à suivre:
-            - Le retour doit contenir :
+            Objectif :
+            Tu es expert en rédaction et optimisation de CV. Selon une offre d'emploi et des conseils, optimise tout le contenu du CV en respectant les contraintes suivantes :
+
+            Contraintes générales :
+            - Aucun contenu ne doit être perdu (sortie >= entrée).
+            - Optimiser chaque contenu pour maximiser la compatibilité avec l'offre.
+            - Ne modifie pas les sections suivantes : "formations", "centres d'intérêt", "certifications", "diplômes" (renvoie-les telles quelles).
+            - Génère de nouvelles sections appelées "rubriques" selon les conseils.
+            - Scores : entre 0 et 100.
+
+            Format de retour attendu (JSON uniquement) :
             {
-              cvTitle: 
+              cvTitle: {
+                sectionInfoId: (identique à l’entrée),
+                adviceId: (identique à l’entrée),
+                title: string,
+                titleAdvice: string // 1 à 3 phrases, une par ligne
+              },
+              profilePresentation: {
+                sectionInfoId: (identique à l’entrée),
+                adviceId: (identique à l’entrée),
+                presentation: string,
+                presentationAdvice: string // 1 à 3 phrases, une par ligne
+              },
+              experiences: [
                 {
-                  sectionInfoId: en pas changer, sectionInfoId en entrée,
-                  adviceId: ne pas changer, adviceId en entrée,
-                  title: string, titre du cv, courte et qui reflète bien l'offre, 
-                  titleAdvice: string, 1 à 3 phrases de suggestions pour améliorer le titre, met à la ligne les phrases
-                },
-              profilePresentation:
+                  sectionInfoId: (identique à l’entrée),
+                  evaluationId: (identique à l’entrée),
+                  postTitle: (identique à l’entrée),
+                  postDescription: string, // très explicite
+                  postDate: (identique à l’entrée),
+                  postOrder: string, // "1" = plus récent
+                  postScore: string, // 0 à 100
+                  postHigh: string, // 1 à 3 phrases, une par ligne
+                  postWeak: string  // 1 à 3 phrases, une par ligne
+                }
+              ],
+              sections: [
                 {
-                  sectionInfoId: ne pas changer, sectionInfoId en entrée,
-                  adviceId: ne pas changer, adviceId en entrée,
-                  presentation: string, presentation du profil de la personne, à refaire, très explicite, 
-                  presentationAdvice: string, 1 à 3 phrases de suggestions pour améliorer la présenation du profil, met à la ligne les phrases
-                },
-              experiences: 
-                [
-                  {
-                    sectionInfoId: ne pas changer, sectionInfoId en entrée,
-                    evaluationId: ne pas changer, evaluationId en entrée,
-                    postTitle: ne pas changer, postTitle en entrée,
-                    postDescription: string, description du poste, à refaire, très explicite, 
-                    postDate: ne pas changer, postDate en entrée, 
-                    postOrder: string, commencant par 1 du plus récent au plus ancien, 
-                    postScore: string, score de compatibilité de l'expérience avec l'offre,
-                    postHigh: string, 1 à 3 phrases expliquant les points forts de l'expérience en dépit du score, met à la ligne les phrases
-                    postWeak: string, 1 à 3 phrases expliquant les points à améliorer à l'expérience en dépit du score, met à la ligne les phrases
-                  }
-                ],
-              sections: 
-                [
-                  {
-                    cvMinuteSectionId: ne pas changer, cvMinuteSectionId en entrée, met 'new' à la place si c'est nouvelle,
-                    adviceId: ne pas changer, adviceId en entrée, met 'new' à la place si c'est nouvelle, 
-                    sectionTitle: string, titre de la section,
-                    sectionContent: string, regroupe l'ensemble des contenus, garde les à la ligne lors du regroupement, explicite, 
-                    sectionOrder: string, commencant par 1 et s'incremente selon le nombre de sections,
-                    sectionAdvice: string, 1 à 3 phrases de suggestions pour améliorer la section actuelle par rapport à l'offre, met à la ligne les phrases
-                  }
-                ],
-              newSectionsAdvice:  string, 1 à 3 phrases de suggestions pour l'ajout de nouvelles sections qu'on appelera rubrique,
-              evaluations:
-                {
-                  globalScore: string, score de compatibilité global du nouveau contenu par rapport à l'offre,
-                  recommendations: string, 1 à 3 phrases de recommendations d'améliorations en dépit du score, met à la ligne les phrases
-                } 
+                  cvMinuteSectionId: (identique ou "new" si générée),
+                  adviceId: (identique ou "new" si générée),
+                  sectionTitle: string,
+                  sectionContent: string, // contenu à la ligne, explicite
+                  sectionOrder: string, // "1", "2", ...
+                  sectionAdvice: string // 1 à 3 phrases, une par ligne
+                }
+              ],
+              newSectionsAdvice: string // 1 à 3 phrases, une par ligne
+              evaluations: {
+                globalScore: string, // 0 à 100
+                recommendations: string // 1 à 3 phrases, une par ligne
+              }
             }
-            - Ne pas changer les sections formations, centres d'intérêt, certification et diplômes, renvoi juste les données en entrées, 
-            - Génére des nouvelles sections avec leurs contenus selon les conseils.
-            - Les scores seront des valeurs entre 0 et 100.
-            - Optimiser tout les contenus pour que les scores soient au maximum.
-            - Donne la réponse en json simple.
-          `,
+
+            Ne jamais inclure d’introduction ou d’explication. Seulement du JSON.
+          `.trim(),
         },
         {
           role: 'user',
-          content: `Contenu du CV :\n${existTitle}\n ${existPresentation}\n ${existSections}\n ${existExperiences}\n ${newSections}\n Offre: ${cvMinute.position}`,
+          content: `
+            Contenu du CV : ${existTitle}\n 
+            Présentation : ${existPresentation}\n 
+            Sections : ${existSections}\n 
+            Expériences : ${existExperiences}\n 
+            Nouvelles sections proposées : ${newSections}\n 
+            Offre : ${cvMinute.position}
+          `.trim(),
         },
       ],
     });
@@ -446,29 +449,25 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
 
     cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
-      include: { advices: true, evaluation: true },
-    });
-
-    cvMinuteSections = await prisma.cvMinuteSection.findMany({
-      where: { cvMinuteId: cvMinute.id },
       include: {
-        sectionInfos: { include: { evaluation: true, advices: true } },
         advices: true,
+        evaluation: true,
+        cvMinuteSections: {
+          include: {
+            sectionInfos: { include: { evaluation: true, advices: true } },
+            advices: true,
+          },
+        },
       },
     });
 
     sections = await prisma.section.findMany({
-      where: {
-        id: {
-          in: cvMinuteSections.map((c) => c.sectionId),
-        },
-      },
+      where: { id: { in: cvMinute.cvMinuteSections.map((c) => c.sectionId) } },
     });
 
     res.status(200).json({
       cvMinute,
       sections,
-      cvMinuteSections,
     });
     return;
   } catch (error) {

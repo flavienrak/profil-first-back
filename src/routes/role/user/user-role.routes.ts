@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { acceptConditions } from '../../../controllers/role/user/user.controller';
+import { acceptConditions } from '../../../controllers/role/user/user-role.controller';
 
 const router = express.Router();
 

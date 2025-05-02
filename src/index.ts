@@ -7,8 +7,9 @@ import { checkUserRole } from './middlewares/role/user/user.middleware';
 import { checkIsRecruiter } from './middlewares/role/recruiter/recruiter.middleware';
 
 import authRoutes from './routes/auth.routes';
-import userRoutes from './routes/all-user.routes';
+import allUserRoutes from './routes/all-user.routes';
 
+import userRoleRoutes from './routes/role/user/user-role.routes';
 import cvMinuteRoutes from './routes/role/user/cv-minute.routes';
 import qualiCarriereRoutes from './routes/role/user/quali-quarriere.routes';
 
@@ -23,17 +24,16 @@ app.get('/', (req: express.Request, res: express.Response) => {
 
 app.use('/api/auth', authRoutes);
 
-app.use('/api/user', isAuthenticated, userRoutes);
+app.use('/api/user', isAuthenticated, allUserRoutes);
 
-// CVMINUTE ROUTES
+// USER ROLE ROUTES
+app.use('/api/role/user', userRoleRoutes);
 app.use(
   '/api/role/user/cv-minute',
   isAuthenticated,
   checkUserRole,
   cvMinuteRoutes,
 );
-
-// QUALI CARRIERE ROUTES
 app.use(
   '/api/role/user/quali-carriere',
   isAuthenticated,
@@ -41,7 +41,7 @@ app.use(
   qualiCarriereRoutes,
 );
 
-// CVTHEQUE ROUTES
+// RECRUITER ROLE ROUTES
 app.use(
   '/api/role/recruiter/cvtheque',
   isAuthenticated,

@@ -11,6 +11,7 @@ const user_middleware_1 = require("./middlewares/role/user/user.middleware");
 const recruiter_middleware_1 = require("./middlewares/role/recruiter/recruiter.middleware");
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const all_user_routes_1 = __importDefault(require("./routes/all-user.routes"));
+const user_role_routes_1 = __importDefault(require("./routes/role/user/user-role.routes"));
 const cv_minute_routes_1 = __importDefault(require("./routes/role/user/cv-minute.routes"));
 const quali_quarriere_routes_1 = __importDefault(require("./routes/role/user/quali-quarriere.routes"));
 const cvtheque_routes_1 = __importDefault(require("./routes/role/recruiter/cvtheque.routes"));
@@ -21,11 +22,11 @@ socket_1.app.get('/', (req, res) => {
 });
 socket_1.app.use('/api/auth', auth_routes_1.default);
 socket_1.app.use('/api/user', auth_middleware_1.isAuthenticated, all_user_routes_1.default);
-// CVMINUTE ROUTES
+// USER ROLE ROUTES
+socket_1.app.use('/api/role/user', user_role_routes_1.default);
 socket_1.app.use('/api/role/user/cv-minute', auth_middleware_1.isAuthenticated, user_middleware_1.checkUserRole, cv_minute_routes_1.default);
-// QUALI CARRIERE ROUTES
 socket_1.app.use('/api/role/user/quali-carriere', auth_middleware_1.isAuthenticated, user_middleware_1.checkUserRole, quali_quarriere_routes_1.default);
-// CVTHEQUE ROUTES
+// RECRUITER ROLE ROUTES
 socket_1.app.use('/api/role/recruiter/cvtheque', auth_middleware_1.isAuthenticated, recruiter_middleware_1.checkIsRecruiter, cvtheque_routes_1.default);
 const port = process.env.BACKEND_PORT || 5000;
 socket_1.server.listen(port, () => socket_1.logger.info(`App runing at: ${port}`));

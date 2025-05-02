@@ -4,11 +4,11 @@ import isEmpty from '../../../../utils/isEmpty';
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
 import { openai } from '../../../../socket';
-import { AdviceInterface } from '../../../../interfaces/role/cv-minute/advice.interface';
-import { CvMinuteSectionInterface } from '../../../../interfaces/role/cv-minute/cvMinuteSection.interface';
-import { SectionInterface } from '../../../../interfaces/role/cv-minute/section.interface';
-import { SectionInfoInterface } from '../../../../interfaces/role/cv-minute/sectionInfo.interface';
 import { extractJson } from '../../../../utils/functions';
+import { SectionInterface } from '../../../../interfaces/role/user/cv-minute/section.interface';
+import { CvMinuteSectionInterface } from '../../../../interfaces/role/user/cv-minute/cvMinuteSection.interface';
+import { SectionInfoInterface } from '../../../../interfaces/role/user/cv-minute/sectionInfo.interface';
+import { EvaluationInterface } from '../../../../interfaces/role/user/cv-minute/evaluation.interface';
 
 const prisma = new PrismaClient();
 
@@ -17,9 +17,9 @@ const updateCvMinuteSection = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let section = null;
-    let cvMinuteSection = null;
-    let sectionInfo = null;
+    let section: SectionInterface = null;
+    let cvMinuteSection: CvMinuteSectionInterface = null;
+    let sectionInfo: SectionInfoInterface = null;
 
     const { id } = req.params;
     const body: {
@@ -318,9 +318,9 @@ const updateCvMinuteSection = async (
         });
 
         const details = `
-          postTitle: ${sectionInfo.title}, 
-          postDate: ${sectionInfo.date}, 
-          postDescription: ${sectionInfo.content}, 
+          postTitle : ${sectionInfo.title}, 
+          postDate : ${sectionInfo.date}, 
+          postDescription : ${sectionInfo.content}, 
         `;
 
         const openaiResponse = await openai.chat.completions.create({
@@ -329,22 +329,30 @@ const updateCvMinuteSection = async (
             {
               role: 'system',
               content: `
-                Vous êtes un expert en redaction et optimisation de CV. 
-                Faite les calculs pour avoir le score de compatibilité de l'experience par rapport à l'offre.
-                Règles à suivre:
-                - Le retour doit contenir :
-                  {
-                    postScore: string, score de compatibilité de l'expérience avec l'offre,
-                    postHigh: string, 1 à 3 phrases expliquant les points forts de l'expérience en dépit du score, met à la ligne les phrases
-                    postWeak: string, 1 à 3 phrases expliquant les points à améliorer à l'expérience en dépit du score, met à la ligne les phrases
-                  }
-                - Le score est une valeur entre 0 et 100.
-                - Donne la réponse en json simple.
-              `,
+                Tu es expert en évaluation de CV.
+
+                Objectif :
+                Évalue la compatibilité entre une expérience professionnelle et une offre d’emploi.
+
+                Données attendues (en JSON simple) :
+                {
+                  postScore: string, // Score sur 100 mesurant l'adéquation
+                  postHigh: string,  // 1 à 3 phrases sur les points forts (chaque phrase sur une nouvelle ligne)
+                  postWeak: string   // 1 à 3 phrases sur les axes d'amélioration (chaque phrase sur une nouvelle ligne)
+                }
+
+                Règles :
+                - Le score est une valeur entière entre 0 et 100.
+                - Les commentaires doivent être clairs, constructifs et basés sur les attentes du poste.
+                - Pas d’introduction ni de phrase hors sujet.
+              `.trim(),
             },
             {
               role: 'user',
-              content: `Experience :\n${details}\n Offre: ${cvMinute.position}`,
+              content: `
+                Expérience :\n${details}\n
+                Offre :\n${cvMinute.position}
+              `.trim(),
             },
           ],
         });
@@ -446,18 +454,28 @@ const generateCvMinuteSectionAdvice = async (
         {
           role: 'system',
           content: `
-            Vous êtes un expert en redaction et optimisation de CV. 
-            Selon l'offre et les conseils, propose des nouvelles sections adaptées à part les existantes.
-            Règles à suivre:
-            - Le retour doit contenir :
-              { sections: [ ] }
-            - Donne 1 à 3 propositions.
-            - Donne la réponse en json simple.
-          `,
+            Tu es expert en rédaction de CV.
+
+            Objectif :
+            Proposer entre 1 et 3 sections supplémentaires pour enrichir un CV existant, en fonction :
+            - de l'offre d’emploi ciblée
+            - des conseils fournis
+
+            Contraintes :
+            - Ne pas proposer les sections déjà présentes.
+            - Suggérer uniquement des ajouts pertinents, concrets et orientés impact.
+
+            Format attendu (JSON simple) :
+            { sections: ["Nom de la section 1", "Nom de la section 2"] }
+          `.trim(),
         },
         {
-          content: `Sections existantes :\n${allCvMinuteSections}\n Conseils :\n${advice.content} \n Offre: ${cvMinute.position}`,
           role: 'user',
+          content: `
+            Sections existantes :\n${allCvMinuteSections}\n
+            Conseils :\n${advice.content}\n
+            Offre :\n${cvMinute.position}
+          `.trim(),
         },
       ],
     });
@@ -510,9 +528,8 @@ const generateSectionInfoAdvice = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let sectionInfo = null;
-    let messageSystem = null;
-    let messageUser = null;
+    let messageSystem: string = null;
+    let messageUser: string = null;
     const { cvMinute } = res.locals;
     const { sectionInfoId } = req.params;
     const body: { section: string } = req.body;
@@ -523,7 +540,7 @@ const generateSectionInfoAdvice = async (
       return;
     }
 
-    sectionInfo = await prisma.sectionInfo.findUnique({
+    let sectionInfo = await prisma.sectionInfo.findUnique({
       where: { id: Number(sectionInfoId) },
       include: { advices: true },
     });
@@ -539,45 +556,67 @@ const generateSectionInfoAdvice = async (
 
     if (body.section === 'title') {
       messageSystem = `
-        Vous êtes un expert en redaction et optimisation de CV. 
-        Selon l'offre et les conseils, donne des propositions adaptées pour le titre du CV. 
-        Règles à suivre:
-        - Le retour doit contenir :
-          { advices: [] }
-        - Donne 1 à 3 propositions.
-        - Donne directement les propositions sans contenu introductive ou explicative.
-        - Donne la réponse en json simple.
-        `;
+        Tu es expert en optimisation de CV.
 
-      messageUser = `Titre actuel :\n${sectionInfo.content}\n Conseils :\n${advice} \n Offre: ${cvMinute.position}`;
+        Objectif : Proposer 1 à 3 titres de CV adaptés à l’offre et aux conseils fournis.
+
+        Format attendu :
+        { advices: ["Titre 1", "Titre 2", "Titre 3"] }
+
+        Contraintes :
+        - Pas de phrases explicatives
+        - Max 80 caractères par titre
+        - JSON simple uniquement
+      `;
+
+      messageUser = `
+        Titre actuel :
+        ${sectionInfo.content}\n
+        Conseils : ${advice}\n
+        Offre: ${cvMinute.position}
+      `;
     } else if (body.section === 'presentation') {
       messageSystem = `
-        Vous êtes un expert en redaction et optimisation de CV. 
-        Selon l'offre et les conseils, donne des propositions adaptées pour la présentation du profil. 
-        Règles à suivre:
-        - Le retour doit contenir :
-        { advices: [] }
-        - Donne 1 à 3 propositions explicites.
-        - Donne directement les propositions sans contenu introductive ou explicative.
-        - Donne la réponse en json simple.
+        Tu es expert en rédaction de CV.
+
+        Objectif : Suggérer 1 à 3 présentations de profil percutantes, selon l’offre et les conseils.
+
+        Format attendu :
+        { advices: ["Proposition 1", "Proposition 2"] }
+
+        Contraintes :
+        - Réponses claires, sans introduction
+        - JSON simple uniquement
       `;
 
-      messageUser = `Présentation actuelle :\n${sectionInfo.content}\n Conseils :\n${advice} \n Offre: ${cvMinute.position}`;
+      messageUser = `
+        Présentation actuelle : 
+        ${sectionInfo.content}\n 
+        Conseils :\n${advice} \n 
+        Offre: ${cvMinute.position}
+      `;
     } else if (body.section === 'experience') {
       messageSystem = `
-        Vous êtes un expert en redaction et optimisation de CV. 
-        Selon l'offre et les conseils, donne des propositions adaptées à ajouter à la description actuelle. 
-        Règles à suivre:
-        - Le retour doit contenir :
-        { advices: [] }
-        - Max 300 caractères.
-        - Donne 1 à 3 propositions.
-        - Donne directement les propositions sans contenu introductive ou explicative au format suivant : "XXXXXXXX : xxxxxxx,xxxxxx,xxxxxxx,xxxxxxxxx,xxxxxxxxx etc.." (pour infos : ("XXXX" = mot clé sexy pour le recruteur et "xxxxxx, xxxxx, xxxxx" = descriptions liés au mot clé):
-        - Donne directement les propositions sans contenu introductive ou explicative.
-        - Donne la réponse en json simple.
+        Tu es expert en rédaction de CV.
+
+        Objectif : Proposer 1 à 3 enrichissements à ajouter à une expérience, selon les conseils et l’offre.
+
+        Format attendu :
+        { advices: ["MotClé : détail1, détail2, détail3", "..."] }
+
+        Contraintes :
+        - Max 300 caractères par ligne
+        - Pas de phrases explicatives
+        - Format : "MotClé : détail1, détail2..."
+        - JSON simple uniquement
       `;
 
-      messageUser = `Titre du poste: ${sectionInfo.title}\n Description actuelle : ${sectionInfo.content}\n Conseils : ${advice}\n Offre: ${cvMinute.position}`;
+      messageUser = `
+        Titre du poste: ${sectionInfo.title}\n 
+        Description actuelle : ${sectionInfo.content}\n 
+        Conseils : ${advice}\n 
+        Offre: ${cvMinute.position}
+      `;
     }
 
     const openaiResponse = await openai.chat.completions.create({
@@ -585,11 +624,11 @@ const generateSectionInfoAdvice = async (
       messages: [
         {
           role: 'system',
-          content: messageSystem,
+          content: messageSystem.trim(),
         },
         {
-          content: messageUser,
           role: 'user',
+          content: messageUser.trim(),
         },
       ],
     });
@@ -642,7 +681,7 @@ const updateCvMinuteScore = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let evaluation = null;
+    let evaluation: EvaluationInterface = null;
     const { id } = req.params;
 
     const cvMinute = await prisma.cvMinute.findUnique({
@@ -688,10 +727,10 @@ const updateCvMinuteScore = async (
       .join('\n');
 
     const cvDetails = `
-      cvTitle: ${title.sectionInfos[0].content}, 
-      profilePresentation: ${presentation.sectionInfos[0].content}, 
-      experiences: ${experiences.sectionInfos.map((item, index) => `${index}. poste: ${item.title}, contrat: ${item.contrat}, description: ${item.content}`).join('\n')}, 
-      ${allCvMinuteSections}
+      cvTitle : ${title.sectionInfos[0].content}, 
+      profilePresentation : ${presentation.sectionInfos[0].content}, 
+      experiences : ${experiences.sectionInfos.map((item, index) => `${index}. poste : ${item.title}, contrat : ${item.contrat}, description : ${item.content}`).join('\n')}, 
+      sections : ${allCvMinuteSections}
     `;
 
     const openaiResponse = await openai.chat.completions.create({
@@ -700,21 +739,28 @@ const updateCvMinuteScore = async (
         {
           role: 'system',
           content: `
-            Vous êtes un expert en redaction et optimisation de CV. 
-            Faite les calculs pour avoir les scores de compatibilité.
-            Règles à suivre:
-            - Le retour doit contenir :
-            { 
-              globalScore: score de compatibilité global du contenu,
-              recommendations: 1 à 3 phrases de recommendations par rapport à l'offre en dépit du score, met à la ligne chaque phrase
+            Tu es expert en rédaction et optimisation de CV.
+
+            Objectif :
+            Évaluer la compatibilité globale du CV avec l’offre et fournir des recommandations concrètes.
+
+            Format attendu :
+            {
+              globalScore: number, // Score de compatibilité de 0 à 100
+              recommendations: string // 1 à 3 phrases, séparées par des sauts de ligne
             }
-            - Les scores seront des valeurs entre 0 et 100.
-            - Donne la réponse en json simple.
-          `,
+
+            Contraintes :
+            - JSON simple uniquement
+            - Pas de texte explicatif en dehors du format demandé
+          `.trim(),
         },
         {
-          content: `Contenu du CV :\n${cvDetails}\n Offre: ${cvMinute.position}`,
           role: 'user',
+          content: `
+            Contenu du CV : ${cvDetails}\n 
+            Offre : ${cvMinute.position}
+          `.trim(),
         },
       ],
     });
@@ -762,12 +808,11 @@ const updateSectionInfoScore = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let sectionInfo = null;
-    let evaluation = null;
+    let evaluation: EvaluationInterface = null;
     const { cvMinute } = res.locals;
     const { sectionInfoId } = req.params;
 
-    sectionInfo = await prisma.sectionInfo.findUnique({
+    let sectionInfo = await prisma.sectionInfo.findUnique({
       where: { id: Number(sectionInfoId) },
       include: { evaluation: true, advices: true },
     });
@@ -781,9 +826,9 @@ const updateSectionInfoScore = async (
     }
 
     const experience = `
-      titre: ${sectionInfo.title}, 
-      contrat: ${sectionInfo.contrat}, 
-      description: ${sectionInfo.content}
+      titre : ${sectionInfo.title}, 
+      contrat : ${sectionInfo.contrat}, 
+      description : ${sectionInfo.content}
     `;
 
     const openaiResponse = await openai.chat.completions.create({
@@ -792,23 +837,31 @@ const updateSectionInfoScore = async (
         {
           role: 'system',
           content: `
-          Vous êtes un expert en redaction et optimisation de CV. 
-          Faite les calculs pour avoir le score de compatibilité entre une expérience et une offre.
-          Règles à suivre:
-            - Le retour doit contenir :
-            { 
-              score: score de compatibilité global du contenu,
-              postHigh: 1 à 3 phrases expliquant les points forts de l'expérience en dépit du score,
-              postWeak: 1 à 3 phrases expliquant les points à améliorer à l'expérience en dépit du score
+            Tu es expert en rédaction et optimisation de CV.
+
+            Objectif :
+            Évaluer la compatibilité entre une expérience professionnelle et une offre d’emploi.
+
+            Format attendu :
+            {
+              score: number,         // Score de compatibilité de 0 à 100
+              postHigh: string,      // 1 à 3 phrases sur les points forts (une phrase par ligne)
+              postWeak: string       // 1 à 3 phrases sur les axes d'amélioration (une phrase par ligne)
             }
-            - Le score est une valeur entre 0 et 100.
-            - Met toujours à la ligne chaque phrase pour les explications.
-            - Donne la réponse en json simple.
-          `,
+
+            Contraintes :
+            - JSON simple uniquement
+            - Chaque phrase explicative sur une nouvelle ligne
+            - Pas de texte hors format JSON
+          `.trim(),
         },
         {
-          content: `Contenu de l'expérience :\n${experience}\n Offre: ${cvMinute.position}`,
           role: 'user',
+          content: `
+            Contenu de l'expérience : 
+            ${experience}\n 
+            Offre : ${cvMinute.position}
+          `.trim(),
         },
       ],
     });

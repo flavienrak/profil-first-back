@@ -7,8 +7,7 @@ import FormData from 'form-data';
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
 import { io, openai } from '../../../../socket';
-import { SectionInterface } from '../../../../interfaces/role/cv-minute/section.interface';
-import { CvMinuteSectionInterface } from '../../../../interfaces/role/cv-minute/cvMinuteSection.interface';
+import { CvMinuteSectionInterface } from '../../../../interfaces/role/user/cv-minute/cvMinuteSection.interface';
 import {
   extractJson,
   questionNumber,
@@ -164,7 +163,7 @@ const respondQualiCarriereQuestion = async (
 
     for (let i = 0; i < sectionInfos.length; i++) {
       const s = sectionInfos[i];
-      const userExperience = `title: ${s.title}, date: ${s.date}, company: ${s.company}, contrat: ${s.contrat}, description: ${s.content}`;
+      const userExperience = `title : ${s.title}, date : ${s.date}, company : ${s.company}, contrat : ${s.contrat}, description : ${s.content}`;
 
       const restQuestions = questionNumberByIndex(i);
       const range = questionRangeByIndex(i);
@@ -172,7 +171,7 @@ const respondQualiCarriereQuestion = async (
         .slice(range.start)
         .map(
           (q) =>
-            `question: ${q.content}, réponse: ${qualiCarriereResponses.find((r) => r.questionId === q.id)?.content}`,
+            `question : ${q.content}, réponse : ${qualiCarriereResponses.find((r) => r.questionId === q.id)?.content}`,
         )
         .join('\n');
 
@@ -195,45 +194,46 @@ const respondQualiCarriereQuestion = async (
               {
                 role: 'system',
                 content: `
-                  Rôle : Tu es un expert RH/coach carrière avec une obsession pour la précision, l’impact et
-                  le positionnement de haut niveau dans les CV.
-                  Tu dois mener un échange conversationnel avec un candidat afin de qualifier en profondeur
-                  une expérience professionnelle et produire la matière brute nécessaire à la rédaction de
-                  bullet points puissants pour un CV.
-                  Mantra
-                  Ta mission principale est de faire parler au maximum le candidat en l’aidant à utiliser les bons
-                  mots : ceux qui collent aux attentes du marché et donnent du poids à son parcours. Tu dois :
-                  • Détecter les soft et hard skills cachés
-                  • Extraire des termes techniques ou les vulgariser
-                  • Récupérer des résultats chiffrés ou mesurables
-                  • Identifier le niveau de responsabilité réel
-                  • Traduire en langage “sexy” ce qui est souvent sous-estimé
-                  Logique de l’entretien :
-                  1. Contextualisation complète : Où, quand, pourquoi ? Quel enjeu business ? Quelle temporalité ?
-                  2. Clarification des tâches : Qu’as-tu fait concrètement ? En autonomie ou pilotage ?
-                  3. Précision des outils et méthodes : Avec quoi ? Comment ?
-                  4. Interaction & posture : Avec qui ? Quel rôle dans l’équipe ? En transverse ? En frontal ?
-                  5. Impacts & résultats : Qu’est-ce qui a changé ? Comment le mesurer ? Témoignage ou effet visible ?
-                  6. Lexique CV : Recaler le vocabulaire utilisé vers celui du marché
-                  Structure de chaque relance :
-                  • Toujours rebondir sur les réponses précédentes (pas de questions en rafale)
-                  • Si la réponse est vague : creuse avec “Peux-tu me donner un exemple ?” ou “Comment tu t’y es pris concrètement ?”
-                  • Si la personne banalise : valorise, reformule, puis repose une version augmentée
-                  • Si c’est trop long ou flou : reformule pour clarifier, puis valide avec “Tu veux dire que…”
-                  Objectif final :
-                  Réponses riches, concrètes, avec un wording orienté CV, pour rédiger des expériences qui
-                  respirent la posture, l’expertise et la clarté de valeur.
-                  Règles à suivre:
-                  - Basé sur l'expérience de l'utilisateur et les entretiens précédents, poser la question suivante.
-                  - Le retour doit contenir :
-                    { question: }
-                  - Max 110 caractères.
-                  - Donne la réponse en json simple.
-                `,
+                  Tu es un expert RH / coach carrière, spécialiste de la formulation d’expériences percutantes pour le CV.
+
+                  Objectif :
+                  Mener un échange conversationnel avec un candidat pour qualifier une expérience pro et récolter les bons mots pour rédiger des bullet points à fort impact.
+
+                  Ton rôle :
+                  - Faire parler le candidat au maximum, avec un vocabulaire orienté marché.
+                  - Extraire :
+                    • Soft & hard skills dissimulés
+                    • Résultats chiffrés / mesurables
+                    • Outils, méthodes, techniques
+                    • Niveaux de responsabilité
+                    • Formulations puissantes adaptées aux recruteurs
+
+                  Logique d’entretien (à suivre en boucle) :
+                  1. Contexte : Où ? Quand ? Pourquoi ? Enjeux ?
+                  2. Tâches : Qu’as-tu fait concrètement ? Seul ou en équipe ?
+                  3. Outils & méthodes : Comment ? Avec quoi ?
+                  4. Interactions : Avec qui ? Quel rôle ? (hiérarchie, transversalité…)
+                  5. Impacts : Résultats visibles ? KPIs ? Chiffres ? Progrès ?
+                  6. Reformulation CV : Transformer ce qui est banal ou flou en langage CV clair et vendeur
+
+                  Règles d’interaction :
+                  - Toujours rebondir sur la réponse précédente (pas de rafale de questions).
+                  - Si flou : "Peux-tu donner un exemple ?" / "Comment t’y es-tu pris ?"
+                  - Si banal : Reformule pour valoriser, puis pose une version améliorée.
+                  - Si long ou confus : Clarifie et valide ("Tu veux dire que… ?")
+
+                  Format de sortie :
+                  {
+                    question: "ta relance puissante ici (max 110 caractères)"
+                  }
+                `.trim(),
               },
               {
                 role: 'user',
-                content: `Expérience: ${userExperience}\n Entretien: ${prevQuestions}`,
+                content: `
+                  Expérience : ${userExperience}\n 
+                  Entretien : ${prevQuestions}
+                `,
               },
             ],
           });

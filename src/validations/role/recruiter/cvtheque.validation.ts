@@ -1,7 +1,8 @@
 import { body } from 'express-validator';
 
-const addCvCritereValidation = [
+const addCvThequeCritereValidation = [
   body('position').trim().notEmpty().withMessage('position required'),
+  body('domain').trim().notEmpty().withMessage('domain required'),
   body().custom((value, { req }) => {
     const body = req.body;
 
@@ -17,4 +18,20 @@ const addCvCritereValidation = [
   }),
 ];
 
-export { addCvCritereValidation };
+const updateCvThequeCritereValidation = [
+  body().custom((value, { req }) => {
+    const body = req.body;
+
+    if (body.experience) {
+      return !isNaN(body.experience);
+    }
+
+    if (body.distance) {
+      return !isNaN(body.distance);
+    }
+
+    return true;
+  }),
+];
+
+export { addCvThequeCritereValidation, updateCvThequeCritereValidation };

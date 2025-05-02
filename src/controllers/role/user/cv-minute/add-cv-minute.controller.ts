@@ -93,73 +93,77 @@ const addCvMinute = async (
           {
             role: 'system',
             content: `
-              Vous êtes un expert en redaction et optimisation de CV. 
-              Identifie toutes les informations contenues dans le CV. 
-              Faite les calculs pour avoir les scores de compatibilité.
-              Eviter les pertes de données.
-              Règles à suivre:
-              - Le retour doit contenir :
+              Tu es un expert en rédaction et optimisation de CV.
+
+              Objectif :
+              - Extraire les informations du CV.
+              - Évaluer la compatibilité avec l'
+              - Retourner une structure JSON strictement conforme au format donné.
+
+              Règles :
+              - Tous les champs doivent être présents, même si vides ou "à ajouter".
+              - Scores entre 0 et 100.
+              - Les phrases doivent être claires, aérées (retours à la ligne quand nécessaire).
+              - Utilise des icônes de lucide-static pour les contacts.
+              - Donne uniquement un objet JSON (pas de texte autour).
+              
+              Format attendu :
               {
-                name: nom de la personne,
-                firstname: prénom de la personne,
-                cvTitle: 
+                name: string,
+                firstname: string,
+                cvTitle: {
+                  title: string,
+                  titleAdvice: string
+                },
+                profilePresentation: {
+                  presentation: string,
+                  presentationAdvice: string
+                },
+                contacts: [
                   {
-                    title: string, titre du cv,
-                    titleAdvice: string, 1 à 3 phrases de suggestions pour améliorer le titre, met à la ligne les phrases
-                  },
-                profilePresentation:
+                    contactIcon: string,
+                    contactContent: string,
+                    contactOrder: string
+                  }
+                ],
+                experiences: [
                   {
-                    presentation: string, presentation du profil de la personne,
-                    presentationAdvice: string, 1 à 3 phrases de suggestions pour améliorer la présenation du profil, met à la ligne les phrases
-                  },
-                contacts:  
-                  [
-                    {
-                      contactIcon: string, un nom d'icone adapté au contenu, tiré de lucide-static,
-                      contactContent: string, contenu du contact/lien/adresse,
-                      contactOrder: string, commencant par 1 et s'incremente selon le nombre de contact, lien et adresse
-                    }
-                  ], 
-                experiences: 
-                  [
-                    {
-                      postTitle: string, titre du poste,
-                      postDate: string, date de début et/ou fin, avec le mois et le jour si precisé,
-                      postCompany: string, nom de l'entreprise,
-                      postContrat: string, type de contrat,
-                      postDescription: string, description du poste,
-                      postOrder: string, commencant par 1 et s'incremente selon le nombre d'experiences,
-                      postScore: string, score de compatibilité de l'expérience avec l'offre,
-                      postHigh: string, 1 à 3 phrases expliquant les points forts de l'expérience en dépit du score, met à la ligne les phrases
-                      postWeak: string, 1 à 3 phrases expliquant les points à améliorer à l'expérience en dépit du score, met à la ligne les phrases
-                    }
-                  ],
-                sections: 
-                  [
-                    {
-                      sectionTitle: string, titre de la section,
-                      sectionContent: string, regroupe l'ensemble des contenus, garde les à la ligne lors du regroupement,
-                      sectionOrder: string, commencant par 1 et s'incremente selon le nombre de sections,
-                      sectionAdvice: string, 1 à 3 phrases de suggestions pour améliorer la section actuelle par rapport à l'offre, met à la ligne les phrases
-                    }
-                  ],
-                newSectionsAdvice: string, 1 à 3 phrases de suggestions pour l'ajout de nouvelles sections qu'on appelera rubrique,
-                evaluations:
+                    postTitle: string,
+                    postDate: string,
+                    postCompany: string,
+                    postContrat: string,
+                    postDescription: string,
+                    postOrder: string,
+                    postScore: string,
+                    postHigh: string,
+                    postWeak: string
+                  }
+                ],
+                sections: [
                   {
-                    globalScore: string, score de compatibilité global du contenu par rapport à l'offre,
-                    recommendations: string, 1 à 3 phrases de recommendations d'améliorations en dépit du score, met à la ligne les phrases
-                  } 
+                    sectionTitle: string,
+                    sectionContent: string,
+                    sectionOrder: string,
+                    sectionAdvice: string
+                  }
+                ],
+                newSectionsAdvice: string,
+                evaluations: {
+                  globalScore: string,
+                  recommendations: string
+                }
               }
-              - La partie contacts contient tout les contacts, liens et/ou adresse de la personne.
-              - Les restes du contenu seront considérés comme des sections.
-              - S'il n'y a pas de contenu ou si le contenu est non determiné met 'à ajouter'.
-              - Les scores seront des valeurs entre 0 et 100.
-              - Donne la réponse en json simple.
-            `,
+            `.trim(),
           },
           {
             role: 'user',
-            content: `Contenu du CV :\n${lignes.join('\n')}\n Offre: ${body.position}`,
+            content: `
+              CV :
+              ${lignes.join('\n')}
+
+              Offre ciblée :
+              ${body.position}
+            `.trim(),
           },
         ],
       });

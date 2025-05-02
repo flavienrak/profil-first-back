@@ -1,4 +1,5 @@
 import express from 'express';
+import OpenAI from 'openai';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
@@ -49,36 +50,36 @@ const sendQualiCarriereMessage = async (
       where: { userId: user.id },
     });
 
-    const resume = `
-      Résumé: ${qualiCarriereResumes.map((r) => r.content).join('\n')}\n 
-      Offre: ${cvMinute.position}\n
-      Messages:\n 
-        1. system: ${'Bonjour ! Je suis là pour vous aider à valoriser vos expériences professionnelles.'}\n
-        ${prevMessages.map((m, index: number) => `${index + 2} ${m.role}: ${m.content} \n`).join('\n')}
-    `;
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      {
+        role: 'system',
+        content: `
+          Tu es un expert en rédaction et optimisation de CV. 
+          Tu aides l'utilisateur à valoriser ses expériences professionnelles. 
+          Réponds toujours sous forme de JSON : { "response": "..." } avec un maximum de 300 caractères.
+        `.trim(),
+      },
+      {
+        role: 'user',
+        content: `
+          Résumé du candidat :
+          ${qualiCarriereResumes.map((r) => r.content).join('\n')}
+
+          Offre ciblée :
+          ${cvMinute.position}
+
+          Historique de la discussion :
+          ${prevMessages.map((m, index) => `${index + 1}. ${m.role} : ${m.content}`).join('\n')}
+
+          Dernier message :
+          ${message.content}
+        `.trim(),
+      },
+    ];
 
     const openaiResponse = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content: `
-            Vous êtes un expert en redaction et optimisation de CV. 
-            Selon le résumé, l'offre et les discussions, répond au message de l'utilisateur.
-            \n${resume}\n
-            Règles à suivre:
-            - Le retour doit contenir :
-              { response:  }
-            - Max 300 caractères.
-            - Aérer la réponse en mettant à la ligne les phrases quand c'est nécessaire.
-            - Donne la réponse en json simple.
-          `,
-        },
-        {
-          role: 'user',
-          content: message.content,
-        },
-      ],
+      model: 'gpt-3.5-turbo',
+      messages,
     });
 
     if (openaiResponse.id) {

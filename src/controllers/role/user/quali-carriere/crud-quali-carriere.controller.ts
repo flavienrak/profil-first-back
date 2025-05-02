@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
+import { UserInterface } from '../../../../interfaces/user.interface';
 
 const prisma = new PrismaClient();
 
@@ -9,7 +10,7 @@ const changeQualiCarriereStatus = async (
   res: Response,
 ): Promise<void> => {
   try {
-    let updatedUser = null;
+    let updatedUser: UserInterface = null;
     const { user } = res.locals;
 
     if (user.qualiCarriere === '' || user.qualiCarriere === 'inactive') {

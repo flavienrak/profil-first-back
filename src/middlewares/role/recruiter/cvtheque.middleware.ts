@@ -17,19 +17,19 @@ const checkCvCritereOwner = async (
     return;
   }
 
-  const cvCritere = await prisma.cvCritere.findUnique({
+  const cvThequeCritere = await prisma.cvThequeCritere.findUnique({
     where: { id: Number(id) },
   });
 
-  if (!cvCritere) {
+  if (!cvThequeCritere) {
     res.json({ cvCritereNotFound: true });
     return;
-  } else if (cvCritere.userId !== user.id) {
+  } else if (cvThequeCritere.userId !== user.id) {
     res.json({ unAuthorized: true });
     return;
   }
 
-  res.locals.cvCritere = cvCritere;
+  res.locals.cvThequeCritere = cvThequeCritere;
   next();
 };
 
