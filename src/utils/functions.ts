@@ -60,6 +60,9 @@ const questionRangeByIndex = (value: number) => {
   return { start, end };
 };
 
+/**
+ * Échappe les retours à la ligne à l’intérieur des littéraux de chaîne JSON
+ */
 const escapeNewlinesInJsonStrings = (block: string): string =>
   block.replace(/"(?:[^"\\]|\\.)*"/g, (strLiteral) => {
     const inner = strLiteral.slice(1, -1);
@@ -67,39 +70,45 @@ const escapeNewlinesInJsonStrings = (block: string): string =>
     return `"${escaped}"`;
   });
 
+/**
+ * Extrait et parse un bloc JSON ou JSON5 (objet `{...}` ou tableau `[...]`) depuis une chaîne arbitraire.
+ * @param value La chaîne potentiellement contenant du JSON
+ * @returns L’objet JavaScript parsé ou `null` si on n’a pas réussi à parser
+ */
 const extractJson = (value: string): any | null => {
-  // 1) Extraction du bloc ```json``` ou fallback sur {…}
-  const md =
+  // 1) Extraire soit un bloc ```json``` soit un objet/ tableau JSON brut
+  const raw =
     value.match(/```json\s*([\s\S]*?)\s*```/)?.[1] ||
-    value.match(/{[\s\S]*}/)?.[0];
-  if (!md) return null;
+    value.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)?.[0] ||
+    null;
+  if (!raw) return null;
 
-  // 2) Pré-traitement : échappement des retours à la ligne
-  const prepped = escapeNewlinesInJsonStrings(md);
+  // 2) Échapper les retours à la ligne dans les chaînes JSON
+  const prepped = escapeNewlinesInJsonStrings(raw);
 
-  // 3) Essai JSON.parse
+  // 3) Tenter JSON.parse (strict)
   try {
     return JSON.parse(prepped);
   } catch {
-    console.warn('JSON.parse a échoué – on bascule sur JSON5');
+    console.warn('JSON.parse a échoué, essai avec JSON5.parse');
   }
 
-  // 4) Essai JSON5.parse
+  // 4) Tenter JSON5.parse (plus permissif)
   try {
     return JSON5.parse(prepped);
   } catch {
-    console.warn('JSON5.parse a aussi échoué');
+    console.warn('JSON5.parse a échoué, sanitation en dernier recours');
   }
 
-  // 5) Dernier recours : nettoyage des contrôles puis JSON5
+  // 5) Sanitation + dernier essai JSON5.parse
   const sanitized = prepped
-    .replace(/[\x00-\x1F]+/g, '') // supprime tabulations, bells, etc.
-    .replace(/(?<!\\)(\r\n|\r|\n)/g, '\\n'); // échappe les retours à la ligne restants
+    .replace(/[\x00-\x1F]+/g, '') // supprime caractères de contrôle
+    .replace(/(?<!\\)(\r\n|\r|\n)/g, '\\n'); // échappe tout retour à la ligne
 
   try {
     return JSON5.parse(sanitized);
   } catch (err) {
-    console.error('Même après sanitation, échec JSON5.parse:', err);
+    console.error('Sanitation + JSON5.parse a échoué :', err);
     return null;
   }
 };

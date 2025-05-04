@@ -11,4 +11,13 @@ const imageMimeTypes = [
 const today = new Date();
 const formattedDate = today.toLocaleDateString('fr-FR');
 
-export { maxAgeAuthToken, imageMimeTypes, formattedDate };
+const cvThequesections = [
+  { name: 'title' },
+  { name: 'presentation' },
+  { name: 'experiences' },
+  { name: 'diplomes', order: 1 },
+  { name: 'formation', order: 2 },
+  { name: 'competence', order: 3 },
+];
+
+export { maxAgeAuthToken, imageMimeTypes, formattedDate, cvThequesections };

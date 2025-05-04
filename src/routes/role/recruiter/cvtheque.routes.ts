@@ -3,6 +3,8 @@ import express from 'express';
 import {
   addCvThequeCritere,
   addCvThequeHistory,
+  getCvThequeHistory,
+  getCvAnonym,
   updateCvThequeCritere,
 } from '../../../controllers/role/recruiter/cvtheque/crud-cvtheque.controller';
 import { getCvThequeCritere } from '../../../controllers/role/recruiter/cvtheque/get-critere.controller';
@@ -16,7 +18,12 @@ const router = express.Router();
 
 router.post('/', addCvThequeCritereValidation, addCvThequeCritere);
 
+router.get('/history', getCvThequeHistory);
+router.post('/history/:id', checkCvCritereOwner, addCvThequeHistory);
+
 router.get('/:id', checkCvCritereOwner, getCvThequeCritere);
+
+router.get('/:id/cv-anonym/:cvAnonymId', checkCvCritereOwner, getCvAnonym);
 
 router.put(
   '/:id',
@@ -24,7 +31,5 @@ router.put(
   updateCvThequeCritereValidation,
   updateCvThequeCritere,
 );
-
-router.post('/:id/history', checkCvCritereOwner, addCvThequeHistory);
 
 export default router;

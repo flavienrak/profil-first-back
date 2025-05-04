@@ -5,6 +5,63 @@ import { validationResult } from 'express-validator';
 
 const prisma = new PrismaClient();
 
+const getCvAnonym = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    const { id, cvAnonymId } = req.params;
+
+    let cvAnonym = await prisma.cvMinute.findUnique({
+      where: { id: Number(cvAnonymId) },
+      include: {
+        cvMinuteSections: { include: { sectionInfos: true } },
+      },
+    });
+
+    if (!cvAnonym) {
+      res.json({ cvMinuteNotFound: true });
+      return;
+    }
+
+    let cvThequeView = await prisma.cvThequeView.findUnique({
+      where: { cvMinuteId: cvAnonym.id },
+    });
+
+    if (cvThequeView) {
+      cvThequeView = await prisma.cvThequeView.update({
+        where: { id: cvThequeView.id },
+        data: { count: { increment: 1 } },
+      });
+    } else {
+      cvThequeView = await prisma.cvThequeView.create({
+        data: {
+          cvMinuteId: cvAnonym.id,
+          cvThequeCritereId: Number(id),
+          count: 1,
+        },
+      });
+    }
+
+    cvAnonym = await prisma.cvMinute.findUnique({
+      where: { id: cvAnonym.id },
+      include: {
+        cvMinuteSections: { include: { sectionInfos: true } },
+      },
+    });
+
+    const sections = await prisma.section.findMany({
+      where: { id: { in: cvAnonym.cvMinuteSections.map((c) => c.sectionId) } },
+    });
+
+    res.status(200).json({ cvAnonym, sections });
+    return;
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` });
+    return;
+  }
+};
+
 const addCvThequeCritere = async (
   req: express.Request,
   res: express.Response,
@@ -167,10 +224,39 @@ const updateCvThequeCritere = async (
 
     updatedCvCritere = await prisma.cvThequeCritere.findUnique({
       where: { id: cvThequeCritere.id },
-      include: { cvThequeCompetences: true },
+      include: {
+        cvThequeCompetences: true,
+        cvThequeUsers: true,
+        cvMinutes: true,
+      },
     });
 
     res.status(200).json({ cvThequeCritere: updatedCvCritere });
+    return;
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` });
+    return;
+  }
+};
+
+const getCvThequeHistory = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    const { user } = res.locals;
+
+    const history = await prisma.cvThequeCritere.findMany({
+      where: { userId: user.id },
+      include: {
+        cvThequeCompetences: true,
+        cvThequeUsers: true,
+        cvThequeViews: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    res.status(200).json({ history });
     return;
   } catch (error) {
     res.status(500).json({ error: `${error.message}` });
@@ -190,4 +276,10 @@ const addCvThequeHistory = async (
   }
 };
 
-export { addCvThequeCritere, updateCvThequeCritere, addCvThequeHistory };
+export {
+  getCvAnonym,
+  addCvThequeCritere,
+  updateCvThequeCritere,
+  getCvThequeHistory,
+  addCvThequeHistory,
+};
