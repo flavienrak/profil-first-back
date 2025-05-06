@@ -30,7 +30,7 @@ const updateCvThequeCritereValidation = [
       return !isNaN(body.distance);
     }
 
-    return true;
+    return Object.keys(body).length > 0;
   }),
 ];
 

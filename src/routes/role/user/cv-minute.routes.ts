@@ -7,8 +7,8 @@ import {
   updateCvMinuteScore,
   generateCvMinuteSectionAdvice,
   generateSectionInfoAdvice,
-} from '../../../controllers/role/user/cv-minute/cv-minute.controller';
-import { addCvMinute } from '../../../controllers/role/user/cv-minute/add-cv-minute.controller';
+} from '@/controllers/role/user/cv-minute/cv-minute.controller';
+import { addCvMinute } from '@/controllers/role/user/cv-minute/add-cv-minute.controller';
 import {
   copyCvMinute,
   deleteCvMinuteSection,
@@ -20,8 +20,8 @@ import {
   updateCvMinuteSectionOrder,
   updateCvMinuteVisibility,
   updateSectionInfoOrder,
-} from '../../../controllers/role/user/cv-minute/crud-cv-minute.controller';
-import { optimizeCvMinute } from '../../../controllers/role/user/cv-minute/optimize-cv-minute.controller';
+} from '@/controllers/role/user/cv-minute/crud-cv-minute.controller';
+import { optimizeCvMinute } from '@/controllers/role/user/cv-minute/optimize-cv-minute.controller';
 import {
   addCvMinuteValidation,
   updateCvMinuteSectionValidation,
@@ -32,8 +32,8 @@ import {
   generateSectionInfoAdviceValidation,
   updateCvMinuteNameValidation,
   updateCvMinuteVisibilityValidation,
-} from '../../../validations/role/user/cv-minute.validation';
-import { checkCvMinuteOwner } from '../../../middlewares/role/user/cv-minute.middleware';
+} from '@/validations/role/user/cv-minute.validation';
+import { checkCvMinuteOwner } from '@/middlewares/role/user/cv-minute.middleware';
 
 const upload = multer();
 const router = express.Router();

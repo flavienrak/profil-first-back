@@ -3,11 +3,11 @@ import path from 'path';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import express from 'express';
-import isEmpty from '../utils/isEmpty';
+import isEmpty from '@/utils/isEmpty';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import { imageMimeTypes } from '../utils/constants';
+import { imageMimeTypes } from '@/utils/constants';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -17,6 +17,7 @@ const getUser = async (
   res: express.Response,
 ): Promise<void> => {
   try {
+    const { user } = res.locals;
     let cvMinuteCount = 0;
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -24,19 +25,15 @@ const getUser = async (
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: res.locals.user.id },
-    });
-
     const profile = await prisma.file.findFirst({
-      where: { userId: res.locals.user.id, usage: 'profile' },
+      where: { userId: user.id, usage: 'profile' },
       select: { name: true },
       orderBy: { updatedAt: 'desc' },
     });
 
     if (user.role === 'user') {
       cvMinuteCount = await prisma.cvMinute.count({
-        where: { userId: res.locals.user.id, qualiCarriereRef: false },
+        where: { userId: user.id, qualiCarriereRef: false },
       });
     }
 
@@ -48,7 +45,11 @@ const getUser = async (
     });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -58,7 +59,8 @@ const updateUser = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let user = null;
+    const { user } = res.locals;
+
     let fileName = null;
     const body: { name?: string; password?: string } = req.body;
 
@@ -77,7 +79,7 @@ const updateUser = async (
     if (body.password) {
       const incorrectPassword = await bcrypt.compare(
         body.password,
-        res.locals.user.password,
+        user.password,
       );
 
       if (!incorrectPassword) {
@@ -92,12 +94,9 @@ const updateUser = async (
     if (req.file) {
       if (imageMimeTypes.includes(req.file.mimetype)) {
         const extension = path.extname(req.file.originalname);
-        fileName = `profile-${res.locals.user.id}-${Date.now()}-${uniqueId}${extension}`;
+        fileName = `profile-${user.id}-${Date.now()}-${uniqueId}${extension}`;
         const uploadsBase = path.join(process.cwd(), 'uploads');
-        const directoryPath = path.join(
-          uploadsBase,
-          `/files/user-${res.locals.user.id}`,
-        );
+        const directoryPath = path.join(uploadsBase, `/files/user-${user.id}`);
         const filePath = path.join(directoryPath, fileName);
 
         if (!fs.existsSync(directoryPath)) {
@@ -111,7 +110,7 @@ const updateUser = async (
             extension,
             originalName: req.file.originalname,
             usage: 'profile',
-            userId: res.locals.user.id,
+            userId: user.id,
           },
         });
       }
@@ -122,17 +121,21 @@ const updateUser = async (
       return;
     }
 
-    user = await prisma.user.update({
-      where: { id: res.locals.user.id },
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
       data: infos,
     });
 
-    const { password, ...userWithoutPassword } = user;
+    const { password, ...userWithoutPassword } = updatedUser;
 
     res.status(200).json({ user: { ...userWithoutPassword, image: fileName } });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

@@ -1,14 +1,14 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { io, openai } from '../../../../socket';
-import { CvMinuteSectionInterface } from '../../../../interfaces/role/user/cv-minute/cvMinuteSection.interface';
+import { io, openai } from '@/socket';
+import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
 import {
   extractJson,
   questionNumber,
   questionNumberByIndex,
   questionRangeByIndex,
-} from '../../../../utils/functions';
+} from '@/utils/functions';
 
 const prisma = new PrismaClient();
 
@@ -104,7 +104,7 @@ const getQualiCarriereQuestion = async (
           },
         });
 
-        const sectionInfosToCreate = s.sectionInfos.map((info) => ({
+        const sectionInfosToCreate = s.sectionInfos?.map((info) => ({
           cvMinuteSectionId: newSection.id,
           title: info.title,
           content: info.content,
@@ -116,7 +116,9 @@ const getQualiCarriereQuestion = async (
           order: info.order,
         }));
 
-        await prisma.sectionInfo.createMany({ data: sectionInfosToCreate });
+        if (sectionInfosToCreate) {
+          await prisma.sectionInfo.createMany({ data: sectionInfosToCreate });
+        }
       }
 
       cvMinute = newCvMinute;
@@ -248,9 +250,10 @@ const getQualiCarriereQuestion = async (
                       - Privilégie des termes métiers, précis et actionnables.
                       - Évite les soft skills vagues ou évidentes (ex : rigueur, curiosité…).
                       - Ne reformule pas plusieurs fois une même idée.
+                      - Respecter les sauts à la ligne demandé.
+                      - Ne jamais sortir du format demandé.
 
-                      Le tout doit être structuré comme suit :
-
+                      Format attendu :
                       {
                         resume: "...",
                         competences: ["...", "...", ...]
@@ -274,7 +277,8 @@ const getQualiCarriereQuestion = async (
                       responseId: openaiResponse.id,
                       userId: user.id,
                       request: 'quali-carriere-resume',
-                      response: r.message.content,
+                      response:
+                        r.message.content ?? 'quali-carriere-resume-response',
                       index: r.index,
                     },
                   });
@@ -393,15 +397,17 @@ const getQualiCarriereQuestion = async (
                       - Si banal : Reformule pour valoriser, puis pose une version améliorée.
                       - Si long ou confus : Clarifie et valide ("Tu veux dire que… ?")
 
+                      Contraintes :
+                      - Max 110 caractères
+                      - Ne jamais sortir du format demandé
+
                       Format de sortie :
-                      {
-                        question: "ta relance puissante ici (max 110 caractères)"
-                      }
+                      { "question": "..." }
                     `.trim(),
                   },
                   {
                     role: 'user',
-                    content: `Expérience :\n${userExperience}\n\nEntretien précédent :\n${prevQuestions}`,
+                    content: `Expérience :\n${userExperience}\nEntretien précédent :\n${prevQuestions}`,
                   },
                 ],
               });
@@ -413,7 +419,8 @@ const getQualiCarriereQuestion = async (
                       responseId: openaiResponse.id,
                       userId: user.id,
                       request: 'quali-carriere-question',
-                      response: r.message.content,
+                      response:
+                        r.message.content ?? 'quali-carriere-question-response',
                       index: r.index,
                     },
                   });
@@ -476,16 +483,15 @@ const getQualiCarriereQuestion = async (
                   - Creuse les réponses vagues (“Un exemple ?” / “Concrètement ?”)
                   - Reformule ce qui est flou ou banalisé (“Tu veux dire que…”)
 
+                  Contraintes :
+                  - Basé sur l’expérience utilisateur.
+                  - Génère les **2 premières questions** de l’échange.
+                  - Max 110 caractères par question.
+                  - Respecter les sauts à la ligne demandé.
+                  - Ne jamais sortir du format demandé.
+
                   Format attendu :
-                  - Basé sur l’expérience utilisateur
-                  - Génère les **2 premières questions** de l’échange
-                  - Format JSON :
-                    {
-                      "questions": [
-                        "Question 1 (max 110 caractères)",
-                        "Question 2 (max 110 caractères)"
-                      ]
-                    }
+                    { "questions": [ "Question 1", "Question 2" ] }
                 `.trim(),
               },
               {
@@ -502,7 +508,8 @@ const getQualiCarriereQuestion = async (
                   responseId: openaiResponse.id,
                   userId: user.id,
                   request: 'quali-carriere-question',
-                  response: r.message.content,
+                  response:
+                    r.message.content ?? 'quali-carriere-question-response',
                   index: r.index,
                 },
               });
@@ -550,7 +557,11 @@ const getQualiCarriereQuestion = async (
     res.status(200).json({ nextQuestion: true });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

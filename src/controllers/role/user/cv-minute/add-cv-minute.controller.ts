@@ -5,11 +5,11 @@ import express from 'express';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 
-import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import { openai } from '../../../../socket';
-import { extractJson } from '../../../../utils/functions';
-import { formattedDate } from '../../../../utils/constants';
+import { PrismaClient } from '@prisma/client';
+import { openai } from '@/socket';
+import { extractJson } from '@/utils/functions';
+import { domains, formattedDate } from '@/utils/constants';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -19,7 +19,7 @@ const addCvMinute = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    const userId = res.locals.user.id;
+    const { user } = res.locals;
     const body: { position: string } = req.body;
 
     const errors = validationResult(req);
@@ -33,26 +33,29 @@ const addCvMinute = async (
     const cvMinute = await prisma.cvMinute.create({
       data: {
         position: body.position.trim(),
-        userId,
+        userId: user.id,
         name,
       },
     });
 
-    // MIME type
+    // MIME TYPE
     const allowedMimeTypes = [
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ];
 
-    if (!allowedMimeTypes.includes(req.file.mimetype)) {
+    if (!req.file) {
+      res.json({ fileNotFound: true });
+      return;
+    } else if (!allowedMimeTypes.includes(req.file.mimetype)) {
       res.json({ invalidDocument: true });
       return;
     } else {
       const extension = path.extname(req.file.originalname);
-      const fileName = `cv-${userId}-${Date.now()}-${uniqueId}${extension}`;
+      const fileName = `cv-${user.id}-${Date.now()}-${uniqueId}${extension}`;
       const uploadsBase = path.join(process.cwd(), 'uploads');
-      const directoryPath = path.join(uploadsBase, `/files/user-${userId}`);
+      const directoryPath = path.join(uploadsBase, `/files/user-${user.id}`);
       const filePath = path.join(directoryPath, fileName);
 
       if (!fs.existsSync(directoryPath)) {
@@ -66,7 +69,7 @@ const addCvMinute = async (
           extension,
           originalName: req.file.originalname,
           usage: 'cv',
-          userId,
+          userId: user.id,
           cvMinuteId: cvMinute.id,
         },
       });
@@ -95,17 +98,25 @@ const addCvMinute = async (
             content: `
               Tu es un expert en rédaction et optimisation de CV.
 
-              Objectif :
+              Mission :
+              À partir du contenu du CV et de l’offre ciblée, 
               - Extraire les informations du CV.
-              - Évaluer la compatibilité avec l'
+              - Attribue 1 à 3 domaines le profil.
+              - Évaluer la compatibilité avec l'offre ciblée.
               - Retourner une structure JSON strictement conforme au format donné.
 
-              Règles :
+              Domaines : 
+              - ${domains.map((d) => d.label).join('- \n')}
+
+              Contraintes :
               - Tous les champs doivent être présents, même si vides ou "à ajouter".
               - Scores entre 0 et 100.
               - Les phrases doivent être claires, aérées (retours à la ligne quand nécessaire).
               - Utilise des icônes de lucide-static pour les contacts.
+              - Choisir parmis les domaines données.
               - Donne uniquement un objet JSON (pas de texte autour).
+              - Respecter les sauts à la ligne demandé.
+              - Ne jamais sortir du format demandé.
               
               Format attendu :
               {
@@ -147,6 +158,7 @@ const addCvMinute = async (
                     sectionAdvice: string
                   }
                 ],
+                domains: [...],
                 newSectionsAdvice: string,
                 evaluations: {
                   globalScore: string,
@@ -175,7 +187,7 @@ const addCvMinute = async (
               responseId: openaiResponse.id,
               cvMinuteId: cvMinute.id,
               request: 'cv-infos',
-              response: r.message.content,
+              response: r.message.content ?? 'cv-infos-response',
               index: r.index,
             },
           });
@@ -213,6 +225,7 @@ const addCvMinute = async (
               sectionOrder: string;
               sectionAdvice: string;
             }[];
+            domains: string[];
             newSectionsAdvice: string;
             evaluations: {
               globalScore: string;
@@ -320,7 +333,7 @@ const addCvMinute = async (
             })),
           ];
 
-          // CvMinuteSection
+          // CVMINUTE SECTION
           for (const s of allSections) {
             let section = await prisma.section.findUnique({
               where: { name: s.name.trim().toLowerCase() },
@@ -339,7 +352,7 @@ const addCvMinute = async (
               data: {
                 cvMinuteId: cvMinute.id,
                 sectionId: section.id,
-                sectionOrder: s.order && Number(s.order),
+                sectionOrder: s.order ? Number(s.order) : 1,
                 sectionTitle: s.title,
               },
             });
@@ -354,7 +367,7 @@ const addCvMinute = async (
               });
             }
 
-            // SectionInfo
+            // SECTIONI INFO
             if (s.content && typeof s.content === 'string') {
               await prisma.sectionInfo.create({
                 data: {
@@ -386,7 +399,7 @@ const addCvMinute = async (
                     data: {
                       cvMinuteSectionId: cvMinuteSection.id,
                       title: item.title,
-                      content: item.content,
+                      content: item.content ?? '',
                       date: item.date,
                       company: item.company,
                       contrat: item.contrat,
@@ -401,13 +414,29 @@ const addCvMinute = async (
                       data: {
                         sectionInfoId: sectionInfo.id,
                         initialScore: Number(item.score),
-                        content: item.high,
+                        content: item.high ?? '',
                         weakContent: item.weak,
                       },
                     });
                   }
                 }
               }
+            }
+          }
+
+          for (const item of jsonData.domains) {
+            const existDomain = await prisma.cvMinuteDomain.findFirst({
+              where: { content: item.trim() },
+            });
+
+            if (!existDomain) {
+              await prisma.cvMinuteDomain.create({
+                data: {
+                  content: item.trim(),
+                  cvMinuteId: cvMinute.id,
+                  userId: user.id,
+                },
+              });
             }
           }
 
@@ -431,13 +460,17 @@ const addCvMinute = async (
     }
 
     const cvMinuteCount = await prisma.cvMinute.count({
-      where: { userId },
+      where: { userId: user.id },
     });
 
     res.status(201).json({ cvMinuteId: cvMinute.id, cvMinuteCount });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

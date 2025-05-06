@@ -4,8 +4,8 @@ import crypto from 'crypto';
 import express from 'express';
 
 import { PrismaClient } from '@prisma/client';
-import { formattedDate, imageMimeTypes } from '../../../../utils/constants';
-import { SectionInfoInterface } from '../../../../interfaces/role/user/cv-minute/sectionInfo.interface';
+import { formattedDate, imageMimeTypes } from '@/utils/constants';
+import { SectionInfoInterface } from '@/interfaces/role/user/cv-minute/sectionInfo.interface';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -18,7 +18,11 @@ const getCvMinute = async (
     const { id } = req.params;
 
     const cvMinute = await prisma.cvMinute.findUnique({
-      where: { id: Number(id), qualiCarriereRef: false },
+      where: {
+        id: Number(id),
+        qualiCarriereRef: false,
+        cvThequeCritereId: null,
+      },
       include: {
         advices: true,
         evaluation: true,
@@ -51,7 +55,11 @@ const getCvMinute = async (
     });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -138,10 +146,10 @@ const copyCvMinute = async (
       });
     }
 
-    // Copier les sections, infos, conseils et évaluations
+    // COPY CVMINUTE SECTION, SECTION INFOS, ADVICE & EVALUATION
     await Promise.all(
       cvMinute.cvMinuteSections.map(async (section) => {
-        const newSection = await prisma.cvMinuteSection.create({
+        const newCvMinuteSection = await prisma.cvMinuteSection.create({
           data: {
             cvMinuteId: newCvMinute.id,
             sectionId: section.sectionId,
@@ -154,7 +162,7 @@ const copyCvMinute = async (
           section.sectionInfos.map(async (info) => {
             const newInfo = await prisma.sectionInfo.create({
               data: {
-                cvMinuteSectionId: newSection.id,
+                cvMinuteSectionId: newCvMinuteSection.id,
                 title: info.title,
                 content: info.content,
                 date: info.date,
@@ -166,7 +174,7 @@ const copyCvMinute = async (
               },
             });
 
-            // Copier les conseils
+            // COPY ADVICE
             if (info.advices.length > 0) {
               await prisma.advice.createMany({
                 data: info.advices.map((adv) => ({
@@ -177,7 +185,7 @@ const copyCvMinute = async (
               });
             }
 
-            // Copier l’évaluation
+            // COPY EVALUATION
             if (info.evaluation) {
               await prisma.evaluation.create({
                 data: {
@@ -197,7 +205,11 @@ const copyCvMinute = async (
     res.status(200).json({ cvMinute: { id: newCvMinute.id } });
     return;
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -209,14 +221,22 @@ const getAllCvMinute = async (
   try {
     const { user } = res.locals;
     const cvMinutes = await prisma.cvMinute.findMany({
-      where: { userId: user.id, qualiCarriereRef: false },
+      where: {
+        userId: user.id,
+        qualiCarriereRef: false,
+        cvThequeCritereId: null,
+      },
       orderBy: { updatedAt: 'desc' },
     });
 
     res.status(200).json({ cvMinutes });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -239,7 +259,11 @@ const updateCvMinuteName = async (
     });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -254,6 +278,11 @@ const updateCvMinuteVisibility = async (
     let cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
     });
+
+    if (!cvMinute) {
+      res.json({ cvMinuteNotFound: true });
+      return;
+    }
 
     if (cvMinute.visible) {
       cvMinute = await prisma.cvMinute.update({
@@ -272,7 +301,11 @@ const updateCvMinuteVisibility = async (
     });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -282,8 +315,8 @@ const updateCvMinuteProfile = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let sectionInfo: SectionInfoInterface = null;
-    const userId = res.locals.user.id;
+    let sectionInfo: SectionInfoInterface | null = null;
+    const { user } = res.locals;
     const body: {
       cvMinuteSectionId: number | string;
       sectionInfoId?: number | string;
@@ -331,14 +364,17 @@ const updateCvMinuteProfile = async (
       where: { sectionInfoId: sectionInfo.id },
     });
 
-    if (!imageMimeTypes.includes(req.file.mimetype)) {
+    if (!req.file) {
+      res.json({ fileNotFound: true });
+      return;
+    } else if (!imageMimeTypes.includes(req.file.mimetype)) {
       res.json({ invalidFormat: true });
       return;
     } else {
       const extension = path.extname(req.file.originalname);
-      const fileName = `cv-profile-${userId}-${Date.now()}-${uniqueId}${extension}`;
+      const fileName = `cv-profile-${user.id}-${Date.now()}-${uniqueId}${extension}`;
       const uploadsBase = path.join(process.cwd(), 'uploads');
-      const directoryPath = path.join(uploadsBase, `/files/user-${userId}`);
+      const directoryPath = path.join(uploadsBase, `/files/user-${user.id}`);
 
       const filePath = path.join(directoryPath, fileName);
 
@@ -366,7 +402,7 @@ const updateCvMinuteProfile = async (
             extension,
             originalName: req.file.originalname,
             usage: 'cv-profile',
-            userId,
+            userId: user.id,
             cvMinuteId: cvMinute.id,
             sectionInfoId: sectionInfo.id,
           },
@@ -383,7 +419,11 @@ const updateCvMinuteProfile = async (
     res.status(200).json({ cvMinuteSection, file });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -405,6 +445,14 @@ const updateSectionInfoOrder = async (
       select: { id: true, order: true },
     });
 
+    if (!section) {
+      res.json({ sectionNotFound: true });
+      return;
+    } else if (!targetSection) {
+      res.json({ targetSectionNotFound: true });
+      return;
+    }
+
     const tempOrder = section.order;
     section = await prisma.sectionInfo.update({
       where: { id: section.id },
@@ -418,7 +466,11 @@ const updateSectionInfoOrder = async (
     res.status(200).json({ section, targetSection });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -440,6 +492,14 @@ const updateCvMinuteSectionOrder = async (
       select: { id: true, sectionOrder: true },
     });
 
+    if (!cvMinuteSection) {
+      res.json({ cvMinuteSectionNotFound: true });
+      return;
+    } else if (!targetCvMinuteSection) {
+      res.json({ targetCvMinuteSectionNotFound: true });
+      return;
+    }
+
     const tempOrder = cvMinuteSection.sectionOrder;
     cvMinuteSection = await prisma.cvMinuteSection.update({
       where: { id: cvMinuteSection.id },
@@ -453,7 +513,11 @@ const updateCvMinuteSectionOrder = async (
     res.status(200).json({ cvMinuteSection, targetCvMinuteSection });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -476,7 +540,11 @@ const deleteSectionInfo = async (
     res.status(200).json({ section });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -499,7 +567,11 @@ const deleteCvMinuteSection = async (
     res.status(200).json({ cvMinuteSection });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

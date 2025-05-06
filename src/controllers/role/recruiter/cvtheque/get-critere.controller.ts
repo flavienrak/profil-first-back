@@ -1,9 +1,10 @@
 import express from 'express';
 
 import { PrismaClient } from '@prisma/client';
-import { openai } from '../../../../socket';
-import { extractJson } from '../../../../utils/functions';
-import { cvThequesections } from '../../../../utils/constants';
+import { openai } from '@/socket';
+import { extractJson } from '@/utils/functions';
+import { cvThequesections } from '@/utils/constants';
+import { cvThequePrompts } from '@/utils/prompts';
 
 const prisma = new PrismaClient();
 
@@ -14,17 +15,22 @@ const getCvThequeCritere = async (
   try {
     let cvThequeCritere = null;
     const { id } = req.params;
-    const { user } = res.locals;
 
     cvThequeCritere = await prisma.cvThequeCritere.findUnique({
       where: { id: Number(id) },
       include: { cvThequeCompetences: true },
     });
 
+    if (!cvThequeCritere) {
+      res.json({ cvThequeCritereNotFound: true });
+      return;
+    }
+
     if (cvThequeCritere.evaluation === 0) {
       const users = await prisma.user.findMany({
         where: { role: 'user' },
         include: {
+          cvMinuteDomains: true,
           cvMinutes: {
             include: { cvMinuteSections: { include: { sectionInfos: true } } },
           },
@@ -57,7 +63,7 @@ const getCvThequeCritere = async (
       }
 
       if (cvThequeCritere.distance) {
-        lines.push(`rayon : ${cvThequeCritere.distance}`);
+        lines.push(`rayon : ${cvThequeCritere.distance}km`);
       }
 
       const position = lines.join('\n');
@@ -118,14 +124,18 @@ const getCvThequeCritere = async (
 
             const experiences = getCvMinuteSection('experiences');
 
-            if (experiences.sectionInfos.length > 0) {
+            if (experiences && experiences.sectionInfos.length > 0) {
               let messageContent = '';
               const editableSections = sections.filter((s) => s.editable);
               const allCvMinuteSections = editableSections
                 .map((s) => {
                   const cvMinuteSection = getCvMinuteSection(s.name);
-                  return `${cvMinuteSection.sectionTitle} : ${cvMinuteSection.sectionInfos[0].content}`;
+                  if (cvMinuteSection) {
+                    return `${cvMinuteSection.sectionTitle} : ${cvMinuteSection.sectionInfos[0].content}`;
+                  }
+                  return null;
                 })
+                .filter((r) => r)
                 .join('\n');
 
               if (u.qualiCarriere === 'active') {
@@ -140,11 +150,10 @@ const getCvThequeCritere = async (
                   ${experiences.sectionInfos
                     .map(
                       (item) =>
-                        `${item.date}, ${item.company}, ${item.title} : ${item.content}`,
+                        `${item.date}, ${item.company}, ${item.title} : ${item.content}, synthèse : ${qualiCarriereResumes.find((r) => r.sectionInfoId === item.id)?.content}`,
                     )
                     .join('\n')}\n
                   Sections : ${allCvMinuteSections}\n
-                  Résumé : ${qualiCarriereResumes.map((r) => r.content).join('\n')}
                   Offre ciblée : ${position}
                 `;
               } else {
@@ -170,12 +179,15 @@ const getCvThequeCritere = async (
                     content: `
                       Tu es expert en rédaction de CV et en analyse d’adéquation avec les offres d’emploi.
   
-                      Objectif :
-                      Évaluer la compatibilité entre le contenu d'un CV et une offre ciblée, en attribuant un score de 0 à 100.
+                      Mission :
+                      À partir du contenu du CV et de l’offre ciblée, évaluer la compatibilité entre le contenu d'un CV et une offre ciblée, en attribuant un score de 0 à 100.
   
                       Règles de compatibilité :
                       - Si le score est strictement supérieur à 50, considérer le CV comme compatible.
                       - Sinon, considérer comme non compatible.
+
+                      Contraintes :
+                      - Ne jamais sortir du format demandé
   
                       Format attendu :
                       {
@@ -198,7 +210,8 @@ const getCvThequeCritere = async (
                       responseId: openaiResponse.id,
                       userId: u.id,
                       request: 'cvtheque-evaluation',
-                      response: r.message.content,
+                      response:
+                        r.message.content ?? 'cvtheque-evaluation-response',
                       index: r.index,
                     },
                   });
@@ -281,24 +294,7 @@ const getCvThequeCritere = async (
                             messages: [
                               {
                                 role: 'system',
-                                content: `
-                                  Tu es expert en rédaction de CV à fort impact.
-  
-                                  Mission :
-                                  À partir des contenus du CV et de l’offre ciblée, génère un **titre de CV** clair, direct et cohérent avec le poste visé.
-  
-                                  Objectifs :
-                                  - Valoriser la cohérence du parcours
-                                  - Utiliser les bons mots-clés du métier
-                                  - Affirmer un positionnement professionnel net
-  
-                                  Contraintes :
-                                  - 1 ligne, maximum 80 caractères
-                                  - Pas de phrase complète ni de ponctuation inutile
-  
-                                  Format attendu :
-                                  { "content": "..." }
-                              `.trim(),
+                                content: cvThequePrompts[0][s.name].trim(),
                               },
                               {
                                 role: 'user',
@@ -314,7 +310,7 @@ const getCvThequeCritere = async (
                                 responseId: openaiSectionResponse.id,
                                 userId: u.id,
                                 request: 'cvtheque-title',
-                                response: r.message.content,
+                                response: r.message.content ?? '',
                                 index: r.index,
                               },
                             });
@@ -344,25 +340,7 @@ const getCvThequeCritere = async (
                             messages: [
                               {
                                 role: 'system',
-                                content: `
-                                  Tu es expert en rédaction de CV à fort impact.
-  
-                                  Mission :
-                                  À partir des contenus du CV et de l’offre ciblée, rédige une **phrase d’accroche professionnelle** sobre et crédible, centrée sur l’expertise et la cohérence du parcours.
-  
-                                  Objectifs :
-                                  - Montrer une progression logique
-                                  - Positionner clairement le rôle cible
-                                  - Mettre en valeur les savoir-faire clés
-  
-                                  Contraintes :
-                                  - 1 à 2 phrases, ton neutre et structuré
-                                  - Maximum 200 caractères
-                                  - Pas d'effet de style, pas d’exagération
-  
-                                  Format attendu :
-                                  { "content": "..." }
-                              `.trim(),
+                                content: cvThequePrompts[0][s.name].trim(),
                               },
                               {
                                 role: 'user',
@@ -378,7 +356,7 @@ const getCvThequeCritere = async (
                                 responseId: openaiSectionResponse.id,
                                 userId: u.id,
                                 request: 'cvtheque-presentation',
-                                response: r.message.content,
+                                response: r.message.content ?? '',
                                 index: r.index,
                               },
                             });
@@ -408,61 +386,7 @@ const getCvThequeCritere = async (
                             messages: [
                               {
                                 role: 'system',
-                                content: `
-                                    Tu es expert en rédaction de CV à fort impact.
-  
-                                    Objectif global :
-                                    À partir des contenus du CV et de l'offre ciblée, reformule chaque expérience de manière à :
-                                    - Générer une accroche professionnelle claire
-                                    - Calculer la durée (avec +1 mois)
-                                    - Anonymiser l’organisation
-                                    - Reformuler les missions pour maximiser l’alignement avec l’offre
-  
-                                    1. Phrase d’accroche :
-                                    - Ton neutre et structuré
-                                    - 1 à 2 phrases max ≤ 200 caractères
-                                    - Pas d’effet de style ni exagération
-  
-                                    2. Durée de l’expérience :
-                                    - Calcule la durée en mois (fin - début + 1 mois)
-                                    - Affiche uniquement la durée, format : "26 mois", "14 mois", etc.
-                                    - Ne jamais mentionner les dates.
-  
-                                    3. Anonymisation de l’organisation :
-                                    Analyse le nom + contexte, puis remplace l’entreprise par :
-                                    [Type d’organisation] – secteur [Secteur] – [Marché] – portée [Portée géographique]
-  
-                                    → Utilise les valeurs suivantes :
-  
-                                    • Type d’organisation :
-                                    STARTUP | PME | ETI | GRAND_GROUPE | INSTITUTION_PUBLIQUE | ONG | ORG_ETUDIANTE | ASSO_BENEVOLE | PROJET_UNIVERSITAIRE | INDEPENDANT
-  
-                                    • Secteur principal :
-                                    TECH | INDUSTRIE | ENERGIE | LUXE | FINANCE | SANTE | AGROALIM | TRANSPORT | EDUCATION | CONSEIL | MEDIAS | COLLECTIVITE | ONG_SECTEUR | EVENT_ETUDIANT | IMPACT_SOCIAL | RH
-  
-                                    • Marché cible :
-                                    B2B | B2C | B2G | MIXTE | NON_MARCHAND
-  
-                                    • Portée géographique :
-                                    NATIONAL | EUROPEEN | INTERNATIONAL | CAMPUS
-  
-                                    4. Reformulation “fit de poste” :
-                                    - Reformule les missions sous forme de 5 bullet points max.
-                                    - Respecte le format :  
-                                      "Xxxxxx : verbe d’action + missions clés (150 à 290 caractères)"
-                                    - Basé sur l’expérience réelle + attendus de l’offre.
-                                    - Vocabulaire professionnel, factuel, sans extrapolation.
-  
-                                    Format attendu :
-                                    [
-                                      {
-                                        "title": "Accroche",
-                                        "date": "Durée",
-                                        "company": "Type – secteur – marché – portée",
-                                        "description": "• Bullet point 1\\n• Bullet point 2\\n..."
-                                      }
-                                    ]
-                                `.trim(),
+                                content: cvThequePrompts[0][s.name].trim(),
                               },
                               {
                                 role: 'user',
@@ -478,7 +402,7 @@ const getCvThequeCritere = async (
                                 responseId: openaiSectionResponse.id,
                                 userId: u.id,
                                 request: 'cvtheque-experience',
-                                response: r.message.content,
+                                response: r.message.content ?? '',
                                 index: r.index,
                               },
                             });
@@ -517,62 +441,7 @@ const getCvThequeCritere = async (
                             messages: [
                               {
                                 role: 'system',
-                                content: `
-                                  Tu es expert en rédaction de CV à fort impact.
-  
-                                  Mission :
-                                  À partir du contenu du CV et de l’offre ciblée, reformuler et structurer chaque diplôme selon un format standardisé, en regroupant toutes les entrées dans un **seul contenu**, séparées par des retours à la ligne.
-  
-                                  Consignes impératives pour CHAQUE diplôme :
-  
-                                  1. Reformulation de l’intitulé :
-                                  - Sujet = intitulé reformulé en termes universels (sans jargon)
-                                  - Max. 20 caractères (espaces inclus)
-  
-                                  2. Niveau :
-                                  - Bac +X (si diplôme non standard)
-                                  - Master / Maîtrise / Licence / BTS (si diplôme standard)
-  
-                                  3. Type d’établissement (1 seul choix) :
-                                  [Université historique | Grande école | École spécialisée | Centre certifié]
-  
-                                  4. Reconnaissance :
-                                  - Formulation nuancée entre 1 et 7 mots
-                                  - Exemples : "Top évidence internationale", "Référence académique majeure", "Reconnue sectoriellement", "Pertinente localement"
-  
-                                  5. Réputation :
-                                  - Note : de ★☆☆☆☆ à ★★★★★
-                                  - Commentaire court : ex. "Prestige académique", "Rayonnement modéré", "Expertise sectorielle"
-  
-                                  Format de sortie strict :
-                                  Sujet : [Intitulé reformulé]  
-                                  Niveau : [Bac +X ou Master/Maîtrise/Licence/BTS]  
-                                  Type d'établissement : [Catégorie]  
-                                  Reconnaissance : [Description en 1-7 mots]  
-                                  Réputation : [★☆☆☆☆ à ★★★★★] + [Commentaire]
-  
-                                  Interdictions :
-                                  - Aucun texte hors format
-                                  - Ne jamais citer le nom de l’établissement
-                                  - Aucune abréviation non universelle
-                                  - Aucune spécialisation technique
-  
-                                  Format attendu :
-                                  { "content": "\
-                                      Sujet : [Intitulé reformulé]\n\
-                                      Niveau : [Bac +X ou diplôme standard]\n\
-                                      Type d'établissement : [Catégorie]\n\
-                                      Reconnaissance : [Description nuancée]\n\
-                                      Réputation : [★☆☆☆☆ à ★★★★★] + [Commentaire]\n\
-                                      \n\
-                                      Sujet : ...\n\
-                                      Niveau : ...\n\
-                                      Type d'établissement : ...\n\
-                                      Reconnaissance : ...\n\
-                                      Réputation : ...\
-                                    "
-                                  }
-                              `.trim(),
+                                content: cvThequePrompts[0][s.name].trim(),
                               },
                               {
                                 role: 'user',
@@ -588,7 +457,7 @@ const getCvThequeCritere = async (
                                 responseId: openaiSectionResponse.id,
                                 userId: u.id,
                                 request: 'cvtheque-diplomes',
-                                response: r.message.content,
+                                response: r.message.content ?? '',
                                 index: r.index,
                               },
                             });
@@ -618,26 +487,7 @@ const getCvThequeCritere = async (
                             messages: [
                               {
                                 role: 'system',
-                                content: `
-                                  Tu es expert en rédaction de CV à fort impact.
-  
-                                  Mission :
-                                  À partir du contenu du CV et de l’offre ciblée, sélectionne **la formation la plus valorisable pour le poste visé** et affiche-la de manière sobre, professionnelle et lisible.
-  
-                                  Règles de sélection :
-                                  - Priorité : reconnue > renforçante > pertinente pour le domaine
-                                  - Une seule formation mise en valeur
-                                  - Les autres sont mentionnées sans détail
-  
-                                  Rédaction :
-                                  - Jamais de mots comme "initiation", "notions", "bases"
-                                  - Phrase structurée ainsi :
-                                    [Poids] – [Thème professionnel valorisé, 5 à 8 mots] | [Organisme connu ou nom raccourci]  
-                                    + X autres dont X reconnue / renforçante / pertinente pour le domaine
-  
-                                  Format attendu :
-                                  { "content": "..." }
-                              `.trim(),
+                                content: cvThequePrompts[0][s.name].trim(),
                               },
                               {
                                 role: 'user',
@@ -653,7 +503,7 @@ const getCvThequeCritere = async (
                                 responseId: openaiSectionResponse.id,
                                 userId: u.id,
                                 request: 'cvtheque-formation',
-                                response: r.message.content,
+                                response: r.message.content ?? '',
                                 index: r.index,
                               },
                             });
@@ -683,40 +533,7 @@ const getCvThequeCritere = async (
                             messages: [
                               {
                                 role: 'system',
-                                content: `
-                                  Tu es expert en rédaction de CV à fort impact.
-  
-                                  Mission :
-                                  À partir du contenu du CV et de l’offre ciblée, génère **4 compétences clés** à afficher.
-  
-                                  Contraintes :
-                                  - Formulation synthétique (2 à 4 mots)
-                                  - Reflète des actions réellement réalisées
-                                  - Alignée avec les attentes de l’offre
-                                  - Sans redondance avec la description de poste
-                                  - Pas de jargon vide, uniquement des termes concrets et parlants
-  
-                                  Inputs à croiser :
-                                  - Expériences et intitulés du CV
-                                  - Offre d’emploi ciblée
-  
-                                  Cas spécifique outil :
-                                  Si un **type d’outil** (ex. reporting, gestion de projet, coordination) est maîtrisé par le candidat **et** explicitement requis dans l’offre, la dernière ligne peut être :
-                                  **Outils de [type]**
-  
-                                  Format de sortie :
-                                  - Une compétence par ligne
-                                  - Une ligne vide entre chaque compétence
-                                  - Total : 4 lignes (la dernière peut être "Outils de [type]")
-  
-                                  Format attendu :
-                                  { "content": "..." }
-
-                                  Exemple attendu :
-                                  {
-                                    "content": "Compétence 1\\n\\nCompétence 2\\n\\nCompétence 3\\n\\nCompétence 4 ou Outils de [type]"
-                                  }
-                              `.trim(),
+                                content: cvThequePrompts[0][s.name].trim(),
                               },
                               {
                                 role: 'user',
@@ -732,7 +549,7 @@ const getCvThequeCritere = async (
                                 responseId: openaiSectionResponse.id,
                                 userId: u.id,
                                 request: 'cvtheque-competence',
-                                response: r.message.content,
+                                response: r.message.content ?? '',
                                 index: r.index,
                               },
                             });
@@ -782,7 +599,11 @@ const getCvThequeCritere = async (
     res.status(200).json({ cvThequeCritere });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

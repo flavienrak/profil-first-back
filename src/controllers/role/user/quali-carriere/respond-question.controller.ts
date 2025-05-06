@@ -6,14 +6,14 @@ import FormData from 'form-data';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { io, openai } from '../../../../socket';
-import { CvMinuteSectionInterface } from '../../../../interfaces/role/user/cv-minute/cvMinuteSection.interface';
+import { io, openai } from '@/socket';
+import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
 import {
   extractJson,
   questionNumber,
   questionNumberByIndex,
   questionRangeByIndex,
-} from '../../../../utils/functions';
+} from '@/utils/functions';
 
 const prisma = new PrismaClient();
 
@@ -74,12 +74,9 @@ const respondQualiCarriereQuestion = async (
       qualiCarriereResponses.push(qualiCarriereResponse);
     } else if (req.file) {
       const extension = path.extname(req.file.originalname) || '.wav';
-      const fileName = `audio-${res.locals.user.id}-${Date.now()}${extension}`;
+      const fileName = `audio-${user.id}-${Date.now()}${extension}`;
       const uploadsBase = path.join(process.cwd(), 'uploads');
-      const directoryPath = path.join(
-        uploadsBase,
-        `/files/user-${res.locals.user.id}`,
-      );
+      const directoryPath = path.join(uploadsBase, `/files/user-${user.id}`);
       const filePath = path.join(directoryPath, fileName);
 
       if (!fs.existsSync(directoryPath)) {
@@ -142,9 +139,13 @@ const respondQualiCarriereQuestion = async (
       return cvMinuteSections.find((s) => s.sectionId === section?.id);
     };
 
-    const { sectionInfos } = getCvMinuteSection('experiences');
+    const experiences = getCvMinuteSection('experiences');
+    const sectionInfos = experiences?.sectionInfos;
 
-    const totalQuestions = questionNumber(sectionInfos.length);
+    if (!sectionInfos || (sectionInfos && sectionInfos.length === 0)) {
+      res.json({ noExperiences: true });
+      return;
+    }
 
     const nextQuestion =
       qualiCarriereQuestions[
@@ -155,6 +156,8 @@ const respondQualiCarriereQuestion = async (
       qualiCarriereQuestions[
         qualiCarriereQuestions.findIndex((q) => q.id === nextQuestion?.id) + 1
       ];
+
+    const totalQuestions = questionNumber(sectionInfos.length);
 
     if (qualiCarriereResponses.length === totalQuestions) {
       res.status(200).json({ nextStep: true });
@@ -189,7 +192,7 @@ const respondQualiCarriereQuestion = async (
           qualiCarriereResponses.length < restQuestions - 1
         ) {
           const openaiResponse = await openai.chat.completions.create({
-            model: 'gpt-4-turbo-preview',
+            model: 'gpt-3.5-turbo',
             messages: [
               {
                 role: 'system',
@@ -222,10 +225,13 @@ const respondQualiCarriereQuestion = async (
                   - Si banal : Reformule pour valoriser, puis pose une version améliorée.
                   - Si long ou confus : Clarifie et valide ("Tu veux dire que… ?")
 
-                  Format de sortie :
-                  {
-                    question: "ta relance puissante ici (max 110 caractères)"
-                  }
+                  Contraintes :
+                  - Max 110 caractères.
+                  - Respecter les sauts à la ligne demandé.
+                  - Ne jamais sortir du format demandé.
+
+                  Format attendu :
+                  { "question": "..." }
                 `.trim(),
               },
               {
@@ -245,7 +251,8 @@ const respondQualiCarriereQuestion = async (
                   responseId: openaiResponse.id,
                   userId: user.id,
                   request: 'quali-carriere-question',
-                  response: r.message.content,
+                  response:
+                    r.message.content ?? 'quali-carriere-question-response',
                   index: r.index,
                 },
               });
@@ -281,7 +288,11 @@ const respondQualiCarriereQuestion = async (
     res.status(200).json({ nextQuestion: true });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

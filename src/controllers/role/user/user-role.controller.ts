@@ -9,15 +9,21 @@ const acceptConditions = async (
   res: express.Response,
 ): Promise<void> => {
   try {
+    const { user } = res.locals;
+
     await prisma.user.update({
-      where: { id: res.locals.user.id },
+      where: { id: user.id },
       data: { acceptConditions: true },
     });
 
     res.status(200).json({ user: { acceptConditions: true } });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

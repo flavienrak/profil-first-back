@@ -49,36 +49,35 @@ const allUsers = new Map<string, { socket: Socket; count: number }>();
 io.on('connection', async (socket: Socket) => {
   const userId = socket.handshake.query.id as string | undefined;
 
-  if (userId) {
-    if (allUsers.has(userId)) {
-      const userData = allUsers.get(userId);
-      userData.count += 1;
-      allUsers.set(userId, userData);
+  if (!userId) return;
+
+  const existingUser = allUsers.get(userId);
+
+  if (existingUser) {
+    existingUser.count += 1;
+  } else {
+    allUsers.set(userId, { socket, count: 1 });
+  }
+
+  await socket.join(`user-${userId}`);
+
+  io.emit('roomJoined');
+  io.emit('getOnlineUsers', Array.from(allUsers.keys()));
+
+  socket.on('disconnect', async () => {
+    const userData = allUsers.get(userId);
+    if (!userData) return;
+
+    userData.count -= 1;
+
+    if (userData.count <= 0) {
+      allUsers.delete(userId);
     } else {
-      allUsers.set(userId, { socket, count: 1 });
+      allUsers.set(userId, userData);
     }
 
-    await socket.join(`user-${userId}`);
-
-    io.emit('roomJoined');
-
     io.emit('getOnlineUsers', Array.from(allUsers.keys()));
-
-    socket.on('disconnect', async () => {
-      if (allUsers.has(userId)) {
-        const userData = allUsers.get(userId);
-
-        userData.count -= 1;
-
-        if (userData.count === 0) {
-          allUsers.delete(userId);
-        } else {
-          allUsers.set(userId, userData);
-        }
-      }
-      io.emit('getOnlineUsers', Array.from(allUsers.keys()));
-    });
-  }
+  });
 });
 
 const logger = winston.createLogger({

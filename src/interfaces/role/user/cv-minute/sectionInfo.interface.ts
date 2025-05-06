@@ -5,17 +5,17 @@ import { QualiCarriereResumeInterface } from '../quali-carriere/resume.interface
 
 export interface SectionInfoInterface {
   id: number;
-  order?: number;
+  order: number | null;
   content: string;
-  title?: string;
-  company?: string;
-  date?: string;
-  contrat?: string;
-  icon?: string;
-  iconSize?: number;
+  title: string | null;
+  company: string | null;
+  date: string | null;
+  contrat: string | null;
+  icon: string | null;
+  iconSize: number | null;
   cvMinuteSectionId: number;
 
-  evaluation?: EvaluationInterface;
+  evaluation?: EvaluationInterface | null;
   advices?: AdviceInterface[];
   qualiCarriereCompetences?: QualiCarriereCompetenceInteface[];
   qualiCarriereResumes?: QualiCarriereResumeInterface[];

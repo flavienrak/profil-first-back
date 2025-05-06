@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { UserInterface } from '../../../../interfaces/user.interface';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const prisma = new PrismaClient();
 
@@ -10,7 +10,7 @@ const changeQualiCarriereStatus = async (
   res: Response,
 ): Promise<void> => {
   try {
-    let updatedUser: UserInterface = null;
+    let updatedUser: UserInterface | null = null;
     const { user } = res.locals;
 
     if (user.qualiCarriere === '' || user.qualiCarriere === 'inactive') {
@@ -27,10 +27,14 @@ const changeQualiCarriereStatus = async (
 
     res
       .status(200)
-      .json({ user: { qualiCarriere: updatedUser.qualiCarriere } });
+      .json({ user: { qualiCarriere: updatedUser?.qualiCarriere } });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -57,7 +61,11 @@ const editQualiCarriereResume = async (
     res.status(200).json({ qualiCarrirereResume });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -87,7 +95,11 @@ const editQualiCarriereCompetence = async (
     res.status(200).json({ qualiCarriereCompetences });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

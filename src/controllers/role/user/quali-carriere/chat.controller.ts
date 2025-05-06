@@ -3,8 +3,8 @@ import OpenAI from 'openai';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { io, openai } from '../../../../socket';
-import { extractJson } from '../../../../utils/functions';
+import { io, openai } from '@/socket';
+import { extractJson } from '@/utils/functions';
 
 const prisma = new PrismaClient();
 
@@ -55,8 +55,16 @@ const sendQualiCarriereMessage = async (
         role: 'system',
         content: `
           Tu es un expert en rédaction et optimisation de CV. 
+
           Tu aides l'utilisateur à valoriser ses expériences professionnelles. 
-          Réponds toujours sous forme de JSON : { "response": "..." } avec un maximum de 300 caractères.
+
+          Contraintes :
+          - Max 300 caractères.
+          - Respecter les sauts à la ligne demandé.
+          - Ne jamais sortir du format demandé.
+
+          Format attendu : 
+          { "response": "..." }
         `.trim(),
       },
       {
@@ -89,7 +97,7 @@ const sendQualiCarriereMessage = async (
             responseId: openaiResponse.id,
             userId: user.id,
             request: 'quali-carriere-chat',
-            response: r.message.content,
+            response: r.message.content ?? 'quali-carriere-chat-response',
             index: r.index,
           },
         });
@@ -114,7 +122,11 @@ const sendQualiCarriereMessage = async (
     res.status(200).json({ response });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

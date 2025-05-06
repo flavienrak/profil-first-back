@@ -1,6 +1,7 @@
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x", "debian-openssl-1.1.x"]
+  output        = "../../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -20,9 +21,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  userDomains              UserDomain[]
   files                    File[]
   cvMinutes                CvMinute[]
+  cvMinuteDomains          CvMinuteDomain[]
   qualiCarriereQuestions   QualiCarriereQuestion[]
   qualiCarriereResponses   QualiCarriereResponse[]
   openaiResponses          OpenaiResponse[]
@@ -31,17 +32,6 @@ model User {
   qualiCarriereCompetences QualiCarriereCompetence[]
   cvThequeCriteres         CvThequeCritere[]
   cvThequeUsers            CvThequeUser[]
-}
-
-model UserDomain {
-  id      Int    @id @default(autoincrement())
-  content String
-  userId  Int
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model File {
@@ -87,6 +77,20 @@ model CvMinute {
   openaiResponses  OpenaiResponse[]
   evaluation       Evaluation?
   cvThequeViews    CvThequeView[]
+  cvMinuteDomains  CvMinuteDomain[]
+}
+
+model CvMinuteDomain {
+  id         Int    @id @default(autoincrement())
+  content    String
+  cvMinuteId Int
+  userId     Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cvMinute CvMinute @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
 }
 
 model Section {

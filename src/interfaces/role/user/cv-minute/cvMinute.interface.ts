@@ -11,8 +11,11 @@ export interface CvMinuteInterface {
   primaryBg: string;
   secondaryBg: string;
   tertiaryBg: string;
-  userId: number;
   visible: boolean;
+  qualiCarriereRef: boolean;
+  generated: string | null;
+  userId: number;
+  cvThequeCritereId: number | null;
 
   files?: FileInterface[];
   advices?: AdviceInterface[];

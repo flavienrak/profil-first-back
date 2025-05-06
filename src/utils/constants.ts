@@ -20,4 +20,50 @@ const cvThequesections = [
   { name: 'competence', order: 3 },
 ];
 
-export { maxAgeAuthToken, imageMimeTypes, formattedDate, cvThequesections };
+const domains = [
+  {
+    label: 'Audit & Contrôle de Gestion',
+    description: 'Audit interne, contrôle financier, reporting',
+  },
+  {
+    label: 'Consulting & Gestion de projet',
+    description: 'Management de projet, conseil stratégique, transformation',
+  },
+  { label: 'Design', description: 'Graphisme, UI/UX, Motion Design' },
+  {
+    label: 'Développement web & Mobile',
+    description: 'Front-end, back-end, applications mobiles',
+  },
+  {
+    label: 'Finance & Comptabilité',
+    description: 'Analyse financière, comptabilité, trésorerie',
+  },
+  {
+    label: 'Ingénieries & Technologies',
+    description: 'R&D, innovation, solutions techniques',
+  },
+  {
+    label: 'IT, Logiciels & Systèmes',
+    description: 'Infrastructure, cloud, cybersécurité',
+  },
+  {
+    label: 'Marketing & Communication',
+    description: 'Stratégie digitale, content marketing, relations publiques',
+  },
+  {
+    label: 'Ressources Humaines & Recrutement',
+    description: 'Talent acquisition, formation, développement RH',
+  },
+  {
+    label: 'Ventes & Développement Commercial',
+    description: 'Business development, account management, négociation',
+  },
+];
+
+export {
+  maxAgeAuthToken,
+  imageMimeTypes,
+  formattedDate,
+  cvThequesections,
+  domains,
+};

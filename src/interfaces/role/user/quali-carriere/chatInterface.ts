@@ -1,6 +1,6 @@
 export interface QualiCarriereChatInterface {
   id: number;
-  role: string;
+  role: 'user' | 'system';
   content: string;
 
   createdAt: Date;
