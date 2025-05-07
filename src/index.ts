@@ -1,5 +1,3 @@
-import 'module-alias/register';
-
 import express from 'express';
 import path from 'path';
 
@@ -49,5 +47,9 @@ app.use(
   cvThequeRoutes,
 );
 
-const port = process.env.BACKEND_PORT || 5000;
-server.listen(port, () => logger.info(`App runing at: ${port}`));
+const port = process.env.BACKEND_PORT;
+if (!port) {
+  logger.error('ENV NOT FOUND');
+} else {
+  server.listen(port, () => logger.info(`App runing at: ${port}`));
+}

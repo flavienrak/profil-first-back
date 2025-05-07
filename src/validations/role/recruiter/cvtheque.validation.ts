@@ -1,4 +1,4 @@
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 
 const addCvThequeCritereValidation = [
   body('position').trim().notEmpty().withMessage('position required'),
@@ -34,4 +34,16 @@ const updateCvThequeCritereValidation = [
   }),
 ];
 
-export { addCvThequeCritereValidation, updateCvThequeCritereValidation };
+const resendCvThequeCritereValidation = [
+  param('id')
+    .notEmpty()
+    .withMessage('id required')
+    .isInt()
+    .withMessage('invalid id'),
+];
+
+export {
+  addCvThequeCritereValidation,
+  updateCvThequeCritereValidation,
+  resendCvThequeCritereValidation,
+};

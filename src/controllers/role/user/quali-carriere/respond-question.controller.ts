@@ -231,7 +231,7 @@ const respondQualiCarriereQuestion = async (
                   - Ne jamais sortir du format demandé.
 
                   Format attendu :
-                  { "question": "..." }
+                  { question: "..." }
                 `.trim(),
               },
               {

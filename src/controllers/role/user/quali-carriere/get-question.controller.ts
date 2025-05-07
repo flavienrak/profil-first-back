@@ -402,7 +402,7 @@ const getQualiCarriereQuestion = async (
                       - Ne jamais sortir du format demandé
 
                       Format de sortie :
-                      { "question": "..." }
+                      { question: "..." }
                     `.trim(),
                   },
                   {
@@ -491,7 +491,7 @@ const getQualiCarriereQuestion = async (
                   - Ne jamais sortir du format demandé.
 
                   Format attendu :
-                    { "questions": [ "Question 1", "Question 2" ] }
+                    { questions: [ "Question 1", "Question 2" ] }
                 `.trim(),
               },
               {

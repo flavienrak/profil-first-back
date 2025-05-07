@@ -8,6 +8,8 @@ const imageMimeTypes = [
   'image/heif',
 ];
 
+const maxCvThequeUserResult = 7;
+
 const today = new Date();
 const formattedDate = today.toLocaleDateString('fr-FR');
 
@@ -63,6 +65,7 @@ const domains = [
 export {
   maxAgeAuthToken,
   imageMimeTypes,
+  maxCvThequeUserResult,
   formattedDate,
   cvThequesections,
   domains,

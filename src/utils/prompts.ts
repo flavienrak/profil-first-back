@@ -22,7 +22,7 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu :
-      { "content": "..." }
+      { content: "..." }
     `,
     presentation: `
       Tu es expert en rédaction de CV à fort impact.
@@ -45,7 +45,7 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu :
-      { "content": "..." }
+      { content: "..." }
     `,
     experiences: `
       Tu es expert en rédaction de CV à fort impact.
@@ -113,10 +113,10 @@ const cvThequePrompts = [
       Format attendu :
       [
         {
-          "title": "Accroche",
-          "date": "Durée",
-          "company": "Type – secteur – marché – portée",
-          "description": "• Bullet point 1\n• Bullet point 2\n..."
+          title: "Accroche",
+          date: "Durée",
+          company: "Type – secteur – marché – portée",
+          description: "• Bullet point 1\\n\\n• Bullet point 2\\n\\n..." (chaque bullet point sur une nouvelle ligne)
         }
       ]
     `,
@@ -159,11 +159,11 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu :
-      { "content": "
-          Sujet : [Intitulé reformulé]\n  
-          Niveau : [Bac +X ou Master/Maîtrise/Licence/BTS]\n  
-          Type d'établissement : [Catégorie]\n  
-          Reconnaissance : [Description en 1-7 mots]\n  
+      { content: "
+          Sujet : [Intitulé reformulé]\\n\\n
+          Niveau : [Bac +X ou Master/Maîtrise/Licence/BTS]\\n\\n
+          Type d'établissement : [Catégorie]\\n\\n
+          Reconnaissance : [Description en 1-7 mots]\\n\\n
           Réputation : [★☆☆☆☆ à ★★★★★] + [Commentaire]
         "
       }
@@ -186,7 +186,7 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu :
-      { "content": "
+      { content: "
           [Poids] – [Thème professionnel valorisé, 5 à 8 mots] | [Organisme connu ou nom raccourci]\n  
           + X autres dont X reconnue / renforçante / pertinente pour le domaine
         "
@@ -209,11 +209,6 @@ const cvThequePrompts = [
       Si un **type d’outil** (ex. reporting, gestion de projet, coordination) est maîtrisé par le candidat **et** explicitement requis dans l’offre, la dernière ligne peut être :
       **Outils de [type]**
 
-      Exemple :
-      {
-        "content": "Compétence 1\nCompétence 2\nCompétence 3\nCompétence 4 ou Outils de [type]"
-      }
-      
       Contraintes :
       - Formulation synthétique (2 à 4 mots)
       - Reflète des actions réellement réalisées.
@@ -225,9 +220,11 @@ const cvThequePrompts = [
       - Total : 4 lignes (la dernière peut être "Outils de [type]")
       - Respecter les sauts à la ligne demandé.
       - Ne jamais sortir du format demandé.
-
+      
       Format attendu :
-      { "content": "..." }
+      {
+        content: "Compétence 1\nCompétence 2\nCompétence 3\nCompétence 4 ou Outils de [type]"
+      }
 
     `,
   },
@@ -252,7 +249,7 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu :
-      { "content": "..." }
+      { content: "..." }
     `,
     presentation: `
       Tu es expert en rédaction de CV à fort impact.
@@ -275,7 +272,7 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu :
-      { "content": "..." }
+      { content: "..." }
     `,
     experiences: `
       Tu es expert en rédaction de CV à fort impact.
@@ -351,10 +348,10 @@ const cvThequePrompts = [
       Format attendu :
       [
         {
-          "title": "Accroche", // Titre court et percutant
-          "date": "Durée", // Calculée avec +2 mois. Ex : "10 mois" ou "2 ans et 5 mois"
-          "company": "Type – secteur – marché – portée", // Organisation anonymisée selon la taxonomie fournie
-          "description": "• Bullet point 1\n• Bullet point 2\n..." // 5 bullet points valorisants
+          title: "Accroche", // Titre court et percutant
+          date: "Durée", // Calculée avec +2 mois. Ex : "10 mois" ou "2 ans et 5 mois"
+          company: "Type – secteur – marché – portée", // Organisation anonymisée selon la taxonomie fournie
+          description: "• Bullet point 1\\n\\n• Bullet point 2\\n\\n..." // 5 bullet points valorisants
         }
       ]
     `,
@@ -395,8 +392,8 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu :
-      { "content": "
-          Bac +[niveau] / Domaine étudié : [domaine général reformulé]\n  
+      { content: "
+          Bac +[niveau] / Domaine étudié : [domaine général reformulé]\\n\\n 
           Compétences certaines : [compétence 1], [compétence 2], [compétence 3]
         "
       }
@@ -432,9 +429,9 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu :
-      { "content" : "
-          Expertise : [Domaine professionnel générique]\n  
-          → [X] formations suivies : [Intitulé reformulé de la formation principale]\n  
+      { content : "
+          Expertise : [Domaine professionnel générique]\\n\\n  
+          → [X] formations suivies : [Intitulé reformulé de la formation principale]\\n\\n  
           → Thématiques de formations abordés : [Axe 1], [Axe 2], [Axe 3]
         "
       }
@@ -459,9 +456,9 @@ const cvThequePrompts = [
         **Outils de [type]** (ex. : Outils de coordination, Outils de gestion de projet)
 
       Exemple : 
-      Analyser des données\n  
-      Organiser des actions de communication\n  
-      Collaborer avec des partenaires\n  
+      Analyser des données  
+      Organiser des actions de communication  
+      Collaborer avec des partenaires  
       Outils de gestion de projet
 
       Contraintes :
@@ -469,10 +466,10 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu : 
-      { "content: "
-          Compétence générique 1\n  
-          Compétence générique 2\n  
-          Compétence générique 3\n  
+      { content: "
+          Compétence générique 1\\n\\n  
+          Compétence générique 2\\n\\n  
+          Compétence générique 3\\n\\n  
           Outils de [type] *(uniquement si pertinent)*
         "
       }
@@ -500,7 +497,7 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
       
       Format attendu :
-      { "content": "..." }
+      { content: "..." }
     `,
     presentation: `
       Tu es expert en rédaction de CV à fort impact.
@@ -522,7 +519,7 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu :
-      { "content": "..." }
+      { content: "..." }
     `,
     experiences: `
       Tu es un expert en rédaction de CV à fort impact, spécialisé en matching stratégique entre expériences et offres ciblées. 
@@ -619,10 +616,10 @@ const cvThequePrompts = [
       Format attendu :
       [
         {
-          "title": "Accroche", // Titre court et percutant
-          "date": "Durée", // Calculée avec +2 mois. Ex : "10 mois" ou "2 ans et 5 mois"
-          "company": "Type – secteur – marché – portée", // Organisation anonymisée selon la taxonomie fournie
-          "description": "• Bullet point 1\n• Bullet point 2\n..." // 5 bullet points valorisants
+          title: "Accroche", // Titre court et percutant
+          date: "Durée", // Calculée avec +2 mois. Ex : "10 mois" ou "2 ans et 5 mois"
+          company: "Type – secteur – marché – portée", // Organisation anonymisée selon la taxonomie fournie
+          description: "• Bullet point 1\\n\\n• Bullet point 2\\n\\n..." // 5 bullet points valorisants
         }
       ]
     `,
@@ -654,10 +651,9 @@ const cvThequePrompts = [
       - Acquis : ajouter la mention Acquis au cours des X dernières années **uniquement si le diplôme est le plus récent**, en remplaçant X par le nombre d’années depuis l’obtention.
 
       Exemple (à ne pas reproduire tel quel) :
-
-      Niveau : Master 2\n  
-      Sujet : Gestion stratégique des talents\n  
-      Origine : référence dans le milieu\n  
+      Niveau : Master 2  
+      Sujet : Gestion stratégique des talents  
+      Origine : référence dans le milieu  
       Acquis au cours des 5 dernières années
 
       Contraintes :
@@ -670,10 +666,10 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu :
-      { "content" : "
-          Niveau : [BTS/Licence/Maîtrise/Master 2]\n  
-          Sujet : [Domaine reformulé]\n  
-          Origine : [domine l’expertise / référence dans le milieu / émergente]\n  
+      { content : "
+          Niveau : [BTS/Licence/Maîtrise/Master 2]\\n\\n  
+          Sujet : [Domaine reformulé]\\n\\n  
+          Origine : [domine l’expertise / référence dans le milieu / émergente]\\n\\n  
           [Acquis au cours des X dernières années] *(uniquement si applicable)* 
         "
       }
@@ -693,9 +689,8 @@ const cvThequePrompts = [
       4. Extrait **2 ou 3 éléments maîtrisés**, concrets et activables (méthodes, outils, concepts ou approches abordées durant les formations)
       
       Exemple :
-
-      5 formations suivies dont une de ISM\n  
-      Formation(s) ciblée(s) sur : acquisition digitale, publicité sociale, pilotage marketing\n  
+      5 formations suivies dont une de ISM  
+      Formation(s) ciblée(s) sur : acquisition digitale, publicité sociale, pilotage marketing  
       Maîtrise de : gestion de campagnes Meta, indicateurs de performance (KPI), stratégie SEO
 
       Contraintes :  
@@ -707,9 +702,9 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu : 
-      { "content" : "
-          [X] formations suivies dont une de [Nom de l’organisme reconnu]\n  
-          Formation(s) ciblée(s) sur : [mot-clé 1], [mot-clé 2], [mot-clé 3]\n  
+      { content : "
+          [X] formations suivies dont une de [Nom de l’organisme reconnu]\\n\\n  
+          Formation(s) ciblée(s) sur : [mot-clé 1], [mot-clé 2], [mot-clé 3]\\n\\n  
           Maîtrise de : [élément 1], [élément 2], [élément 3] *(2 ou 3 éléments max)*
         "
       }
@@ -738,9 +733,9 @@ const cvThequePrompts = [
       → Ajouter une dernière ligne : **Outils de [type]**
 
       Exemple :  
-      Organisation par jalons\n  
-      Structuration des priorités\n  
-      Gestion simultanée de plusieurs tâches\n  
+      Organisation par jalons  
+      Structuration des priorités  
+      Gestion simultanée de plusieurs tâches  
       Outils de gestion de projet
 
       Contraintes :
@@ -748,10 +743,10 @@ const cvThequePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu : 
-      { "content" : "
-          Compétence de fonctionnement 1\n  
-          Compétence de fonctionnement 2\n  
-          Compétence de fonctionnement 3\n  
+      { content : "
+          Compétence de fonctionnement 1\\n\\n  
+          Compétence de fonctionnement 2\\n\\n  
+          Compétence de fonctionnement 3\\n\\n  
           Outils de [type] *(uniquement si pertinent)*
         "
       }

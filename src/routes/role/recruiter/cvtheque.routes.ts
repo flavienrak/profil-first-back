@@ -11,8 +11,10 @@ import { updateCvThequeCritere } from '@/controllers/role/recruiter/cvtheque/upd
 import { checkCvCritereOwner } from '@/middlewares/role/recruiter/cvtheque.middleware';
 import {
   addCvThequeCritereValidation,
+  resendCvThequeCritereValidation,
   updateCvThequeCritereValidation,
 } from '@/validations/role/recruiter/cvtheque.validation';
+import { resendCvThequeCritere } from '@/controllers/role/recruiter/cvtheque/resend-search.controller';
 
 const router = express.Router();
 
@@ -21,6 +23,12 @@ router.post('/', addCvThequeCritereValidation, addCvThequeCritere);
 router.get('/history', getCvThequeHistory);
 
 router.get('/:id', checkCvCritereOwner, getCvThequeCritere);
+router.get(
+  '/:id/resend',
+  resendCvThequeCritereValidation,
+  checkCvCritereOwner,
+  resendCvThequeCritere,
+);
 router.post('/:id/save', checkCvCritereOwner, saveCvThequeCritere);
 
 router.get('/:id/cv-anonym/:cvAnonymId', checkCvCritereOwner, getCvAnonym);

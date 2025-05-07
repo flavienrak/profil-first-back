@@ -64,7 +64,7 @@ const sendQualiCarriereMessage = async (
           - Ne jamais sortir du format demandé.
 
           Format attendu : 
-          { "response": "..." }
+          { response: "..." }
         `.trim(),
       },
       {

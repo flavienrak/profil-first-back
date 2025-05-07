@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-require("module-alias/register");
 const express_1 = __importDefault(require("express"));
 const path_1 = __importDefault(require("path"));
 const socket_1 = require("@/socket");
@@ -28,6 +27,11 @@ socket_1.app.use('/api/role/user/cv-minute', auth_middleware_1.isAuthenticated, 
 socket_1.app.use('/api/role/user/quali-carriere', auth_middleware_1.isAuthenticated, user_middleware_1.checkUserRole, quali_quarriere_routes_1.default);
 // RECRUITER ROLE ROUTES
 socket_1.app.use('/api/role/recruiter/cvtheque', auth_middleware_1.isAuthenticated, recruiter_middleware_1.checkIsRecruiter, cvtheque_routes_1.default);
-const port = process.env.BACKEND_PORT || 5000;
-socket_1.server.listen(port, () => socket_1.logger.info(`App runing at: ${port}`));
+const port = process.env.BACKEND_PORT;
+if (!port) {
+    socket_1.logger.error('ENV NOT FOUND');
+}
+else {
+    socket_1.server.listen(port, () => socket_1.logger.info(`App runing at: ${port}`));
+}
 //# sourceMappingURL=index.js.map
