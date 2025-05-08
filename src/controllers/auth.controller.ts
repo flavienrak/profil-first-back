@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 
-import { PrismaClient } from '@/prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
 import { maxAgeAuthToken } from '@/utils/constants';
 

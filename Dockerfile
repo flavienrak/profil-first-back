@@ -1,6 +1,9 @@
 # Étape 1 : build TS
 FROM node:20-slim AS builder
 
+# Dépendances système minimales
+RUN apt-get update && apt-get install -y openssl
+
 WORKDIR /app
 
 # Installation des dépendances
@@ -25,14 +28,18 @@ FROM node:20-slim AS runner
 
 WORKDIR /app
 
-# On copie uniquement ce dont on a besoin en prod :
-# - package.json (pour npm ci)
-# - node_modules (seulement prod deps)
-# - le JS compilé dans dist
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+COPY package*.json ./
+RUN npm install
+
+# Copie du code compilé
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src/prisma/client ./prisma/client
+
+# Copie du client Prisma (important)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Si tu as besoin du fichier schema.prisma (ex: pour les migrations à runtime)
+COPY --from=builder /app/src/prisma ./src/prisma
 
 EXPOSE 5000
 
