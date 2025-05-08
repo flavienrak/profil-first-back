@@ -406,7 +406,7 @@ const addCvMinute = async (
                           company: item.company,
                           contrat: item.contrat,
                           icon: item.icon,
-                          iconSize: item.iconSize,
+                          iconSize: 16,
                           order: Number(item.order),
                         },
                       });

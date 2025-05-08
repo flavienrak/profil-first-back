@@ -178,14 +178,14 @@ const cvThequeCirterePrompts = [
       - Respecter les sauts à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
-      Format attendu :
-      { content: "
-          Sujet : [Intitulé reformulé]\\n\\n
-          Niveau : [Bac +X ou Master/Maîtrise/Licence/BTS]\\n\\n
-          Type d'établissement : [Catégorie]\\n\\n
-          Reconnaissance : [Description en 1-7 mots]\\n\\n
-          Réputation : [★☆☆☆☆ à ★★★★★] + [Commentaire]
-        "
+      Format attendu (array of string) :
+      [ " 
+        Sujet : [Intitulé reformulé]\\n\\n
+        Niveau : [Bac +X ou Master/Maîtrise/Licence/BTS]\\n\\n
+        Type d'établissement : [Catégorie]\\n\\n
+        Reconnaissance : [Description en 1-7 mots]\\n\\n
+        Réputation : [★☆☆☆☆ à ★★★★★] + [Commentaire]
+      " ]
       }
     `,
     formation: `
@@ -411,12 +411,11 @@ const cvThequeCirterePrompts = [
       - Respecter les sauts à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
-      Format attendu :
-      { content: "
-          Bac +[niveau] / Domaine étudié : [domaine général reformulé]\\n\\n 
-          Compétences certaines : [compétence 1], [compétence 2], [compétence 3]
-        "
-      }
+      Format attendu (array of string) :
+      [ " 
+        Bac +[niveau] / Domaine étudié : [domaine général reformulé]\\n\\n 
+        Compétences certaines : [compétence 1], [compétence 2], [compétence 3]
+      " ]
     `,
     formation: `
       Tu es expert en rédaction de CV à fort impact.
@@ -685,14 +684,13 @@ const cvThequeCirterePrompts = [
       - Respecter les sauts à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
-      Format attendu :
-      { content : "
-          Niveau : [BTS/Licence/Maîtrise/Master 2]\\n\\n  
-          Sujet : [Domaine reformulé]\\n\\n  
-          Origine : [domine l’expertise / référence dans le milieu / émergente]\\n\\n  
-          [Acquis au cours des X dernières années] *(uniquement si applicable)* 
-        "
-      }
+      Format attendu (array of string) :
+      [ " 
+        Niveau : [BTS/Licence/Maîtrise/Master 2]\\n\\n  
+        Sujet : [Domaine reformulé]\\n\\n  
+        Origine : [domine l’expertise / référence dans le milieu / émergente]\\n\\n  
+        [Acquis au cours des X dernières années] *(uniquement si applicable)* 
+      " ]
     `,
     formation: `
       Tu es expert en rédaction de CV à fort impact.

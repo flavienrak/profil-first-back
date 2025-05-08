@@ -263,7 +263,7 @@ const resendCvThequeCritere = async (
                       return;
                     }
 
-                    if (jsonData.compatible) {
+                    if (Boolean(jsonData.compatible)) {
                       const existCvThequeUser =
                         await prisma.cvThequeUser.findUnique({
                           where: {
@@ -277,7 +277,7 @@ const resendCvThequeCritere = async (
                       if (!existCvThequeUser) {
                         await prisma.cvThequeUser.create({
                           data: {
-                            score: jsonData.score,
+                            score: Number(jsonData.score),
                             userId: u.id,
                             cvThequeCritereId: cvThequeCritere.id,
                           },
@@ -535,21 +535,23 @@ const resendCvThequeCritere = async (
                 },
               });
 
-              const jsonData: { content: string } = extractJson(
-                r.message.content,
-              );
+              const jsonData: string[] = extractJson(r.message.content);
 
               if (!jsonData) {
                 res.json({ parsingError: true });
                 return;
               }
 
-              await prisma.sectionInfo.create({
-                data: {
-                  cvMinuteSectionId: cvMinuteSection.id,
-                  content: jsonData.content,
-                },
-              });
+              await Promise.all(
+                jsonData.map(async (item) => {
+                  await prisma.sectionInfo.create({
+                    data: {
+                      cvMinuteSectionId: cvMinuteSection.id,
+                      content: item,
+                    },
+                  });
+                }),
+              );
             }
           }
         } else if (s.name === 'formation') {

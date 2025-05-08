@@ -1,7 +1,7 @@
 import express from 'express';
 
 import { PrismaClient } from '@prisma/client';
-import { openai } from '@/socket';
+import { io, openai } from '@/socket';
 import { extractJson } from '@/utils/functions';
 import { cvThequesections, maxCvThequeUserResult } from '@/utils/constants';
 import {
@@ -20,6 +20,7 @@ const getCvThequeCritere = async (
 ): Promise<void> => {
   try {
     let cvThequeCritere: CvThequeCritereInterface | null = null;
+    const { user } = res.locals;
     const { id } = req.params;
 
     cvThequeCritere = await prisma.cvThequeCritere.findUnique({
@@ -33,6 +34,13 @@ const getCvThequeCritere = async (
     }
 
     if (cvThequeCritere.evaluation === 0) {
+      cvThequeCritere = await prisma.cvThequeCritere.update({
+        where: { id: cvThequeCritere.id },
+        data: { evaluation: 1 },
+      });
+
+      io.to(`user-${user.id}`).emit('cvThequeCritere', cvThequeCritere);
+
       const users = await prisma.user.findMany({
         where: { role: 'user' },
         include: {
@@ -258,7 +266,7 @@ const getCvThequeCritere = async (
                         return;
                       }
 
-                      if (jsonData.compatible) {
+                      if (Boolean(jsonData.compatible)) {
                         const existCvThequeUser =
                           await prisma.cvThequeUser.findUnique({
                             where: {
@@ -272,7 +280,7 @@ const getCvThequeCritere = async (
                         if (!existCvThequeUser) {
                           await prisma.cvThequeUser.create({
                             data: {
-                              score: jsonData.score,
+                              score: Number(jsonData.score),
                               userId: u.id,
                               cvThequeCritereId: cvThequeCritere.id,
                             },
@@ -281,7 +289,7 @@ const getCvThequeCritere = async (
 
                         takenIds.add(u.id);
                         compatibleUsers.push({
-                          score: jsonData.score,
+                          score: Number(jsonData.score),
                           user: u,
                           messageContent,
                         });
@@ -535,21 +543,23 @@ const getCvThequeCritere = async (
                   },
                 });
 
-                const jsonData: { content: string } = extractJson(
-                  r.message.content,
-                );
+                const jsonData: string[] = extractJson(r.message.content);
 
                 if (!jsonData) {
                   res.json({ parsingError: true });
                   return;
                 }
 
-                await prisma.sectionInfo.create({
-                  data: {
-                    cvMinuteSectionId: cvMinuteSection.id,
-                    content: jsonData.content,
-                  },
-                });
+                await Promise.all(
+                  jsonData.map(async (item) => {
+                    await prisma.sectionInfo.create({
+                      data: {
+                        cvMinuteSectionId: cvMinuteSection.id,
+                        content: item,
+                      },
+                    });
+                  }),
+                );
               }
             }
           } else if (s.name === 'formation') {
@@ -649,11 +659,6 @@ const getCvThequeCritere = async (
           }
         }
       }
-
-      cvThequeCritere = await prisma.cvThequeCritere.update({
-        where: { id: cvThequeCritere.id },
-        data: { evaluation: 1 },
-      });
     }
 
     cvThequeCritere = await prisma.cvThequeCritere.findUnique({
