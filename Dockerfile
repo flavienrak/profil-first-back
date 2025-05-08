@@ -17,21 +17,22 @@ COPY src/prisma ./src/prisma
 RUN npx prisma generate --schema=src/prisma/schema.prisma
 
 # Copie du code source
-COPY src ./src
+COPY . .
 
 # Compilation du TypeScript
 RUN npm run build
 
+# Supprimer les dépendances de développement
+RUN npm prune --production
 
 # Étape 2 : runtime minimal
 FROM node:20-slim AS runner
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
-
 # Copie du code compilé
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 # Copie du client Prisma 
