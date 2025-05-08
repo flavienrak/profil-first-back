@@ -6,7 +6,7 @@ import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 
 import { validationResult } from 'express-validator';
-import { PrismaClient } from '@/prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { openai } from '@/socket';
 import { extractJson } from '@/utils/functions';
 import { domains, formattedDate } from '@/utils/constants';

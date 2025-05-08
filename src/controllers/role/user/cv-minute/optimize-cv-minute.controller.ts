@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 
 import { htmlToText } from 'html-to-text';
-import { PrismaClient } from '@/prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { openai } from '@/socket';
 import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
 import { extractJson } from '@/utils/functions';
