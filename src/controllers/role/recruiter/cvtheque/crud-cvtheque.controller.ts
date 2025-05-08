@@ -2,7 +2,6 @@ import express from 'express';
 
 import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import { CvThequeCritereInterface } from '@/interfaces/role/recruiter/cvtheque/cvtheque-critere.interface';
 
 const prisma = new PrismaClient();
 
@@ -80,7 +79,6 @@ const addCvThequeCritere = async (
       return;
     }
 
-    let cvThequeCritere: CvThequeCritereInterface | null = null;
     const { user } = res.locals;
     const body: {
       position: string;
@@ -106,7 +104,7 @@ const addCvThequeCritere = async (
       distance: body.distance || undefined,
     };
 
-    cvThequeCritere = await prisma.cvThequeCritere.create({
+    const cvThequeCritere = await prisma.cvThequeCritere.create({
       data: cvCritereData,
     });
 
@@ -116,7 +114,7 @@ const addCvThequeCritere = async (
           if (item.trim().length > 0) {
             await prisma.cvThequeCompetence.create({
               data: {
-                cvThequeCritereId: cvThequeCritere.id,
+                cvThequeCritereId: cvThequeCritere?.id,
                 content: item.trim(),
               },
             });
@@ -125,7 +123,7 @@ const addCvThequeCritere = async (
       );
     }
 
-    res.status(200).json({ cvThequeCritere: { id: cvThequeCritere.id } });
+    res.status(200).json({ cvThequeCritere: { id: cvThequeCritere?.id } });
     return;
   } catch (error) {
     if (error instanceof Error) {
@@ -177,12 +175,7 @@ const saveCvThequeCritere = async (
       where: { id: Number(id) },
     });
 
-    if (!cvThequeCritere) {
-      res.json({ cvThequeCritereNotFound: true });
-      return;
-    }
-
-    if (!cvThequeCritere.saved) {
+    if (cvThequeCritere && !cvThequeCritere.saved) {
       cvThequeCritere = await prisma.cvThequeCritere.update({
         where: { id: cvThequeCritere.id },
         data: { saved: true },
