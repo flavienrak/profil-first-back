@@ -6,11 +6,15 @@ WORKDIR /app
 # On installe toutes les dépendances et on génère le client Prisma
 COPY package*.json tsconfig.json ./
 RUN npm install 
+
+# Copie du schéma Prisma
 COPY src/prisma ./prisma
 RUN npx prisma generate --schema=prisma/schema.prisma
 
+# Copie du reste du code
+COPY . .
+
 # On compile le TS en JS
-COPY src ./src
 RUN npm run build
 
 
@@ -31,5 +35,4 @@ COPY --from=builder /app/src/prisma ./src/prisma
 EXPOSE 5000
 
 # On lance directement le JS compilé.
-# Remplacez "index.js" par le point d'entrée réel de votre app.
 CMD ["node", "dist/index.js"]
