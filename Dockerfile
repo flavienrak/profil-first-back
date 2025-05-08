@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Installation des dépendances
 COPY package*.json tsconfig.json ./
-RUN npm install 
+RUN npm install --omit=dev
 
 # Copie du schema Prisma
 COPY src/prisma ./src/prisma
@@ -22,8 +22,6 @@ COPY . .
 # Compilation du TypeScript
 RUN npm run build
 
-# Supprimer les dépendances de développement
-RUN npm prune --production
 
 # Étape 2 : runtime minimal
 FROM node:20-slim AS runner
