@@ -3,7 +3,7 @@ import isEmpty from '@/utils/isEmpty';
 
 import { validationResult } from 'express-validator';
 import { openai } from '@/socket';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/prisma/client';
 import { extractJson } from '@/utils/functions';
 import { SectionInterface } from '@/interfaces/role/user/cv-minute/section.interface';
 import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';

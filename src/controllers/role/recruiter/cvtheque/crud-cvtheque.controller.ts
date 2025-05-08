@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/prisma/client';
 import { validationResult } from 'express-validator';
 
 const prisma = new PrismaClient();

@@ -1,7 +1,7 @@
 import express from 'express';
 
 import { validationResult } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/prisma/client';
 import { io, openai } from '@/socket';
 import { extractJson } from '@/utils/functions';
 import { qualiCarriereChatResponsePrompt } from '@/utils/prompts/quali-carriere.prompt';

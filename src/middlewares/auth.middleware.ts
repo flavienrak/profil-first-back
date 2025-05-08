@@ -1,7 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/prisma/client';
 
 const authTokenName = process.env.AUTH_TOKEN_NAME;
 const secretKey = process.env.JWT_SECRET_KEY;

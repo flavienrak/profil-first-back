@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import express from 'express';
 import isEmpty from '@/utils/isEmpty';
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/prisma/client';
 import { validationResult } from 'express-validator';
 import { imageMimeTypes } from '@/utils/constants';
 
