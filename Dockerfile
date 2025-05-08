@@ -7,6 +7,12 @@ WORKDIR /app
 COPY package*.json tsconfig.json ./
 RUN npm install 
 
+# On copie le schema Prisma
+COPY src/prisma ./src/prisma
+
+# On génère le client Prisma
+RUN npx prisma generate --schema=src/prisma/schema.prisma
+
 # Copie du code source
 COPY src ./src
 
@@ -26,6 +32,7 @@ WORKDIR /app
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/prisma/client ./prisma/client
 
 EXPOSE 5000
 
