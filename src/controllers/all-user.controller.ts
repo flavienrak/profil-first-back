@@ -17,13 +17,14 @@ const getUser = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    const { user } = res.locals;
-    let cvMinuteCount = 0;
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
+
+    const { user } = res.locals;
+    let cvMinuteCount = 0;
 
     const profile = await prisma.file.findFirst({
       where: { userId: user.id, usage: 'profile' },
@@ -59,17 +60,16 @@ const updateUser = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    const { user } = res.locals;
-
-    let fileName = null;
-    const body: { name?: string; password?: string } = req.body;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
 
+    const { user } = res.locals;
+
+    let fileName = '';
+    const body: { name?: string; password?: string } = req.body;
     const infos: { name?: string; password?: string } = {};
 
     if (body.name) {

@@ -1,6 +1,26 @@
 // CVTHEQUE PROMPTS
 
-const cvThequePrompts = [
+const cvThequeUserEvaluationPrompt = `
+  Tu es expert en rédaction de CV et en analyse d’adéquation avec les offres d’emploi.
+
+  Mission :
+  À partir du contenu du CV et de l’offre ciblée, évaluer la compatibilité entre le contenu d'un CV et une offre ciblée, en attribuant un score de 0 à 100.
+
+  Règles de compatibilité :
+  - Si le score est strictement supérieur à 50, considérer le CV comme compatible.
+  - Sinon, considérer comme non compatible.
+
+  Contraintes :
+  - Ne jamais sortir du format demandé
+
+  Format attendu :
+  {
+    compatible: "true" ou "false",
+    score: "valeur entre 0 et 100"
+  }
+`;
+
+const cvThequeCirterePrompts = [
   {
     title: `                                  
       Tu es expert en rédaction de CV à fort impact.
@@ -754,4 +774,4 @@ const cvThequePrompts = [
   },
 ];
 
-export { cvThequePrompts };
+export { cvThequeUserEvaluationPrompt, cvThequeCirterePrompts };

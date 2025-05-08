@@ -1,10 +1,11 @@
 import express from 'express';
-import OpenAI from 'openai';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
 import { io, openai } from '@/socket';
 import { extractJson } from '@/utils/functions';
+import { qualiCarriereChatResponsePrompt } from '@/utils/prompts/quali-carriere.prompt';
+import { QualiCarriereChatInterface } from '@/interfaces/role/user/quali-carriere/chatInterface';
 
 const prisma = new PrismaClient();
 
@@ -13,15 +14,15 @@ const sendQualiCarriereMessage = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let response = null;
-    const { user } = res.locals;
-    const body: { message: string } = req.body;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
+
+    let response: QualiCarriereChatInterface | null = null;
+    const { user } = res.locals;
+    const body: { message: string } = req.body;
 
     const cvMinute = await prisma.cvMinute.findFirst({
       where: { userId: user.id, qualiCarriereRef: true },
@@ -50,26 +51,16 @@ const sendQualiCarriereMessage = async (
       where: { userId: user.id },
     });
 
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      {
-        role: 'system',
-        content: `
-          Tu es un expert en rédaction et optimisation de CV. 
-
-          Tu aides l'utilisateur à valoriser ses expériences professionnelles. 
-
-          Contraintes :
-          - Max 300 caractères.
-          - Respecter les sauts à la ligne demandé.
-          - Ne jamais sortir du format demandé.
-
-          Format attendu : 
-          { response: "..." }
-        `.trim(),
-      },
-      {
-        role: 'user',
-        content: `
+    const openaiResponse = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: qualiCarriereChatResponsePrompt.trim(),
+        },
+        {
+          role: 'user',
+          content: `
           Résumé du candidat :
           ${qualiCarriereResumes.map((r) => r.content).join('\n')}
 
@@ -82,12 +73,8 @@ const sendQualiCarriereMessage = async (
           Dernier message :
           ${message.content}
         `.trim(),
-      },
-    ];
-
-    const openaiResponse = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages,
+        },
+      ],
     });
 
     if (openaiResponse.id) {

@@ -21,17 +21,20 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  files                    File[]
-  cvMinutes                CvMinute[]
-  cvMinuteDomains          CvMinuteDomain[]
-  qualiCarriereQuestions   QualiCarriereQuestion[]
-  qualiCarriereResponses   QualiCarriereResponse[]
-  openaiResponses          OpenaiResponse[]
-  qualiCarriereChat        QualiCarriereChat[]
-  qualiCarriereResumes     QualiCarriereResume[]
-  qualiCarriereCompetences QualiCarriereCompetence[]
-  cvThequeCriteres         CvThequeCritere[]
-  cvThequeUsers            CvThequeUser[]
+  files                     File[]
+  cvMinutes                 CvMinute[]
+  cvMinuteDomains           CvMinuteDomain[]
+  qualiCarriereQuestions    QualiCarriereQuestion[]
+  qualiCarriereResponses    QualiCarriereResponse[]
+  openaiResponses           OpenaiResponse[]
+  qualiCarriereChat         QualiCarriereChat[]
+  qualiCarriereResumes      QualiCarriereResume[]
+  qualiCarriereCompetences  QualiCarriereCompetence[]
+  cvThequeCriteres          CvThequeCritere[]
+  cvThequeUsers             CvThequeUser[]
+  userCvThequeContacts      CvThequeContact[]         @relation("UserCvThequeContact")
+  recruiterCvThequeContacts CvThequeContact[]         @relation("RecruiterCvThequeContact")
+  cvThequeContactViews      CvThequeContactView[]
 }
 
 model File {
@@ -79,6 +82,7 @@ model CvMinute {
   evaluation       Evaluation?
   cvThequeViews    CvThequeView[]
   cvMinuteDomains  CvMinuteDomain[]
+  cvThequeContacts CvThequeContact[]
 }
 
 model CvMinuteDomain {
@@ -326,4 +330,41 @@ model CvThequeUser {
   cvThequeCritere CvThequeCritere @relation(fields: [cvThequeCritereId], references: [id], onDelete: Cascade)
 
   @@unique([userId, cvThequeCritereId])
+}
+
+model CvThequeContact {
+  id          Int    @id @default(autoincrement())
+  type        String
+  date        String
+  hour        Int
+  minute      Int
+  message     String
+  status      String @default("sent")
+  userId      Int
+  recruiterId Int
+  cvMinuteId  Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(name: "UserCvThequeContact", fields: [userId], references: [id], onDelete: Cascade)
+  recruiter User     @relation(name: "RecruiterCvThequeContact", fields: [recruiterId], references: [id], onDelete: Cascade)
+  cvMinute  CvMinute @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
+
+  cvThequeContactViews CvThequeContactView[]
+
+  @@unique([recruiterId, cvMinuteId])
+}
+
+model CvThequeContactView {
+  id                Int @id @default(autoincrement())
+  count             Int
+  userId            Int
+  cvThequeContactId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cvThequeContact CvThequeContact @relation(fields: [cvThequeContactId], references: [id], onDelete: Cascade)
 }

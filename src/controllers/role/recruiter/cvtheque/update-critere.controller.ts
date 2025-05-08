@@ -5,10 +5,13 @@ import { validationResult } from 'express-validator';
 import { openai } from '@/socket';
 import { extractJson } from '@/utils/functions';
 import { cvThequesections, maxCvThequeUserResult } from '@/utils/constants';
-import { cvThequePrompts } from '@/utils/prompts';
+import {
+  cvThequeCirterePrompts,
+  cvThequeUserEvaluationPrompt,
+} from '@/utils/prompts/cvtheque.prompt';
 import { CvThequeCritereInterface } from '@/interfaces/role/recruiter/cvtheque/cvtheque-critere.interface';
 import { CvMinuteInterface } from '@/interfaces/role/user/cv-minute/cvMinute.interface';
-import { UserInterface } from '@/interfaces/user.interface';
+import { CompatibleUserInterface } from '@/interfaces/role/recruiter/cvtheque/compatible-user.interface';
 
 const prisma = new PrismaClient();
 
@@ -17,14 +20,14 @@ const updateCvThequeCritere = async (
   res: express.Response,
 ): Promise<void> => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
     const { id } = req.params;
-    let compatibleUsers: {
-      score: number;
-      user: UserInterface;
-      messageContent: string;
-    }[] = [];
     let updatedCvThequeCritere: CvThequeCritereInterface | null = null;
-    let updatedCvThequeCritereId: number | null = Number(id);
     const body: {
       position?: string;
       description?: string;
@@ -36,12 +39,6 @@ const updateCvThequeCritere = async (
       distance?: number;
     } = req.body;
 
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return;
-    }
-
     const cvThequeCritere = await prisma.cvThequeCritere.findUnique({
       where: { id: Number(id) },
       include: {
@@ -49,7 +46,10 @@ const updateCvThequeCritere = async (
         cvThequeUsers: true,
         cvThequeViews: true,
         cvMinutes: {
-          include: { cvMinuteSections: { include: { sectionInfos: true } } },
+          include: {
+            cvThequeContacts: true,
+            cvMinuteSections: { include: { sectionInfos: true } },
+          },
         },
       },
     });
@@ -57,6 +57,8 @@ const updateCvThequeCritere = async (
     if (!cvThequeCritere) {
       return;
     }
+
+    let updatedCvThequeCritereId: number | null = Number(cvThequeCritere.id);
 
     // Liste des champs textuels à comparer avec trim
     const textFields: (keyof Pick<
@@ -112,85 +114,114 @@ const updateCvThequeCritere = async (
           .map((c) => c.trim())
           .filter((c) => c.length > 0);
 
-        for (const item of trimmedCompetences) {
-          await prisma.cvThequeCompetence.create({
-            data: {
-              content: item,
-              cvThequeCritereId: newCvThequeCritere.id,
-            },
-          });
-        }
-      }
-
-      // COPY CVTHEUQUE USERS
-      for (const item of cvThequeCritere.cvThequeUsers) {
-        await prisma.cvThequeUser.create({
-          data: {
-            score: item.score,
-            userId: item.userId,
-            cvThequeCritereId: newCvThequeCritere.id,
-          },
-        });
-      }
-
-      // COPY CVTHEUQUE VIEWS
-      for (const item of cvThequeCritere.cvThequeViews) {
-        await prisma.cvThequeView.create({
-          data: {
-            count: item.count,
-            cvMinuteId: item.cvMinuteId,
-            cvThequeCritereId: newCvThequeCritere.id,
-          },
-        });
-      }
-
-      // COPY CVMINUTES
-      for (const item of cvThequeCritere.cvMinutes) {
-        const newCvMinute = await prisma.cvMinute.create({
-          data: {
-            position: item.position,
-            name: item.name,
-            primaryBg: item.primaryBg,
-            secondaryBg: item.secondaryBg,
-            tertiaryBg: item.tertiaryBg,
-            visible: item.visible,
-            generated: item.generated,
-            userId: item.userId,
-            cvThequeCritereId: newCvThequeCritere.id,
-          },
-        });
-
         await Promise.all(
-          item.cvMinuteSections.map(async (section) => {
-            const newCvMinuteSection = await prisma.cvMinuteSection.create({
+          trimmedCompetences.map(async (item) => {
+            await prisma.cvThequeCompetence.create({
               data: {
-                cvMinuteId: newCvMinute.id,
-                sectionId: section.sectionId,
-                sectionOrder: section.sectionOrder,
-                sectionTitle: section.sectionTitle,
+                content: item,
+                cvThequeCritereId: newCvThequeCritere.id,
               },
             });
-
-            await Promise.all(
-              section.sectionInfos.map(async (info) => {
-                await prisma.sectionInfo.create({
-                  data: {
-                    cvMinuteSectionId: newCvMinuteSection.id,
-                    title: info.title,
-                    content: info.content,
-                    date: info.date,
-                    company: info.company,
-                    contrat: info.contrat,
-                    icon: info.icon,
-                    iconSize: info.iconSize,
-                    order: info.order,
-                  },
-                });
-              }),
-            );
           }),
         );
       }
+
+      // COPY CVTHEUQUE USERS
+      await Promise.all(
+        cvThequeCritere.cvThequeUsers.map(async (item) => {
+          await prisma.cvThequeUser.create({
+            data: {
+              score: item.score,
+              userId: item.userId,
+              cvThequeCritereId: newCvThequeCritere.id,
+            },
+          });
+        }),
+      );
+
+      // COPY CVTHEUQUE VIEWS
+      await Promise.all(
+        cvThequeCritere.cvThequeViews.map(async (item) => {
+          await prisma.cvThequeView.create({
+            data: {
+              count: item.count,
+              cvMinuteId: item.cvMinuteId,
+              cvThequeCritereId: newCvThequeCritere.id,
+            },
+          });
+        }),
+      );
+
+      // COPY CVMINUTES
+      await Promise.all(
+        cvThequeCritere.cvMinutes.map(async (item) => {
+          const newCvMinute = await prisma.cvMinute.create({
+            data: {
+              position: item.position,
+              name: item.name,
+              primaryBg: item.primaryBg,
+              secondaryBg: item.secondaryBg,
+              tertiaryBg: item.tertiaryBg,
+              visible: item.visible,
+              generated: item.generated,
+              userId: item.userId,
+              cvThequeCritereId: newCvThequeCritere.id,
+            },
+          });
+
+          // COPY CVMINUTE SECTIONS
+          await Promise.all(
+            item.cvMinuteSections.map(async (section) => {
+              const newCvMinuteSection = await prisma.cvMinuteSection.create({
+                data: {
+                  cvMinuteId: newCvMinute.id,
+                  sectionId: section.sectionId,
+                  sectionOrder: section.sectionOrder,
+                  sectionTitle: section.sectionTitle,
+                },
+              });
+
+              // COPY SECTION INFO
+              await Promise.all(
+                section.sectionInfos.map(async (info) => {
+                  await prisma.sectionInfo.create({
+                    data: {
+                      cvMinuteSectionId: newCvMinuteSection.id,
+                      title: info.title,
+                      content: info.content,
+                      date: info.date,
+                      company: info.company,
+                      contrat: info.contrat,
+                      icon: info.icon,
+                      iconSize: info.iconSize,
+                      order: info.order,
+                    },
+                  });
+                }),
+              );
+            }),
+          );
+
+          // COPY CVTHEQUE CONTACTS
+          await Promise.all(
+            item.cvThequeContacts.map(async (c) => {
+              await prisma.cvThequeContact.create({
+                data: {
+                  type: c.type,
+                  date: c.date,
+                  hour: c.hour,
+                  minute: c.minute,
+                  message: c.message,
+                  status: c.status,
+                  userId: c.userId,
+                  recruiterId: c.recruiterId,
+                  cvMinuteId: newCvMinute.id,
+                },
+              });
+            }),
+          );
+        }),
+      );
     } else {
       // Mise à jour des critères simples si changement
       if (Object.keys(modifiedFields).length > 0) {
@@ -215,20 +246,24 @@ const updateCvThequeCritere = async (
           (e) => !trimmedCompetences.includes(e.content),
         );
 
-        for (const item of toDelete) {
-          await prisma.cvThequeCompetence.delete({ where: { id: item.id } });
-        }
+        await Promise.all(
+          toDelete.map(async (item) => {
+            await prisma.cvThequeCompetence.delete({ where: { id: item.id } });
+          }),
+        );
 
-        for (const c of trimmedCompetences) {
-          if (!existingContents.includes(c)) {
-            await prisma.cvThequeCompetence.create({
-              data: {
-                cvThequeCritereId: cvThequeCritere.id,
-                content: c,
-              },
-            });
-          }
-        }
+        await Promise.all(
+          trimmedCompetences.map(async (item) => {
+            if (!existingContents.includes(item)) {
+              await prisma.cvThequeCompetence.create({
+                data: {
+                  cvThequeCritereId: cvThequeCritere.id,
+                  content: item,
+                },
+              });
+            }
+          }),
+        );
       }
     }
 
@@ -295,205 +330,207 @@ const updateCvThequeCritere = async (
 
     const position = lines.join('\n');
 
-    for (const u of users) {
-      const userDomains = u.cvMinuteDomains.map((item) => item.content);
+    const cvThequeUsers = await prisma.cvThequeUser.findMany({
+      where: { cvThequeCritereId: cvThequeCritere.id },
+    });
+    const takenIds = new Set(cvThequeUsers.map((c) => c.userId));
 
-      if (
-        u.cvMinutes.length > 0 &&
-        userDomains.includes(cvThequeCritere.domain)
-      ) {
-        const cvMinuteIds = u.cvMinuteDomains.map((item) => item.cvMinuteId);
-        const cvMinutes = u.cvMinutes.filter((item) =>
-          cvMinuteIds.includes(item.id),
-        );
+    const compatibleUsers: CompatibleUserInterface[] = [];
+    let addedInLastCycle = true;
 
-        if (cvMinutes.length > 0) {
-          let cvMinute: CvMinuteInterface | null = null;
-          let maxExperienceCount = 0;
+    while (compatibleUsers.length < maxCvThequeUserResult && addedInLastCycle) {
+      addedInLastCycle = false;
 
-          for (const c of cvMinutes) {
-            const sections = await prisma.section.findMany({
-              where: {
-                id: {
-                  in: c.cvMinuteSections.map((section) => section.sectionId),
-                },
-              },
-            });
+      for (const u of users) {
+        if (compatibleUsers.length >= maxCvThequeUserResult) break;
 
-            const getCvMinuteSection = (value: string) => {
-              const section = sections.find(
-                (s) => s.name.toLowerCase() === value.toLowerCase(),
-              );
-              return c.cvMinuteSections.find(
-                (s) => s.sectionId === section?.id,
-              );
-            };
+        if (
+          !takenIds.has(u.id) &&
+          u.cvMinutes &&
+          u.cvMinutes.length > 0 &&
+          u.cvMinuteDomains &&
+          u.cvMinuteDomains.length > 0 &&
+          u.cvMinuteDomains
+            .map((item) => item.content)
+            .includes(cvThequeCritere.domain)
+        ) {
+          const cvMinuteIds = u.cvMinuteDomains.map((item) => item.cvMinuteId);
+          const cvMinutes = u.cvMinutes.filter((item) =>
+            cvMinuteIds.includes(item.id),
+          );
 
-            const experiences = getCvMinuteSection('experiences');
+          if (cvMinutes.length > 0) {
+            let cvMinute: CvMinuteInterface | null = null;
+            let maxExperienceCount = 0;
 
-            if (
-              experiences &&
-              experiences.sectionInfos.length > maxExperienceCount
-            ) {
-              maxExperienceCount = experiences.sectionInfos.length;
-              cvMinute = c;
-            }
-          }
-
-          if (cvMinute) {
-            const sections = await prisma.section.findMany({
-              where: {
-                id: {
-                  in: cvMinute.cvMinuteSections?.map(
-                    (section) => section.sectionId,
-                  ),
-                },
-              },
-            });
-
-            const getCvMinuteSection = (value: string) => {
-              const section = sections.find(
-                (s) => s.name.toLowerCase() === value.toLowerCase(),
-              );
-              return cvMinute.cvMinuteSections?.find(
-                (s) => s.sectionId === section?.id,
-              );
-            };
-
-            const experiences = getCvMinuteSection('experiences');
-
-            if (
-              experiences &&
-              experiences.sectionInfos &&
-              experiences.sectionInfos.length > 0
-            ) {
-              let messageContent = '';
-              const editableSections = sections.filter((s) => s.editable);
-              const allCvMinuteSections = editableSections
-                .map((s) => {
-                  const cvMinuteSection = getCvMinuteSection(s.name);
-                  if (cvMinuteSection && cvMinuteSection.sectionInfos) {
-                    return `${cvMinuteSection.sectionTitle} : ${cvMinuteSection.sectionInfos[0].content}`;
-                  }
-                  return null;
-                })
-                .filter((r) => r)
-                .join('\n');
-
-              if (u.qualiCarriere === 'active') {
-                const qualiCarriereResumes =
-                  await prisma.qualiCarriereResume.findMany({
-                    where: { userId: u.id },
-                  });
-
-                messageContent = `
-                  Contenus du CV :\n
-                  Expériences : 
-                  ${experiences.sectionInfos
-                    .map(
-                      (item) =>
-                        `${item.date}, ${item.company}, ${item.title} : ${item.content}, synthèse : ${qualiCarriereResumes.find((r) => r.sectionInfoId === item.id)?.content}`,
-                    )
-                    .join('\n')}\n
-                  Sections : ${allCvMinuteSections}\n
-                  Offre ciblée : ${position}
-                `;
-              } else {
-                messageContent = `
-                  Contenus du CV :\n
-                  Expériences : 
-                  ${experiences.sectionInfos
-                    .map(
-                      (item) =>
-                        `${item.date}, ${item.company}, ${item.title} : ${item.content}`,
-                    )
-                    .join('\n')}\n
-                  Sections : ${allCvMinuteSections}\n
-                  Offre ciblée : ${position}
-                `;
-              }
-
-              const openaiResponse = await openai.chat.completions.create({
-                model: 'gpt-3.5-turbo',
-                messages: [
-                  {
-                    role: 'system',
-                    content: `
-                      Tu es expert en rédaction de CV et en analyse d’adéquation avec les offres d’emploi.
-
-                      Mission :
-                      À partir du contenu du CV et de l’offre ciblée, évaluer la compatibilité entre le contenu d'un CV et une offre ciblée, en attribuant un score de 0 à 100.
-
-                      Règles de compatibilité :
-                      - Si le score est strictement supérieur à 50, considérer le CV comme compatible.
-                      - Sinon, considérer comme non compatible.
-
-                      Contraintes :
-                      - Ne jamais sortir du format demandé
-
-                      Format attendu :
-                      {
-                        compatible: "true" ou "false",
-                        score: "valeur entre 0 et 100"
-                      }
-                    `.trim(),
+            for (const c of cvMinutes) {
+              const sections = await prisma.section.findMany({
+                where: {
+                  id: {
+                    in: c.cvMinuteSections?.map((section) => section.sectionId),
                   },
-                  {
-                    role: 'user',
-                    content: messageContent.trim(),
-                  },
-                ],
+                },
               });
 
-              if (openaiResponse.id) {
-                for (const r of openaiResponse.choices) {
-                  await prisma.openaiResponse.create({
-                    data: {
-                      responseId: openaiResponse.id,
-                      userId: u.id,
-                      request: 'cvtheque-evaluation',
-                      response:
-                        r.message.content ?? 'cvtheque-evaluation-response',
-                      index: r.index,
+              const getCvMinuteSection = (value: string) => {
+                const section = sections.find(
+                  (s) => s.name.toLowerCase() === value.toLowerCase(),
+                );
+                return c.cvMinuteSections?.find(
+                  (s) => s.sectionId === section?.id,
+                );
+              };
+
+              const experiences = getCvMinuteSection('experiences');
+
+              if (
+                experiences?.sectionInfos &&
+                experiences.sectionInfos.length > maxExperienceCount
+              ) {
+                maxExperienceCount = experiences.sectionInfos.length;
+                cvMinute = c;
+              }
+            }
+
+            if (cvMinute) {
+              const sections = await prisma.section.findMany({
+                where: {
+                  id: {
+                    in: cvMinute.cvMinuteSections?.map(
+                      (section) => section.sectionId,
+                    ),
+                  },
+                },
+              });
+
+              const getCvMinuteSection = (value: string) => {
+                const section = sections.find(
+                  (s) => s.name.toLowerCase() === value.toLowerCase(),
+                );
+                return cvMinute.cvMinuteSections?.find(
+                  (s) => s.sectionId === section?.id,
+                );
+              };
+
+              const experiences = getCvMinuteSection('experiences');
+
+              if (
+                experiences &&
+                experiences.sectionInfos &&
+                experiences.sectionInfos.length > 0
+              ) {
+                let messageContent = '';
+                const editableSections = sections.filter((s) => s.editable);
+                const allCvMinuteSections = editableSections
+                  .map((s) => {
+                    const cvMinuteSection = getCvMinuteSection(s.name);
+                    if (cvMinuteSection && cvMinuteSection.sectionInfos) {
+                      return `${cvMinuteSection.sectionTitle} : ${cvMinuteSection.sectionInfos[0].content}`;
+                    }
+                    return null;
+                  })
+                  .filter((r) => r)
+                  .join('\n');
+
+                if (u.qualiCarriere === 'active') {
+                  const qualiCarriereResumes =
+                    await prisma.qualiCarriereResume.findMany({
+                      where: { userId: u.id },
+                    });
+
+                  messageContent = `
+                Contenus du CV :\n
+                Expériences : 
+                ${experiences.sectionInfos
+                  .map(
+                    (item) =>
+                      `${item.date}, ${item.company}, ${item.title} : ${item.content}, synthèse : ${qualiCarriereResumes.find((r) => r.sectionInfoId === item.id)?.content}`,
+                  )
+                  .join('\n')}\n
+                Sections : ${allCvMinuteSections}\n
+                Offre ciblée : ${position}
+              `;
+                } else {
+                  messageContent = `
+                Contenus du CV :\n
+                Expériences : 
+                ${experiences.sectionInfos
+                  .map(
+                    (item) =>
+                      `${item.date}, ${item.company}, ${item.title} : ${item.content}`,
+                  )
+                  .join('\n')}\n
+                Sections : ${allCvMinuteSections}\n
+                Offre ciblée : ${position}
+              `;
+                }
+
+                const openaiResponse = await openai.chat.completions.create({
+                  model: 'gpt-3.5-turbo',
+                  messages: [
+                    {
+                      role: 'system',
+                      content: cvThequeUserEvaluationPrompt.trim(),
                     },
-                  });
+                    {
+                      role: 'user',
+                      content: messageContent.trim(),
+                    },
+                  ],
+                });
 
-                  const jsonData: {
-                    compatible: boolean;
-                    score: number;
-                  } = extractJson(r.message.content);
+                if (openaiResponse.id) {
+                  for (const r of openaiResponse.choices) {
+                    await prisma.openaiResponse.create({
+                      data: {
+                        responseId: openaiResponse.id,
+                        userId: u.id,
+                        request: 'cvtheque-evaluation',
+                        response:
+                          r.message.content ?? 'cvtheque-evaluation-response',
+                        index: r.index,
+                      },
+                    });
 
-                  if (!jsonData) {
-                    res.json({ parsingError: true });
-                    return;
-                  }
+                    const jsonData: {
+                      compatible: boolean;
+                      score: number;
+                    } = extractJson(r.message.content);
 
-                  if (jsonData.compatible) {
-                    const existCvThequeUser =
-                      await prisma.cvThequeUser.findUnique({
-                        where: {
-                          userId_cvThequeCritereId: {
+                    if (!jsonData) {
+                      res.json({ parsingError: true });
+                      return;
+                    }
+
+                    if (jsonData.compatible) {
+                      const existCvThequeUser =
+                        await prisma.cvThequeUser.findUnique({
+                          where: {
+                            userId_cvThequeCritereId: {
+                              userId: u.id,
+                              cvThequeCritereId: cvThequeCritere.id,
+                            },
+                          },
+                        });
+
+                      if (!existCvThequeUser) {
+                        await prisma.cvThequeUser.create({
+                          data: {
+                            score: jsonData.score,
                             userId: u.id,
                             cvThequeCritereId: cvThequeCritere.id,
                           },
-                        },
-                      });
+                        });
+                      }
 
-                    if (!existCvThequeUser) {
-                      await prisma.cvThequeUser.create({
-                        data: {
-                          score: jsonData.score,
-                          userId: u.id,
-                          cvThequeCritereId: cvThequeCritere.id,
-                        },
+                      takenIds.add(u.id);
+                      compatibleUsers.push({
+                        score: jsonData.score,
+                        user: u,
+                        messageContent,
                       });
+                      addedInLastCycle = true;
                     }
-
-                    compatibleUsers.push({
-                      score: jsonData.score,
-                      user: u,
-                      messageContent,
-                    });
                   }
                 }
               }
@@ -504,12 +541,9 @@ const updateCvThequeCritere = async (
     }
 
     const orderedUsers = compatibleUsers.sort((a, b) => b.score - a.score);
-    const allUsers: {
+    const allUsers: ({
       index: number;
-      score: number;
-      user: UserInterface;
-      messageContent: string;
-    }[] = [];
+    } & CompatibleUserInterface)[] = [];
 
     for (
       let i = maxCvThequeUserResult * cvThequeCritere.evaluation;
@@ -574,7 +608,7 @@ const updateCvThequeCritere = async (
             messages: [
               {
                 role: 'system',
-                content: cvThequePrompts[item.index % 3][s.name].trim(),
+                content: cvThequeCirterePrompts[item.index % 3][s.name].trim(),
               },
               {
                 role: 'user',
@@ -619,7 +653,7 @@ const updateCvThequeCritere = async (
             messages: [
               {
                 role: 'system',
-                content: cvThequePrompts[item.index % 3][s.name].trim(),
+                content: cvThequeCirterePrompts[item.index % 3][s.name].trim(),
               },
               {
                 role: 'user',
@@ -665,7 +699,7 @@ const updateCvThequeCritere = async (
             messages: [
               {
                 role: 'system',
-                content: cvThequePrompts[item.index % 3][s.name].trim(),
+                content: cvThequeCirterePrompts[item.index % 3][s.name].trim(),
               },
               {
                 role: 'user',
@@ -719,7 +753,7 @@ const updateCvThequeCritere = async (
             messages: [
               {
                 role: 'system',
-                content: cvThequePrompts[item.index % 3][s.name].trim(),
+                content: cvThequeCirterePrompts[item.index % 3][s.name].trim(),
               },
               {
                 role: 'user',
@@ -764,7 +798,7 @@ const updateCvThequeCritere = async (
             messages: [
               {
                 role: 'system',
-                content: cvThequePrompts[item.index % 3][s.name].trim(),
+                content: cvThequeCirterePrompts[item.index % 3][s.name].trim(),
               },
               {
                 role: 'user',
@@ -809,7 +843,7 @@ const updateCvThequeCritere = async (
             messages: [
               {
                 role: 'system',
-                content: cvThequePrompts[item.index % 3][s.name].trim(),
+                content: cvThequeCirterePrompts[item.index % 3][s.name].trim(),
               },
               {
                 role: 'user',

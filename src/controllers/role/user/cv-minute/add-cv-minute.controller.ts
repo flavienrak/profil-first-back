@@ -19,14 +19,14 @@ const addCvMinute = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    const { user } = res.locals;
-    const body: { position: string } = req.body;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
+
+    const { user } = res.locals;
+    const body: { position: string } = req.body;
 
     const name = `CV du ${formattedDate}`;
 
@@ -75,7 +75,7 @@ const addCvMinute = async (
       });
 
       // OPENAI
-      let textData = null;
+      let textData = '';
       if (req.file.mimetype === 'application/pdf') {
         const dataBuffer = fs.readFileSync(filePath);
         const pdfData = await pdfParse(dataBuffer);
@@ -334,111 +334,118 @@ const addCvMinute = async (
           ];
 
           // CVMINUTE SECTION
-          for (const s of allSections) {
-            let section = await prisma.section.findUnique({
-              where: { name: s.name.trim().toLowerCase() },
-            });
-
-            if (!section) {
-              section = await prisma.section.create({
-                data: {
-                  name: s.name.trim().toLowerCase(),
-                  editable: s.editable,
-                },
+          await Promise.all(
+            allSections.map(async (s) => {
+              let section = await prisma.section.findUnique({
+                where: { name: s.name.trim().toLowerCase() },
               });
-            }
 
-            const cvMinuteSection = await prisma.cvMinuteSection.create({
-              data: {
-                cvMinuteId: cvMinute.id,
-                sectionId: section.id,
-                sectionOrder: s.order ? Number(s.order) : 1,
-                sectionTitle: s.title,
-              },
-            });
+              if (!section) {
+                section = await prisma.section.create({
+                  data: {
+                    name: s.name.trim().toLowerCase(),
+                    editable: s.editable,
+                  },
+                });
+              }
 
-            if (s.advice) {
-              await prisma.advice.create({
+              const cvMinuteSection = await prisma.cvMinuteSection.create({
                 data: {
-                  cvMinuteSectionId: cvMinuteSection.id,
-                  content: s.advice,
-                  type: 'advice',
-                },
-              });
-            }
-
-            // SECTIONI INFO
-            if (s.content && typeof s.content === 'string') {
-              await prisma.sectionInfo.create({
-                data: {
-                  cvMinuteSectionId: cvMinuteSection.id,
-                  content: s.content,
-                  order: 1,
-                },
-              });
-            } else if (s.withAdvice) {
-              const sectionInfo = await prisma.sectionInfo.create({
-                data: {
-                  cvMinuteSectionId: cvMinuteSection.id,
-                  content: s.withAdvice.content,
-                  order: 1,
+                  cvMinuteId: cvMinute.id,
+                  sectionId: section.id,
+                  sectionOrder: s.order ? Number(s.order) : 1,
+                  sectionTitle: s.title,
                 },
               });
 
-              await prisma.advice.create({
-                data: {
-                  sectionInfoId: sectionInfo.id,
-                  content: s.withAdvice.advice,
-                  type: 'advice',
-                },
-              });
-            } else {
-              if (Array.isArray(s.content)) {
-                for (const item of s.content) {
-                  const sectionInfo = await prisma.sectionInfo.create({
-                    data: {
-                      cvMinuteSectionId: cvMinuteSection.id,
-                      title: item.title,
-                      content: item.content ?? '',
-                      date: item.date,
-                      company: item.company,
-                      contrat: item.contrat,
-                      icon: item.icon,
-                      iconSize: item.iconSize,
-                      order: Number(item.order),
-                    },
-                  });
+              if (s.advice) {
+                await prisma.advice.create({
+                  data: {
+                    cvMinuteSectionId: cvMinuteSection.id,
+                    content: s.advice,
+                    type: 'advice',
+                  },
+                });
+              }
 
-                  if (item.score) {
-                    await prisma.evaluation.create({
-                      data: {
-                        sectionInfoId: sectionInfo.id,
-                        initialScore: Number(item.score),
-                        content: item.high ?? '',
-                        weakContent: item.weak,
-                      },
-                    });
-                  }
+              // SECTIONI INFO
+              if (s.content && typeof s.content === 'string') {
+                await prisma.sectionInfo.create({
+                  data: {
+                    cvMinuteSectionId: cvMinuteSection.id,
+                    content: s.content,
+                    order: 1,
+                  },
+                });
+              } else if (s.withAdvice) {
+                const sectionInfo = await prisma.sectionInfo.create({
+                  data: {
+                    cvMinuteSectionId: cvMinuteSection.id,
+                    content: s.withAdvice.content,
+                    order: 1,
+                  },
+                });
+
+                await prisma.advice.create({
+                  data: {
+                    sectionInfoId: sectionInfo.id,
+                    content: s.withAdvice.advice,
+                    type: 'advice',
+                  },
+                });
+              } else {
+                if (Array.isArray(s.content)) {
+                  await Promise.all(
+                    s.content.map(async (item) => {
+                      const sectionInfo = await prisma.sectionInfo.create({
+                        data: {
+                          cvMinuteSectionId: cvMinuteSection.id,
+                          title: item.title,
+                          content: item.content ?? '',
+                          date: item.date,
+                          company: item.company,
+                          contrat: item.contrat,
+                          icon: item.icon,
+                          iconSize: item.iconSize,
+                          order: Number(item.order),
+                        },
+                      });
+
+                      if (item.score) {
+                        await prisma.evaluation.create({
+                          data: {
+                            sectionInfoId: sectionInfo.id,
+                            initialScore: Number(item.score),
+                            content: item.high ?? '',
+                            weakContent: item.weak,
+                          },
+                        });
+                      }
+                    }),
+                  );
                 }
               }
-            }
-          }
+            }),
+          );
 
-          for (const item of jsonData.domains) {
-            const existDomain = await prisma.cvMinuteDomain.findFirst({
-              where: { content: item.trim() },
-            });
-
-            if (!existDomain) {
-              await prisma.cvMinuteDomain.create({
-                data: {
-                  content: item.trim(),
-                  cvMinuteId: cvMinute.id,
-                  userId: user.id,
-                },
+          // CREATE DOMAIN
+          await Promise.all(
+            jsonData.domains.map(async (item) => {
+              const existDomain = await prisma.cvMinuteDomain.findFirst({
+                where: { content: item.trim() },
               });
-            }
-          }
+
+              if (!existDomain) {
+                await prisma.cvMinuteDomain.create({
+                  data: {
+                    content: item.trim(),
+                    cvMinuteId: cvMinute.id,
+                    userId: user.id,
+                  },
+                });
+              }
+            }),
+          );
 
           await prisma.evaluation.create({
             data: {

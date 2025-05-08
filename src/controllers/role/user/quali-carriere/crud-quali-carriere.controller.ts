@@ -44,14 +44,14 @@ const editQualiCarriereResume = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
-    const body: { content: string } = req.body;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
+
+    const { id } = req.params;
+    const body: { content: string } = req.body;
 
     const qualiCarrirereResume = await prisma.qualiCarriereResume.update({
       where: { id: Number(id) },
@@ -75,13 +75,13 @@ const editQualiCarriereCompetence = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const body: { competences: { id: number; content: string }[] } = req.body;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
+
+    const body: { competences: { id: number; content: string }[] } = req.body;
 
     const qualiCarriereCompetences = await Promise.all(
       body.competences.map((c) =>

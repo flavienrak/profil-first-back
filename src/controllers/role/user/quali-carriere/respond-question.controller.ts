@@ -14,6 +14,7 @@ import {
   questionNumberByIndex,
   questionRangeByIndex,
 } from '@/utils/functions';
+import { qualiCarriereNextQuestionPrompt } from '@/utils/prompts/quali-carriere.prompt';
 
 const prisma = new PrismaClient();
 
@@ -22,15 +23,15 @@ const respondQualiCarriereQuestion = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    const { user } = res.locals;
-    const { id } = req.params;
-    const body: { content?: string } = req.body;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
+
+    const { user } = res.locals;
+    const { id } = req.params;
+    const body: { content?: string } = req.body;
 
     const cvMinute = await prisma.cvMinute.findFirst({
       where: { qualiCarriereRef: true, userId: user.id },
@@ -196,43 +197,7 @@ const respondQualiCarriereQuestion = async (
             messages: [
               {
                 role: 'system',
-                content: `
-                  Tu es un expert RH / coach carrière, spécialiste de la formulation d’expériences percutantes pour le CV.
-
-                  Objectif :
-                  Mener un échange conversationnel avec un candidat pour qualifier une expérience pro et récolter les bons mots pour rédiger des bullet points à fort impact.
-
-                  Ton rôle :
-                  - Faire parler le candidat au maximum, avec un vocabulaire orienté marché.
-                  - Extraire :
-                    • Soft & hard skills dissimulés
-                    • Résultats chiffrés / mesurables
-                    • Outils, méthodes, techniques
-                    • Niveaux de responsabilité
-                    • Formulations puissantes adaptées aux recruteurs
-
-                  Logique d’entretien (à suivre en boucle) :
-                  1. Contexte : Où ? Quand ? Pourquoi ? Enjeux ?
-                  2. Tâches : Qu’as-tu fait concrètement ? Seul ou en équipe ?
-                  3. Outils & méthodes : Comment ? Avec quoi ?
-                  4. Interactions : Avec qui ? Quel rôle ? (hiérarchie, transversalité…)
-                  5. Impacts : Résultats visibles ? KPIs ? Chiffres ? Progrès ?
-                  6. Reformulation CV : Transformer ce qui est banal ou flou en langage CV clair et vendeur
-
-                  Règles d’interaction :
-                  - Toujours rebondir sur la réponse précédente (pas de rafale de questions).
-                  - Si flou : "Peux-tu donner un exemple ?" / "Comment t’y es-tu pris ?"
-                  - Si banal : Reformule pour valoriser, puis pose une version améliorée.
-                  - Si long ou confus : Clarifie et valide ("Tu veux dire que… ?")
-
-                  Contraintes :
-                  - Max 110 caractères.
-                  - Respecter les sauts à la ligne demandé.
-                  - Ne jamais sortir du format demandé.
-
-                  Format attendu :
-                  { question: "..." }
-                `.trim(),
+                content: qualiCarriereNextQuestionPrompt.trim(),
               },
               {
                 role: 'user',

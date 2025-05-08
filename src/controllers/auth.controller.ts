@@ -29,7 +29,12 @@ const login = async (
 ): Promise<void> => {
   if (authTokenName && secretKey) {
     try {
-      let user = null;
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
       const body: {
         email: string;
         password: string;
@@ -37,13 +42,7 @@ const login = async (
         remember: boolean;
       } = req.body;
 
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({ errors: errors.array() });
-        return;
-      }
-
-      user = await prisma.user.findUnique({
+      let user = await prisma.user.findUnique({
         where: { email: body.email.toLowerCase() },
       });
       if (!user || (user && user.role !== body.role)) {
@@ -105,7 +104,12 @@ const register = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let user = null;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
     const body: {
       name: string;
       email: string;
@@ -113,13 +117,7 @@ const register = async (
       role: string;
     } = req.body;
 
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return;
-    }
-
-    user = await prisma.user.findUnique({ where: { email: body.email } });
+    let user = await prisma.user.findUnique({ where: { email: body.email } });
     if (user) {
       res.json({ userAlreadyExist: true });
       return;

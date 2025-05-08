@@ -5,12 +5,14 @@ import {
   saveCvThequeCritere,
   getCvThequeHistory,
   getCvAnonym,
+  contactCvAnonym,
 } from '@/controllers/role/recruiter/cvtheque/crud-cvtheque.controller';
 import { getCvThequeCritere } from '@/controllers/role/recruiter/cvtheque/get-critere.controller';
 import { updateCvThequeCritere } from '@/controllers/role/recruiter/cvtheque/update-critere.controller';
 import { checkCvCritereOwner } from '@/middlewares/role/recruiter/cvtheque.middleware';
 import {
   addCvThequeCritereValidation,
+  contactCvAnonymValidation,
   resendCvThequeCritereValidation,
   updateCvThequeCritereValidation,
 } from '@/validations/role/recruiter/cvtheque.validation';
@@ -30,6 +32,13 @@ router.get(
   resendCvThequeCritere,
 );
 router.post('/:id/save', checkCvCritereOwner, saveCvThequeCritere);
+
+router.post(
+  '/:id/contact/:cvAnonymId',
+  contactCvAnonymValidation,
+  checkCvCritereOwner,
+  contactCvAnonym,
+);
 
 router.get('/:id/cv-anonym/:cvAnonymId', checkCvCritereOwner, getCvAnonym);
 

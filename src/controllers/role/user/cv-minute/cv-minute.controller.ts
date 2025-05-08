@@ -9,6 +9,14 @@ import { SectionInterface } from '@/interfaces/role/user/cv-minute/section.inter
 import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
 import { SectionInfoInterface } from '@/interfaces/role/user/cv-minute/sectionInfo.interface';
 import { EvaluationInterface } from '@/interfaces/role/user/cv-minute/evaluation.interface';
+import {
+  cvMinuteExperienceAdvicePrompt,
+  cvMinutePresentationAdvicePrompt,
+  cvMinuteTitleAdvicePrompt,
+  cvMinuteEvaluationPrompt,
+  experienceEvaluationPrompt,
+  newCvMinuteSectionPrompt,
+} from '@/utils/prompts/cv-minute.prompt';
 
 const prisma = new PrismaClient();
 
@@ -17,6 +25,12 @@ const updateCvMinuteSection = async (
   res: express.Response,
 ): Promise<void> => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
     let section: SectionInterface | null = null;
     let cvMinuteSection: CvMinuteSectionInterface | null = null;
     let sectionInfo: SectionInfoInterface | null = null;
@@ -47,12 +61,6 @@ const updateCvMinuteSection = async (
 
       cvMinuteSectionId?: number;
     } = req.body;
-
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return;
-    }
 
     const cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
@@ -351,26 +359,7 @@ const updateCvMinuteSection = async (
           messages: [
             {
               role: 'system',
-              content: `
-                Tu es expert en évaluation de CV.
-
-                Mission :
-                À partir du contenu de l'expérience et de l’offre ciblée, évalue la compatibilité entre une expérience professionnelle et une offre d’emploi.
-
-                Contraintes :
-                - Le score est une valeur entière entre 0 et 100.
-                - Les commentaires doivent être clairs, constructifs et basés sur les attentes du poste.
-                - Pas d’introduction ni de phrase hors sujet.
-                - Respecter les sauts à la ligne demandé.
-                - Ne jamais sortir du format demandé.
-
-                Format attendu :
-                {
-                  postScore: string, // Score sur 100 mesurant l'adéquation
-                  postHigh: string,  // 1 à 3 phrases sur les points forts (chaque phrase sur une nouvelle ligne)
-                  postWeak: string   // 1 à 3 phrases sur les axes d'amélioration (chaque phrase sur une nouvelle ligne)
-                }
-              `.trim(),
+              content: experienceEvaluationPrompt.trim(),
             },
             {
               role: 'user',
@@ -496,22 +485,7 @@ const generateCvMinuteSectionAdvice = async (
       messages: [
         {
           role: 'system',
-          content: `
-            Tu es expert en rédaction de CV.
-
-            Objectif :
-            Proposer entre 1 et 3 sections supplémentaires pour enrichir un CV existant, en fonction :
-            - de l'offre d’emploi ciblée
-            - des conseils fournis
-
-            Contraintes :
-            - Ne pas proposer les sections déjà présentes.
-            - Suggérer uniquement des ajouts pertinents, concrets et orientés impact.
-            - Ne jamais sortir du format demandé.
-
-            Format attendu :
-            { sections: ["Nom de la section 1", "Nom de la section 2"] }
-          `.trim(),
+          content: newCvMinuteSectionPrompt.trim(),
         },
         {
           role: 'user',
@@ -543,15 +517,17 @@ const generateCvMinuteSectionAdvice = async (
           return;
         }
 
-        for (const s of jsonData.sections) {
-          await prisma.advice.create({
-            data: {
-              cvMinuteId: cvMinute.id,
-              content: s,
-              type: 'suggestion',
-            },
-          });
-        }
+        await Promise.all(
+          jsonData.sections.map(async (s) => {
+            await prisma.advice.create({
+              data: {
+                cvMinuteId: cvMinute.id,
+                content: s,
+                type: 'suggestion',
+              },
+            });
+          }),
+        );
       }
     }
 
@@ -576,17 +552,17 @@ const generateSectionInfoAdvice = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let messageSystem: string = '';
-    let messageUser: string = '';
-    const { cvMinute } = res.locals;
-    const { sectionInfoId } = req.params;
-    const body: { section: string } = req.body;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
+
+    let messageSystem = '';
+    let messageUser = '';
+    const { cvMinute } = res.locals;
+    const { sectionInfoId } = req.params;
+    const body: { section: string } = req.body;
 
     let sectionInfo = await prisma.sectionInfo.findUnique({
       where: { id: Number(sectionInfoId) },
@@ -603,19 +579,7 @@ const generateSectionInfoAdvice = async (
     )?.content;
 
     if (body.section === 'title') {
-      messageSystem = `
-        Tu es expert en optimisation de CV.
-
-        Objectif : Proposer 1 à 3 titres de CV adaptés à l’offre et aux conseils fournis.
-
-        Format attendu :
-        { advices: ["Titre 1", "Titre 2", "Titre 3"] }
-
-        Contraintes :
-        - Pas de phrases explicatives
-        - Max 80 caractères par titre
-        - JSON simple uniquement
-      `;
+      messageSystem = cvMinuteTitleAdvicePrompt.trim();
 
       messageUser = `
         Titre actuel :
@@ -624,18 +588,7 @@ const generateSectionInfoAdvice = async (
         Offre: ${cvMinute.position}
       `;
     } else if (body.section === 'presentation') {
-      messageSystem = `
-        Tu es expert en rédaction de CV.
-
-        Objectif : Suggérer 1 à 3 présentations de profil percutantes, selon l’offre et les conseils.
-        
-        Contraintes :
-        - Réponses claires, sans introduction
-        - Ne jamais sortir du format demandé
-
-        Format attendu :
-        { advices: ["Proposition 1", "Proposition 2"] }
-      `;
+      messageSystem = cvMinutePresentationAdvicePrompt.trim();
 
       messageUser = `
         Présentation actuelle : 
@@ -644,20 +597,7 @@ const generateSectionInfoAdvice = async (
         Offre: ${cvMinute.position}
       `;
     } else if (body.section === 'experience') {
-      messageSystem = `
-        Tu es expert en rédaction de CV.
-
-        Objectif : Proposer 1 à 3 enrichissements à ajouter à une expérience, selon les conseils et l’offre.
-        
-        Contraintes :
-        - Max 300 caractères par ligne.
-        - Pas de phrases explicatives.
-        - Format : "MotClé : détail1, détail2..."
-        - Ne jamais sortir du format demandé.
-
-        Format attendu :
-        { advices: ["MotClé : détail1, détail2, détail3", "..."] }
-      `;
+      messageSystem = cvMinuteExperienceAdvicePrompt.trim();
 
       messageUser = `
         Titre du poste: ${sectionInfo.title}\n 
@@ -700,15 +640,17 @@ const generateSectionInfoAdvice = async (
           return;
         }
 
-        for (const item of jsonData.advices) {
-          await prisma.advice.create({
-            data: {
-              sectionInfoId: sectionInfo.id,
-              content: item,
-              type: 'suggestion',
-            },
-          });
-        }
+        await Promise.all(
+          jsonData.advices.map(async (item) => {
+            await prisma.advice.create({
+              data: {
+                sectionInfoId: sectionInfo?.id,
+                content: item,
+                type: 'suggestion',
+              },
+            });
+          }),
+        );
       }
     }
 
@@ -799,24 +741,7 @@ const updateCvMinuteScore = async (
       messages: [
         {
           role: 'system',
-          content: `
-            Tu es expert en rédaction et optimisation de CV.
-
-            Mission :
-            À partir du contenu du CV et de l’offre ciblée, évalue la compatibilité globale du CV avec l’offre et fournir des recommandations concrètes.
-
-            Contraintes :
-            - JSON simple uniquement.
-            - Pas de texte explicatif en dehors du format demandé.
-            - Respecter les sauts à la ligne demandé.
-            - Ne jamais sortir du format demandé.
-
-            Format attendu :
-            {
-              globalScore: number, // Score de compatibilité de 0 à 100
-              recommendations: string // 1 à 3 phrases, séparées par des sauts de ligne
-            }
-          `.trim(),
+          content: cvMinuteEvaluationPrompt.trim(),
         },
         {
           role: 'user',
@@ -903,26 +828,7 @@ const updateSectionInfoScore = async (
       messages: [
         {
           role: 'system',
-          content: `
-            Tu es expert en rédaction et optimisation de CV.
-
-            Mission :
-            À partir du contenu du CV et de l’offre ciblée, évalue la compatibilité entre une expérience professionnelle et une offre d’emploi.
-
-            Contraintes :
-            - JSON simple uniquement.
-            - Chaque phrase explicative sur une nouvelle ligne.
-            - Pas de texte hors format JSON.
-            - Respecter les sauts à la ligne demandé.
-            - Ne jamais sortir du format demandé.
-
-            Format attendu :
-            {
-              score: number,         // Score de compatibilité de 0 à 100
-              postHigh: string,      // 1 à 3 phrases sur les points forts (une phrase par ligne)
-              postWeak: string       // 1 à 3 phrases sur les axes d'amélioration (une phrase par ligne)
-            }
-          `.trim(),
+          content: experienceEvaluationPrompt.trim(),
         },
         {
           role: 'user',

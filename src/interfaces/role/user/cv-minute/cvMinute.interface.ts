@@ -3,6 +3,7 @@ import { CvMinuteSectionInterface } from './cvMinuteSection.interface';
 import { EvaluationInterface } from './evaluation.interface';
 import { FileInterface } from '../../../file.interface';
 import { CvThequeViewInterface } from '../../recruiter/cvtheque/cvtheque-view.interface';
+import { CvThequeContactInterface } from '../../recruiter/cvtheque/cvtheque-contact.interface';
 
 export interface CvMinuteInterface {
   id: number;
@@ -23,6 +24,7 @@ export interface CvMinuteInterface {
   cvMinuteSections?: CvMinuteSectionInterface[];
   evaluation?: EvaluationInterface;
   cvThequeViews?: CvThequeViewInterface[];
+  cvThequeContacts?: CvThequeContactInterface[];
 
   createdAt: Date;
   updatedAt: Date;
