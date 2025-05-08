@@ -1,6 +1,8 @@
 .env
+
 dist
 uploads
+
 /node_modules
 
 docker-compose.yml
