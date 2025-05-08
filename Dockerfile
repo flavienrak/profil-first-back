@@ -3,18 +3,14 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# 1. Install des dépendances
+# Installation des dépendances
 COPY package*.json tsconfig.json ./
 RUN npm install 
 
-# 2. Génération Prisma
-COPY src/prisma ./prisma
-RUN npx prisma generate --schema=prisma/schema.prisma
-
-# 3. Copie du code source
+# Copie du code source
 COPY src ./src
 
-# 4. Compilation TypeScript
+# Compilation TypeScript
 RUN npm run build
 
 
