@@ -75,7 +75,10 @@ const escapeNewlinesInJsonStrings = (block: string): string =>
  * @param value La chaîne potentiellement contenant du JSON
  * @returns L’objet JavaScript parsé ou `null` si on n’a pas réussi à parser
  */
-const extractJson = (value: string): any | null => {
+const extractJson = (value?: string | null): any | null => {
+  if (!value) {
+    return null;
+  }
   // 1) Extraire soit un bloc ```json``` soit un objet/ tableau JSON brut
   const raw =
     value.match(/```json\s*([\s\S]*?)\s*```/)?.[1] ||

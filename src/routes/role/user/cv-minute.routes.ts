@@ -7,8 +7,8 @@ import {
   updateCvMinuteScore,
   generateCvMinuteSectionAdvice,
   generateSectionInfoAdvice,
-} from '../../../controllers/role/user/cv-minute/cv-minute.controller';
-import { addCvMinute } from '../../../controllers/role/user/cv-minute/add-cv-minute.controller';
+} from '@/controllers/role/user/cv-minute/cv-minute.controller';
+import { addCvMinute } from '@/controllers/role/user/cv-minute/add-cv-minute.controller';
 import {
   copyCvMinute,
   deleteCvMinuteSection,
@@ -20,8 +20,8 @@ import {
   updateCvMinuteSectionOrder,
   updateCvMinuteVisibility,
   updateSectionInfoOrder,
-} from '../../../controllers/role/user/cv-minute/crud-cv-minute.controller';
-import { optimizeCvMinute } from '../../../controllers/role/user/cv-minute/optimize-cv-minute.controller';
+} from '@/controllers/role/user/cv-minute/crud-cv-minute.controller';
+import { optimizeCvMinute } from '@/controllers/role/user/cv-minute/optimize-cv-minute.controller';
 import {
   addCvMinuteValidation,
   updateCvMinuteSectionValidation,
@@ -32,8 +32,8 @@ import {
   generateSectionInfoAdviceValidation,
   updateCvMinuteNameValidation,
   updateCvMinuteVisibilityValidation,
-} from '../../../validations/role/user/cv-minute.validation';
-import { checkCvMinuteOwner } from '../../../middlewares/role/user/cv-minute.middleware';
+} from '@/validations/role/user/cv-minute.validation';
+import { checkCvMinuteOwner } from '@/middlewares/role/user/cv-minute.middleware';
 
 const upload = multer();
 const router = express.Router();
@@ -69,8 +69,8 @@ router.put(
 // UPDATE CVMINUTE SECTION
 router.put(
   '/:id/section',
-  checkCvMinuteOwner,
   updateCvMinuteSectionValidation,
+  checkCvMinuteOwner,
   updateCvMinuteSection,
 );
 
@@ -81,56 +81,56 @@ router.post('/:id/optimize', checkCvMinuteOwner, optimizeCvMinute);
 router.post(
   '/:id/profile',
   upload.single('file'),
-  checkCvMinuteOwner,
   updateCvMinuteProfileValidation,
+  checkCvMinuteOwner,
   updateCvMinuteProfile,
 );
 
 // UPDATE CVMINUTE SECTION ORDER
 router.put(
   '/:id/section/order',
-  checkCvMinuteOwner,
   updateCvMinuteSectionOrderValidation,
+  checkCvMinuteOwner,
   updateCvMinuteSectionOrder,
 );
 
 // DELETE CVMINUTE SECTION
 router.delete(
   '/:id/section/:cvMinuteSectionId',
-  checkCvMinuteOwner,
   sectionInfoIdValidation,
+  checkCvMinuteOwner,
   deleteCvMinuteSection,
 );
 
 // UPDATE SECTIONINFO ORDER
 router.put(
   '/:id/section-info/order',
-  checkCvMinuteOwner,
   updateSectionInfoOrderValidation,
+  checkCvMinuteOwner,
   updateSectionInfoOrder,
 );
 
 // GENERATE SECTIONINFO ADVICE
 router.post(
   '/:id/section-info/:sectionInfoId',
-  checkCvMinuteOwner,
   generateSectionInfoAdviceValidation,
+  checkCvMinuteOwner,
   generateSectionInfoAdvice,
 );
 
 // UPDATE SECTIONINFO SCORE
 router.put(
   '/:id/section-info/:sectionInfoId',
-  checkCvMinuteOwner,
   sectionInfoIdValidation,
+  checkCvMinuteOwner,
   updateSectionInfoScore,
 );
 
 // DELETE SECTIONINFO
 router.delete(
   '/:id/section-info/:sectionInfoId',
-  checkCvMinuteOwner,
   sectionInfoIdValidation,
+  checkCvMinuteOwner,
   deleteSectionInfo,
 );
 

@@ -1,14 +1,22 @@
 import express from 'express';
-import isEmpty from '../../../../utils/isEmpty';
+import isEmpty from '@/utils/isEmpty';
 
-import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-import { openai } from '../../../../socket';
-import { extractJson } from '../../../../utils/functions';
-import { SectionInterface } from '../../../../interfaces/role/user/cv-minute/section.interface';
-import { CvMinuteSectionInterface } from '../../../../interfaces/role/user/cv-minute/cvMinuteSection.interface';
-import { SectionInfoInterface } from '../../../../interfaces/role/user/cv-minute/sectionInfo.interface';
-import { EvaluationInterface } from '../../../../interfaces/role/user/cv-minute/evaluation.interface';
+import { openai } from '@/socket';
+import { PrismaClient } from '@prisma/client';
+import { extractJson } from '@/utils/functions';
+import { SectionInterface } from '@/interfaces/role/user/cv-minute/section.interface';
+import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
+import { SectionInfoInterface } from '@/interfaces/role/user/cv-minute/sectionInfo.interface';
+import { EvaluationInterface } from '@/interfaces/role/user/cv-minute/evaluation.interface';
+import {
+  cvMinuteExperienceAdvicePrompt,
+  cvMinutePresentationAdvicePrompt,
+  cvMinuteTitleAdvicePrompt,
+  cvMinuteEvaluationPrompt,
+  experienceEvaluationPrompt,
+  newCvMinuteSectionPrompt,
+} from '@/utils/prompts/cv-minute.prompt';
 
 const prisma = new PrismaClient();
 
@@ -17,9 +25,15 @@ const updateCvMinuteSection = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let section: SectionInterface = null;
-    let cvMinuteSection: CvMinuteSectionInterface = null;
-    let sectionInfo: SectionInfoInterface = null;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    let section: SectionInterface | null = null;
+    let cvMinuteSection: CvMinuteSectionInterface | null = null;
+    let sectionInfo: SectionInfoInterface | null = null;
 
     const { id } = req.params;
     const body: {
@@ -48,18 +62,22 @@ const updateCvMinuteSection = async (
       cvMinuteSectionId?: number;
     } = req.body;
 
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return;
-    }
-
     const cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
       include: { advices: true, evaluation: true },
     });
 
-    if (body.updateBg) {
+    if (!cvMinute) {
+      res.json({ cvMinuteNotFound: true });
+      return;
+    }
+
+    if (
+      body.updateBg &&
+      body.primaryBg &&
+      body.secondaryBg &&
+      body.tertiaryBg
+    ) {
       // update bg
       const updatedCvMinute = await prisma.cvMinute.update({
         where: { id: cvMinute.id },
@@ -78,7 +96,12 @@ const updateCvMinuteSection = async (
         },
       });
       return;
-    } else if (body.updateContactSection) {
+    } else if (
+      body.cvMinuteSectionId &&
+      body.updateContactSection &&
+      body.content &&
+      body.icon
+    ) {
       // (create | update) contact
       cvMinuteSection = await prisma.cvMinuteSection.findUnique({
         where: { id: body.cvMinuteSectionId },
@@ -123,7 +146,7 @@ const updateCvMinuteSection = async (
           },
         });
       }
-    } else if (body.newSection) {
+    } else if (body.newSection && body.title && body.content) {
       // create (section &| cvMinuteSection) & sectionInfo
       section = await prisma.section.findUnique({
         where: { name: body.title.trim().toLocaleLowerCase() },
@@ -220,6 +243,7 @@ const updateCvMinuteSection = async (
         return;
       } else {
         if (
+          body.sectionTitle &&
           !isEmpty(body.sectionTitle) &&
           body.sectionTitle.trim() !== cvMinuteSection.sectionTitle
         ) {
@@ -235,10 +259,10 @@ const updateCvMinuteSection = async (
             where: { id: body.sectionInfoId },
           });
 
-          if (body.content !== sectionInfo.content) {
+          if (sectionInfo && body.content !== sectionInfo.content) {
             sectionInfo = await prisma.sectionInfo.update({
               where: { id: body.sectionInfoId },
-              data: { content: body.content.trim() || ' ' },
+              data: { content: body.content?.trim() || ' ' },
             });
           }
         } else {
@@ -254,7 +278,7 @@ const updateCvMinuteSection = async (
           sectionInfo = await prisma.sectionInfo.create({
             data: {
               cvMinuteSectionId: cvMinuteSection.id,
-              content: body.content.trim() || ' ',
+              content: body.content?.trim() || ' ',
               order: 1,
             },
           });
@@ -271,7 +295,14 @@ const updateCvMinuteSection = async (
         res.status(200).json({ cvMinuteSection });
         return;
       }
-    } else if (body.updateExperience) {
+    } else if (
+      body.updateExperience &&
+      body.title &&
+      body.content &&
+      body.company &&
+      body.date &&
+      body.contrat
+    ) {
       // (create | update) experience
       cvMinuteSection = await prisma.cvMinuteSection.findUnique({
         where: { id: body.cvMinuteSectionId },
@@ -328,24 +359,7 @@ const updateCvMinuteSection = async (
           messages: [
             {
               role: 'system',
-              content: `
-                Tu es expert en évaluation de CV.
-
-                Objectif :
-                Évalue la compatibilité entre une expérience professionnelle et une offre d’emploi.
-
-                Données attendues (en JSON simple) :
-                {
-                  postScore: string, // Score sur 100 mesurant l'adéquation
-                  postHigh: string,  // 1 à 3 phrases sur les points forts (chaque phrase sur une nouvelle ligne)
-                  postWeak: string   // 1 à 3 phrases sur les axes d'amélioration (chaque phrase sur une nouvelle ligne)
-                }
-
-                Règles :
-                - Le score est une valeur entière entre 0 et 100.
-                - Les commentaires doivent être clairs, constructifs et basés sur les attentes du poste.
-                - Pas d’introduction ni de phrase hors sujet.
-              `.trim(),
+              content: experienceEvaluationPrompt.trim(),
             },
             {
               role: 'user',
@@ -363,8 +377,8 @@ const updateCvMinuteSection = async (
               data: {
                 responseId: openaiResponse.id,
                 cvMinuteId: cvMinute.id,
-                request: 'evaluation',
-                response: r.message.content,
+                request: 'cv-minute-evaluation',
+                response: r.message.content ?? 'cv-minute-evaluation-response',
                 index: r.index,
               },
             });
@@ -393,6 +407,11 @@ const updateCvMinuteSection = async (
       }
     }
 
+    if (!cvMinuteSection) {
+      res.json({ cvMinuteSectionNotFound: true });
+      return;
+    }
+
     cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: cvMinuteSection.id },
       include: {
@@ -404,7 +423,11 @@ const updateCvMinuteSection = async (
     res.status(200).json({ cvMinuteSection });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -420,6 +443,11 @@ const generateCvMinuteSectionAdvice = async (
       where: { id: Number(id) },
       include: { advices: true },
     });
+
+    if (!cvMinute) {
+      res.json({ cvMinuteNotFound: true });
+      return;
+    }
 
     const cvMinuteSections = await prisma.cvMinuteSection.findMany({
       where: { cvMinuteId: cvMinute.id },
@@ -442,8 +470,12 @@ const generateCvMinuteSectionAdvice = async (
     const allCvMinuteSections = sections
       .map((s) => {
         const cvMinuteSection = getCvMinuteSection(s.name);
-        return cvMinuteSection.sectionTitle;
+        if (cvMinuteSection) {
+          return cvMinuteSection.sectionTitle;
+        }
+        return null;
       })
+      .filter((r) => r)
       .join(', ');
 
     const advice = cvMinute.advices.find((a) => a.type === 'advice');
@@ -453,27 +485,13 @@ const generateCvMinuteSectionAdvice = async (
       messages: [
         {
           role: 'system',
-          content: `
-            Tu es expert en rédaction de CV.
-
-            Objectif :
-            Proposer entre 1 et 3 sections supplémentaires pour enrichir un CV existant, en fonction :
-            - de l'offre d’emploi ciblée
-            - des conseils fournis
-
-            Contraintes :
-            - Ne pas proposer les sections déjà présentes.
-            - Suggérer uniquement des ajouts pertinents, concrets et orientés impact.
-
-            Format attendu (JSON simple) :
-            { sections: ["Nom de la section 1", "Nom de la section 2"] }
-          `.trim(),
+          content: newCvMinuteSectionPrompt.trim(),
         },
         {
           role: 'user',
           content: `
             Sections existantes :\n${allCvMinuteSections}\n
-            Conseils :\n${advice.content}\n
+            Conseils :\n${advice?.content}\n
             Offre :\n${cvMinute.position}
           `.trim(),
         },
@@ -486,8 +504,8 @@ const generateCvMinuteSectionAdvice = async (
           data: {
             responseId: openaiResponse.id,
             cvMinuteId: cvMinute.id,
-            request: 'advice',
-            response: r.message.content,
+            request: 'cv-minute-advice',
+            response: r.message.content ?? 'cv-minute-advice-response',
             index: r.index,
           },
         });
@@ -499,15 +517,17 @@ const generateCvMinuteSectionAdvice = async (
           return;
         }
 
-        for (const s of jsonData.sections) {
-          await prisma.advice.create({
-            data: {
-              cvMinuteId: cvMinute.id,
-              content: s,
-              type: 'suggestion',
-            },
-          });
-        }
+        await Promise.all(
+          jsonData.sections.map(async (s) => {
+            await prisma.advice.create({
+              data: {
+                cvMinuteId: cvMinute.id,
+                content: s,
+                type: 'suggestion',
+              },
+            });
+          }),
+        );
       }
     }
 
@@ -518,7 +538,11 @@ const generateCvMinuteSectionAdvice = async (
     res.status(200).json({ cvMinute: updatedCvMinute });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -528,17 +552,17 @@ const generateSectionInfoAdvice = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let messageSystem: string = null;
-    let messageUser: string = null;
-    const { cvMinute } = res.locals;
-    const { sectionInfoId } = req.params;
-    const body: { section: string } = req.body;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
+
+    let messageSystem = '';
+    let messageUser = '';
+    const { cvMinute } = res.locals;
+    const { sectionInfoId } = req.params;
+    const body: { section: string } = req.body;
 
     let sectionInfo = await prisma.sectionInfo.findUnique({
       where: { id: Number(sectionInfoId) },
@@ -555,19 +579,7 @@ const generateSectionInfoAdvice = async (
     )?.content;
 
     if (body.section === 'title') {
-      messageSystem = `
-        Tu es expert en optimisation de CV.
-
-        Objectif : Proposer 1 à 3 titres de CV adaptés à l’offre et aux conseils fournis.
-
-        Format attendu :
-        { advices: ["Titre 1", "Titre 2", "Titre 3"] }
-
-        Contraintes :
-        - Pas de phrases explicatives
-        - Max 80 caractères par titre
-        - JSON simple uniquement
-      `;
+      messageSystem = cvMinuteTitleAdvicePrompt.trim();
 
       messageUser = `
         Titre actuel :
@@ -576,18 +588,7 @@ const generateSectionInfoAdvice = async (
         Offre: ${cvMinute.position}
       `;
     } else if (body.section === 'presentation') {
-      messageSystem = `
-        Tu es expert en rédaction de CV.
-
-        Objectif : Suggérer 1 à 3 présentations de profil percutantes, selon l’offre et les conseils.
-
-        Format attendu :
-        { advices: ["Proposition 1", "Proposition 2"] }
-
-        Contraintes :
-        - Réponses claires, sans introduction
-        - JSON simple uniquement
-      `;
+      messageSystem = cvMinutePresentationAdvicePrompt.trim();
 
       messageUser = `
         Présentation actuelle : 
@@ -596,20 +597,7 @@ const generateSectionInfoAdvice = async (
         Offre: ${cvMinute.position}
       `;
     } else if (body.section === 'experience') {
-      messageSystem = `
-        Tu es expert en rédaction de CV.
-
-        Objectif : Proposer 1 à 3 enrichissements à ajouter à une expérience, selon les conseils et l’offre.
-
-        Format attendu :
-        { advices: ["MotClé : détail1, détail2, détail3", "..."] }
-
-        Contraintes :
-        - Max 300 caractères par ligne
-        - Pas de phrases explicatives
-        - Format : "MotClé : détail1, détail2..."
-        - JSON simple uniquement
-      `;
+      messageSystem = cvMinuteExperienceAdvicePrompt.trim();
 
       messageUser = `
         Titre du poste: ${sectionInfo.title}\n 
@@ -639,8 +627,8 @@ const generateSectionInfoAdvice = async (
           data: {
             responseId: openaiResponse.id,
             cvMinuteId: cvMinute.id,
-            request: 'advice',
-            response: r.message.content,
+            request: 'cv-minute-advice',
+            response: r.message.content ?? 'cv-minute-advice-response',
             index: r.index,
           },
         });
@@ -652,15 +640,17 @@ const generateSectionInfoAdvice = async (
           return;
         }
 
-        for (const item of jsonData.advices) {
-          await prisma.advice.create({
-            data: {
-              sectionInfoId: sectionInfo.id,
-              content: item,
-              type: 'suggestion',
-            },
-          });
-        }
+        await Promise.all(
+          jsonData.advices.map(async (item) => {
+            await prisma.advice.create({
+              data: {
+                sectionInfoId: sectionInfo?.id,
+                content: item,
+                type: 'suggestion',
+              },
+            });
+          }),
+        );
       }
     }
 
@@ -671,7 +661,11 @@ const generateSectionInfoAdvice = async (
     res.status(200).json({ sectionInfo });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -681,13 +675,18 @@ const updateCvMinuteScore = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let evaluation: EvaluationInterface = null;
+    let evaluation: EvaluationInterface | null = null;
     const { id } = req.params;
 
     const cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
       include: { advices: true, evaluation: true },
     });
+
+    if (!cvMinute) {
+      res.json({ cvMinuteNotFound: true });
+      return;
+    }
 
     if (!cvMinute.evaluation) {
       res.json({ evaluationNotFound: true });
@@ -722,14 +721,18 @@ const updateCvMinuteScore = async (
     const allCvMinuteSections = editableSections
       .map((s) => {
         const cvMinuteSection = getCvMinuteSection(s.name);
-        return `${cvMinuteSection.sectionTitle}: ${cvMinuteSection.sectionInfos[0].content}`;
+        if (cvMinuteSection) {
+          return `${cvMinuteSection.sectionTitle}: ${cvMinuteSection.sectionInfos[0].content}`;
+        }
+        return null;
       })
+      .filter((r) => r)
       .join('\n');
 
     const cvDetails = `
-      cvTitle : ${title.sectionInfos[0].content}, 
-      profilePresentation : ${presentation.sectionInfos[0].content}, 
-      experiences : ${experiences.sectionInfos.map((item, index) => `${index}. poste : ${item.title}, contrat : ${item.contrat}, description : ${item.content}`).join('\n')}, 
+      cvTitle : ${title?.sectionInfos[0].content}, 
+      profilePresentation : ${presentation?.sectionInfos[0].content}, 
+      experiences : ${experiences?.sectionInfos.map((item, index) => `${index}. poste : ${item.title}, contrat : ${item.contrat}, description : ${item.content}`).join('\n')}, 
       sections : ${allCvMinuteSections}
     `;
 
@@ -738,28 +741,13 @@ const updateCvMinuteScore = async (
       messages: [
         {
           role: 'system',
-          content: `
-            Tu es expert en rédaction et optimisation de CV.
-
-            Objectif :
-            Évaluer la compatibilité globale du CV avec l’offre et fournir des recommandations concrètes.
-
-            Format attendu :
-            {
-              globalScore: number, // Score de compatibilité de 0 à 100
-              recommendations: string // 1 à 3 phrases, séparées par des sauts de ligne
-            }
-
-            Contraintes :
-            - JSON simple uniquement
-            - Pas de texte explicatif en dehors du format demandé
-          `.trim(),
+          content: cvMinuteEvaluationPrompt.trim(),
         },
         {
           role: 'user',
           content: `
             Contenu du CV : ${cvDetails}\n 
-            Offre : ${cvMinute.position}
+            Offre ciblée : ${cvMinute.position}
           `.trim(),
         },
       ],
@@ -771,8 +759,8 @@ const updateCvMinuteScore = async (
           data: {
             responseId: openaiResponse.id,
             cvMinuteId: cvMinute.id,
-            request: 'matching-score',
-            response: r.message.content,
+            request: 'cv-minute-matching-score',
+            response: r.message.content ?? 'cv-minute-matching-score-response',
             index: r.index,
           },
         });
@@ -798,7 +786,11 @@ const updateCvMinuteScore = async (
     res.status(200).json({ evaluation });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
@@ -808,7 +800,7 @@ const updateSectionInfoScore = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    let evaluation: EvaluationInterface = null;
+    let evaluation: EvaluationInterface | null = null;
     const { cvMinute } = res.locals;
     const { sectionInfoId } = req.params;
 
@@ -836,31 +828,14 @@ const updateSectionInfoScore = async (
       messages: [
         {
           role: 'system',
-          content: `
-            Tu es expert en rédaction et optimisation de CV.
-
-            Objectif :
-            Évaluer la compatibilité entre une expérience professionnelle et une offre d’emploi.
-
-            Format attendu :
-            {
-              score: number,         // Score de compatibilité de 0 à 100
-              postHigh: string,      // 1 à 3 phrases sur les points forts (une phrase par ligne)
-              postWeak: string       // 1 à 3 phrases sur les axes d'amélioration (une phrase par ligne)
-            }
-
-            Contraintes :
-            - JSON simple uniquement
-            - Chaque phrase explicative sur une nouvelle ligne
-            - Pas de texte hors format JSON
-          `.trim(),
+          content: experienceEvaluationPrompt.trim(),
         },
         {
           role: 'user',
           content: `
             Contenu de l'expérience : 
             ${experience}\n 
-            Offre : ${cvMinute.position}
+            Offre ciblée : ${cvMinute.position}
           `.trim(),
         },
       ],
@@ -872,8 +847,8 @@ const updateSectionInfoScore = async (
           data: {
             responseId: openaiResponse.id,
             cvMinuteId: cvMinute.id,
-            request: 'matching-score',
-            response: r.message.content,
+            request: 'cv-minute-matching-score',
+            response: r.message.content ?? 'cv-minute-matching-score-response',
             index: r.index,
           },
         });
@@ -903,7 +878,11 @@ const updateSectionInfoScore = async (
     res.status(200).json({ evaluation });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

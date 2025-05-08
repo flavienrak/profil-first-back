@@ -3,8 +3,8 @@ import { SectionInfoInterface } from './sectionInfo.interface';
 
 export interface CvMinuteSectionInterface {
   id: number;
-  sectionOrder?: number;
-  sectionTitle?: string;
+  sectionOrder: number | null;
+  sectionTitle: string | null;
   cvMinuteId: number;
   sectionId: number;
 

@@ -6,14 +6,15 @@ import FormData from 'form-data';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { io, openai } from '../../../../socket';
-import { CvMinuteSectionInterface } from '../../../../interfaces/role/user/cv-minute/cvMinuteSection.interface';
+import { io, openai } from '@/socket';
+import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
 import {
   extractJson,
   questionNumber,
   questionNumberByIndex,
   questionRangeByIndex,
-} from '../../../../utils/functions';
+} from '@/utils/functions';
+import { qualiCarriereNextQuestionPrompt } from '@/utils/prompts/quali-carriere.prompt';
 
 const prisma = new PrismaClient();
 
@@ -22,15 +23,15 @@ const respondQualiCarriereQuestion = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    const { user } = res.locals;
-    const { id } = req.params;
-    const body: { content?: string } = req.body;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
+
+    const { user } = res.locals;
+    const { id } = req.params;
+    const body: { content?: string } = req.body;
 
     const cvMinute = await prisma.cvMinute.findFirst({
       where: { qualiCarriereRef: true, userId: user.id },
@@ -74,12 +75,9 @@ const respondQualiCarriereQuestion = async (
       qualiCarriereResponses.push(qualiCarriereResponse);
     } else if (req.file) {
       const extension = path.extname(req.file.originalname) || '.wav';
-      const fileName = `audio-${res.locals.user.id}-${Date.now()}${extension}`;
+      const fileName = `audio-${user.id}-${Date.now()}${extension}`;
       const uploadsBase = path.join(process.cwd(), 'uploads');
-      const directoryPath = path.join(
-        uploadsBase,
-        `/files/user-${res.locals.user.id}`,
-      );
+      const directoryPath = path.join(uploadsBase, `/files/user-${user.id}`);
       const filePath = path.join(directoryPath, fileName);
 
       if (!fs.existsSync(directoryPath)) {
@@ -142,9 +140,13 @@ const respondQualiCarriereQuestion = async (
       return cvMinuteSections.find((s) => s.sectionId === section?.id);
     };
 
-    const { sectionInfos } = getCvMinuteSection('experiences');
+    const experiences = getCvMinuteSection('experiences');
+    const sectionInfos = experiences?.sectionInfos;
 
-    const totalQuestions = questionNumber(sectionInfos.length);
+    if (!sectionInfos || (sectionInfos && sectionInfos.length === 0)) {
+      res.json({ noExperiences: true });
+      return;
+    }
 
     const nextQuestion =
       qualiCarriereQuestions[
@@ -155,6 +157,8 @@ const respondQualiCarriereQuestion = async (
       qualiCarriereQuestions[
         qualiCarriereQuestions.findIndex((q) => q.id === nextQuestion?.id) + 1
       ];
+
+    const totalQuestions = questionNumber(sectionInfos.length);
 
     if (qualiCarriereResponses.length === totalQuestions) {
       res.status(200).json({ nextStep: true });
@@ -189,44 +193,11 @@ const respondQualiCarriereQuestion = async (
           qualiCarriereResponses.length < restQuestions - 1
         ) {
           const openaiResponse = await openai.chat.completions.create({
-            model: 'gpt-4-turbo-preview',
+            model: 'gpt-3.5-turbo',
             messages: [
               {
                 role: 'system',
-                content: `
-                  Tu es un expert RH / coach carrière, spécialiste de la formulation d’expériences percutantes pour le CV.
-
-                  Objectif :
-                  Mener un échange conversationnel avec un candidat pour qualifier une expérience pro et récolter les bons mots pour rédiger des bullet points à fort impact.
-
-                  Ton rôle :
-                  - Faire parler le candidat au maximum, avec un vocabulaire orienté marché.
-                  - Extraire :
-                    • Soft & hard skills dissimulés
-                    • Résultats chiffrés / mesurables
-                    • Outils, méthodes, techniques
-                    • Niveaux de responsabilité
-                    • Formulations puissantes adaptées aux recruteurs
-
-                  Logique d’entretien (à suivre en boucle) :
-                  1. Contexte : Où ? Quand ? Pourquoi ? Enjeux ?
-                  2. Tâches : Qu’as-tu fait concrètement ? Seul ou en équipe ?
-                  3. Outils & méthodes : Comment ? Avec quoi ?
-                  4. Interactions : Avec qui ? Quel rôle ? (hiérarchie, transversalité…)
-                  5. Impacts : Résultats visibles ? KPIs ? Chiffres ? Progrès ?
-                  6. Reformulation CV : Transformer ce qui est banal ou flou en langage CV clair et vendeur
-
-                  Règles d’interaction :
-                  - Toujours rebondir sur la réponse précédente (pas de rafale de questions).
-                  - Si flou : "Peux-tu donner un exemple ?" / "Comment t’y es-tu pris ?"
-                  - Si banal : Reformule pour valoriser, puis pose une version améliorée.
-                  - Si long ou confus : Clarifie et valide ("Tu veux dire que… ?")
-
-                  Format de sortie :
-                  {
-                    question: "ta relance puissante ici (max 110 caractères)"
-                  }
-                `.trim(),
+                content: qualiCarriereNextQuestionPrompt.trim(),
               },
               {
                 role: 'user',
@@ -245,7 +216,8 @@ const respondQualiCarriereQuestion = async (
                   responseId: openaiResponse.id,
                   userId: user.id,
                   request: 'quali-carriere-question',
-                  response: r.message.content,
+                  response:
+                    r.message.content ?? 'quali-carriere-question-response',
                   index: r.index,
                 },
               });
@@ -281,7 +253,11 @@ const respondQualiCarriereQuestion = async (
     res.status(200).json({ nextQuestion: true });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };

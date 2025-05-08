@@ -5,8 +5,8 @@ export interface FileInterface {
   extension: string;
   usage: string;
   userId: number;
-  cvMinuteId?: number;
-  sectionInfoId?: number;
+  cvMinuteId: number | null;
+  sectionInfoId: number | null;
 
   createdAt: Date;
   updatedAt: Date;

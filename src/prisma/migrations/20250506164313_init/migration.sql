@@ -14,17 +14,6 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
-CREATE TABLE "UserDomain" (
-    "id" SERIAL NOT NULL,
-    "content" TEXT NOT NULL,
-    "userId" INTEGER NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "UserDomain_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "File" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
@@ -48,13 +37,27 @@ CREATE TABLE "CvMinute" (
     "primaryBg" TEXT NOT NULL DEFAULT '#2A7F8B',
     "secondaryBg" TEXT NOT NULL DEFAULT '#1A5F6B',
     "tertiaryBg" TEXT NOT NULL DEFAULT '#BEDBFF',
-    "userId" INTEGER NOT NULL,
     "visible" BOOLEAN NOT NULL DEFAULT true,
     "qualiCarriereRef" BOOLEAN NOT NULL DEFAULT false,
+    "generated" TEXT,
+    "userId" INTEGER NOT NULL,
+    "cvThequeCritereId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "CvMinute_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CvMinuteDomain" (
+    "id" SERIAL NOT NULL,
+    "content" TEXT NOT NULL,
+    "cvMinuteId" INTEGER NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CvMinuteDomain_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -130,11 +133,12 @@ CREATE TABLE "Evaluation" (
 CREATE TABLE "OpenaiResponse" (
     "id" SERIAL NOT NULL,
     "responseId" TEXT NOT NULL,
-    "cvMinuteId" INTEGER,
-    "userId" INTEGER,
     "request" TEXT NOT NULL,
     "response" TEXT NOT NULL,
     "index" INTEGER NOT NULL,
+    "cvMinuteId" INTEGER,
+    "userId" INTEGER,
+    "cvThequeCritereId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -213,8 +217,8 @@ CREATE TABLE "CvThequeCritere" (
     "localisation" TEXT NOT NULL DEFAULT '',
     "distance" INTEGER NOT NULL DEFAULT 0,
     "experience" INTEGER,
+    "evaluation" INTEGER NOT NULL DEFAULT 0,
     "saved" BOOLEAN NOT NULL DEFAULT false,
-    "evaluated" BOOLEAN NOT NULL DEFAULT false,
     "userId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -248,23 +252,13 @@ CREATE TABLE "CvThequeView" (
 -- CreateTable
 CREATE TABLE "CvThequeUser" (
     "id" SERIAL NOT NULL,
-    "userId" INTEGER NOT NULL,
-    "cvThequeCritereId" INTEGER NOT NULL,
-
-    CONSTRAINT "CvThequeUser_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "CvThequeProposition" (
-    "id" SERIAL NOT NULL,
-    "section" TEXT NOT NULL,
-    "content" TEXT NOT NULL,
+    "score" INTEGER NOT NULL,
     "userId" INTEGER NOT NULL,
     "cvThequeCritereId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "CvThequeProposition_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "CvThequeUser_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -294,8 +288,8 @@ CREATE UNIQUE INDEX "QualiCarriereResume_sectionInfoId_key" ON "QualiCarriereRes
 -- CreateIndex
 CREATE UNIQUE INDEX "CvThequeView_cvMinuteId_key" ON "CvThequeView"("cvMinuteId");
 
--- AddForeignKey
-ALTER TABLE "UserDomain" ADD CONSTRAINT "UserDomain_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- CreateIndex
+CREATE UNIQUE INDEX "CvThequeUser_userId_cvThequeCritereId_key" ON "CvThequeUser"("userId", "cvThequeCritereId");
 
 -- AddForeignKey
 ALTER TABLE "File" ADD CONSTRAINT "File_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -308,6 +302,15 @@ ALTER TABLE "File" ADD CONSTRAINT "File_sectionInfoId_fkey" FOREIGN KEY ("sectio
 
 -- AddForeignKey
 ALTER TABLE "CvMinute" ADD CONSTRAINT "CvMinute_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CvMinute" ADD CONSTRAINT "CvMinute_cvThequeCritereId_fkey" FOREIGN KEY ("cvThequeCritereId") REFERENCES "CvThequeCritere"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CvMinuteDomain" ADD CONSTRAINT "CvMinuteDomain_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CvMinuteDomain" ADD CONSTRAINT "CvMinuteDomain_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CvMinuteSection" ADD CONSTRAINT "CvMinuteSection_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -338,6 +341,9 @@ ALTER TABLE "OpenaiResponse" ADD CONSTRAINT "OpenaiResponse_cvMinuteId_fkey" FOR
 
 -- AddForeignKey
 ALTER TABLE "OpenaiResponse" ADD CONSTRAINT "OpenaiResponse_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OpenaiResponse" ADD CONSTRAINT "OpenaiResponse_cvThequeCritereId_fkey" FOREIGN KEY ("cvThequeCritereId") REFERENCES "CvThequeCritere"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "QualiCarriereQuestion" ADD CONSTRAINT "QualiCarriereQuestion_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -386,9 +392,3 @@ ALTER TABLE "CvThequeUser" ADD CONSTRAINT "CvThequeUser_userId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "CvThequeUser" ADD CONSTRAINT "CvThequeUser_cvThequeCritereId_fkey" FOREIGN KEY ("cvThequeCritereId") REFERENCES "CvThequeCritere"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "CvThequeProposition" ADD CONSTRAINT "CvThequeProposition_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "CvThequeProposition" ADD CONSTRAINT "CvThequeProposition_cvThequeCritereId_fkey" FOREIGN KEY ("cvThequeCritereId") REFERENCES "CvThequeCritere"("id") ON DELETE CASCADE ON UPDATE CASCADE;

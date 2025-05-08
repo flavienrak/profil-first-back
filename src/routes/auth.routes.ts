@@ -5,15 +5,16 @@ import {
   logout,
   register,
   requireAuth,
-} from '../controllers/auth.controller';
+} from '@/controllers/auth.controller';
 import {
   loginValidation,
   registerValidation,
-} from '../validations/auth.validation';
+} from '@/validations/auth.validation';
+import { isAuthenticated } from '@/middlewares/auth.middleware';
 
 const router = express.Router();
 
-router.get('/jwt', requireAuth);
+router.get('/jwt', isAuthenticated, requireAuth);
 
 router.post('/login', loginValidation, login);
 router.post('/register', registerValidation, register);

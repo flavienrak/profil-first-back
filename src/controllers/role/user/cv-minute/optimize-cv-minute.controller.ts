@@ -2,9 +2,10 @@ import { Request, Response } from 'express';
 
 import { htmlToText } from 'html-to-text';
 import { PrismaClient } from '@prisma/client';
-import { openai } from '../../../../socket';
-import { CvMinuteSectionInterface } from '../../../../interfaces/role/user/cv-minute/cvMinuteSection.interface';
-import { extractJson } from '../../../../utils/functions';
+import { openai } from '@/socket';
+import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
+import { extractJson } from '@/utils/functions';
+import { SectionInterface } from '@/interfaces/role/user/cv-minute/section.interface';
 
 const prisma = new PrismaClient();
 
@@ -26,6 +27,11 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       },
     });
 
+    if (!cvMinute) {
+      res.json({ cvMinuteNotFound: true });
+      return;
+    }
+
     let sections = await prisma.section.findMany({
       where: {
         id: {
@@ -38,7 +44,9 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
 
     const getCvMinuteSection = (value: string) => {
       const section = sections.find((s) => s.name === value);
-      return cvMinute.cvMinuteSections.find((c) => c.sectionId === section?.id);
+      return cvMinute?.cvMinuteSections.find(
+        (c) => c.sectionId === section?.id,
+      );
     };
 
     const title = getCvMinuteSection('title');
@@ -61,7 +69,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
     );
     const existPresentation = `
       sectionInfoId :${presentation?.sectionInfos[0]?.id}, 
-      adviceId : ${presentationAdvice.id}, 
+      adviceId : ${presentationAdvice?.id}, 
       profilePresentation : ${presentation?.sectionInfos[0]?.content}, 
       advices : ${presentationAdvice?.content}
     `;
@@ -75,31 +83,31 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
     const existSections = editableSections
       .map((s) => {
         const cvMinuteSection = getCvMinuteSection(s.name);
-        const cvMinuteSectionAdvice = cvMinuteSection.advices.find(
+        const cvMinuteSectionAdvice = cvMinuteSection?.advices.find(
           (a) =>
-            a.cvMinuteSectionId === cvMinuteSection.id && a.type === 'advice',
+            a.cvMinuteSectionId === cvMinuteSection?.id && a.type === 'advice',
         );
 
         return `
           cvMinuteSectionId : ${cvMinuteSection?.id}, 
           adviceId : ${cvMinuteSectionAdvice?.id}, 
-          sectionTitle : ${cvMinuteSection.sectionTitle}, 
+          sectionTitle : ${cvMinuteSection?.sectionTitle}, 
           sectionContent : ${cvMinuteSection?.sectionInfos[0]?.content}, 
           sectionAdvice : ${cvMinuteSectionAdvice?.content}
         `;
       })
       .join('\n');
 
-    const existExperiences = experiences.sectionInfos
+    const existExperiences = experiences?.sectionInfos
       .map((item) => {
         return `
           sectionInfoId :${item.id},
-          evaluationId : ${item.evaluation.id}, 
+          evaluationId : ${item.evaluation?.id}, 
           postTitle : ${item.title}, 
           postDate : ${item.date},
           postDescription : ${htmlToText(item.content)}, 
-          postHigh : ${item.evaluation.content},
-          postWeak : ${item.evaluation.weakContent}
+          postHigh : ${item.evaluation?.content},
+          postWeak : ${item.evaluation?.weakContent}
         `;
       })
       .join('\n');
@@ -110,8 +118,13 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
         {
           role: 'system',
           content: `
-            Objectif :
-            Tu es expert en rédaction et optimisation de CV. Selon une offre d'emploi et des conseils, optimise tout le contenu du CV en respectant les contraintes suivantes :
+            Tu es expert en rédaction et optimisation de CV. 
+
+            Complément : rôle RH
+            Tu es aussi un expert RH. Tu détectes les attentes implicites de l’offre et rédiges pour faire “tilt” chez un recruteur en 5 secondes de scan.
+            
+            Mission :
+            À partir du contenu du CV et de l’offre ciblée, optimise tout le contenu du CV en respectant les contraintes suivantes :
 
             Contraintes générales :
             - Aucun contenu ne doit être perdu (sortie >= entrée).
@@ -119,8 +132,11 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
             - Ne modifie pas les sections suivantes : "formations", "centres d'intérêt", "certifications", "diplômes" (renvoie-les telles quelles).
             - Génère de nouvelles sections appelées "rubriques" selon les conseils.
             - Scores : entre 0 et 100.
+            - Ne jamais inclure d’introduction ou d’explication.
+            - Respecter les sauts à la ligne demandé.
+            - Ne jamais sortir du format demandé.
 
-            Format de retour attendu (JSON uniquement) :
+            Format attendu :
             {
               cvTitle: {
                 sectionInfoId: (identique à l’entrée),
@@ -163,8 +179,6 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
                 recommendations: string // 1 à 3 phrases, une par ligne
               }
             }
-
-            Ne jamais inclure d’introduction ou d’explication. Seulement du JSON.
           `.trim(),
         },
         {
@@ -175,7 +189,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
             Sections : ${existSections}\n 
             Expériences : ${existExperiences}\n 
             Nouvelles sections proposées : ${newSections}\n 
-            Offre : ${cvMinute.position}
+            Offre ciblée : ${cvMinute.position}
           `.trim(),
         },
       ],
@@ -188,7 +202,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
             responseId: openaiResponse.id,
             cvMinuteId: cvMinute.id,
             request: 'optimize-cv',
-            response: r.message.content,
+            response: r.message.content ?? 'optimize-cv-response',
             index: r.index,
           },
         });
@@ -326,107 +340,115 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
           ),
         ];
 
-        // CvMinuteSection
-        for (const s of allSections) {
-          let section = null;
-          let cvMinuteSection = null;
+        // CVMINUTE SECTION
+        await Promise.all(
+          allSections.map(async (s) => {
+            if (cvMinute) {
+              let section: SectionInterface | null = null;
+              let cvMinuteSection: CvMinuteSectionInterface | null = null;
 
-          if (s.cvMinuteSectionId === 'new') {
-            section = await prisma.section.findUnique({
-              where: { name: s.name.trim().toLowerCase() },
-            });
+              if (s.cvMinuteSectionId === 'new') {
+                section = await prisma.section.findUnique({
+                  where: { name: s.name.trim().toLowerCase() },
+                });
 
-            if (!section) {
-              section = await prisma.section.create({
-                data: {
-                  name: s.name.trim().toLowerCase(),
-                  editable: s.editable,
-                },
-              });
-            }
+                if (!section) {
+                  section = await prisma.section.create({
+                    data: {
+                      name: s.name.trim().toLowerCase(),
+                      editable: s.editable,
+                    },
+                  });
+                }
 
-            cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-              where: {
-                cvMinuteId_sectionId: {
-                  cvMinuteId: cvMinute.id,
-                  sectionId: section.id,
-                },
-              },
-            });
-
-            if (!cvMinuteSection) {
-              cvMinuteSection = await prisma.cvMinuteSection.create({
-                data: {
-                  cvMinuteId: cvMinute.id,
-                  sectionId: section.id,
-                  sectionOrder: s.order && Number(s.order),
-                  sectionTitle: s.title,
-                },
-              });
-            }
-
-            if (typeof s.content === 'string') {
-              await prisma.sectionInfo.create({
-                data: {
-                  cvMinuteSectionId: cvMinuteSection.id,
-                  content: s.content,
-                },
-              });
-            }
-
-            await prisma.advice.create({
-              data: {
-                cvMinuteSectionId: cvMinuteSection.id,
-                content: s.advice,
-                type: 'advice',
-              },
-            });
-          } else if (s.cvMinuteSectionId) {
-            cvMinuteSection = await prisma.cvMinuteSection.update({
-              where: { id: Number(s.cvMinuteSectionId) },
-              data: { sectionTitle: s.title },
-            });
-
-            await prisma.advice.update({
-              where: { id: Number(s.adviceId) },
-              data: { content: s.advice },
-            });
-          }
-
-          // SectionInfo
-          if (s.withAdvice) {
-            await prisma.sectionInfo.update({
-              where: { id: Number(s.withAdvice.sectionInfoId) },
-              data: { content: s.withAdvice.content },
-            });
-
-            await prisma.advice.update({
-              where: { id: Number(s.withAdvice.adviceId) },
-              data: { content: s.withAdvice.advice },
-            });
-          } else {
-            for (const item of s.content) {
-              if (typeof item === 'object') {
-                await prisma.sectionInfo.update({
-                  where: { id: Number(item.sectionInfoId) },
-                  data: {
-                    content: item.content,
-                    order: Number(item.order),
+                cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+                  where: {
+                    cvMinuteId_sectionId: {
+                      cvMinuteId: cvMinute.id,
+                      sectionId: section.id,
+                    },
                   },
                 });
 
-                await prisma.evaluation.update({
-                  where: { id: Number(item.evaluationId) },
+                if (!cvMinuteSection) {
+                  cvMinuteSection = await prisma.cvMinuteSection.create({
+                    data: {
+                      cvMinuteId: cvMinute.id,
+                      sectionId: section.id,
+                      sectionOrder: s.order ? Number(s.order) : 1,
+                      sectionTitle: s.title,
+                    },
+                  });
+                }
+
+                if (typeof s.content === 'string') {
+                  await prisma.sectionInfo.create({
+                    data: {
+                      cvMinuteSectionId: cvMinuteSection.id,
+                      content: s.content,
+                    },
+                  });
+                }
+
+                await prisma.advice.create({
                   data: {
-                    actualScore: Number(item.score),
-                    content: item.high,
-                    weakContent: item.weak,
+                    cvMinuteSectionId: cvMinuteSection.id,
+                    content: s.advice ?? '',
+                    type: 'advice',
                   },
+                });
+              } else if (s.cvMinuteSectionId) {
+                cvMinuteSection = await prisma.cvMinuteSection.update({
+                  where: { id: Number(s.cvMinuteSectionId) },
+                  data: { sectionTitle: s.title },
+                });
+
+                await prisma.advice.update({
+                  where: { id: Number(s.adviceId) },
+                  data: { content: s.advice },
                 });
               }
+
+              // SECTION INFO
+              if (s.withAdvice) {
+                await prisma.sectionInfo.update({
+                  where: { id: Number(s.withAdvice.sectionInfoId) },
+                  data: { content: s.withAdvice.content },
+                });
+
+                await prisma.advice.update({
+                  where: { id: Number(s.withAdvice.adviceId) },
+                  data: { content: s.withAdvice.advice },
+                });
+              } else {
+                if (s.content && Array.isArray(s.content)) {
+                  await Promise.all(
+                    s.content.map(async (item) => {
+                      if (typeof item === 'object') {
+                        await prisma.sectionInfo.update({
+                          where: { id: Number(item.sectionInfoId) },
+                          data: {
+                            content: item.content,
+                            order: Number(item.order),
+                          },
+                        });
+
+                        await prisma.evaluation.update({
+                          where: { id: Number(item.evaluationId) },
+                          data: {
+                            actualScore: Number(item.score),
+                            content: item.high,
+                            weakContent: item.weak,
+                          },
+                        });
+                      }
+                    }),
+                  );
+                }
+              }
             }
-          }
-        }
+          }),
+        );
 
         await prisma.evaluation.update({
           where: { cvMinuteId: cvMinute.id },
@@ -440,10 +462,12 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
           where: { cvMinuteId: cvMinute.id, type: 'advice' },
         });
 
-        await prisma.advice.update({
-          where: { id: cvMinuteAdvice.id },
-          data: { content: jsonData.newSectionsAdvice },
-        });
+        if (cvMinuteAdvice) {
+          await prisma.advice.update({
+            where: { id: cvMinuteAdvice.id },
+            data: { content: jsonData.newSectionsAdvice },
+          });
+        }
       }
     }
 
@@ -462,7 +486,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
     });
 
     sections = await prisma.section.findMany({
-      where: { id: { in: cvMinute.cvMinuteSections.map((c) => c.sectionId) } },
+      where: { id: { in: cvMinute?.cvMinuteSections.map((c) => c.sectionId) } },
     });
 
     res.status(200).json({
@@ -471,7 +495,11 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
     });
     return;
   } catch (error) {
-    res.status(500).json({ error: `${error.message}` });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
     return;
   }
 };
