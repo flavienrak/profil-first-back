@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Installation des dépendances
 COPY package*.json tsconfig.json ./
-RUN npm install --omit=dev
+RUN npm install 
 
 # Copie du schema Prisma
 COPY src/prisma ./src/prisma
