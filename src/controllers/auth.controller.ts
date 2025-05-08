@@ -149,7 +149,11 @@ const register = async (
 
 const logout = async (req: express.Request, res: express.Response) => {
   if (authTokenName) {
-    res.clearCookie(authTokenName);
+    res.clearCookie(authTokenName, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+    });
     res.status(200).json({ loggedOut: true });
     return;
   }
