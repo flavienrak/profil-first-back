@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/prisma/client';
 import { io, openai } from '@/socket';
 import { extractJson } from '@/utils/functions';
 import { cvThequesections, maxCvThequeUserResult } from '@/utils/constants';

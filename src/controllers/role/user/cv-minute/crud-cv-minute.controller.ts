@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import express from 'express';
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/prisma/client';
 import { formattedDate, imageMimeTypes } from '@/utils/constants';
 import { SectionInfoInterface } from '@/interfaces/role/user/cv-minute/sectionInfo.interface';
 
