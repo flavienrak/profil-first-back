@@ -10,16 +10,16 @@ WORKDIR /app
 COPY package*.json tsconfig.json ./
 RUN npm install 
 
-# On copie le schema Prisma
+# Copie du schema Prisma
 COPY src/prisma ./src/prisma
 
-# On génère le client Prisma
+# Génèration du client Prisma
 RUN npx prisma generate --schema=src/prisma/schema.prisma
 
 # Copie du code source
 COPY src ./src
 
-# Compilation TypeScript
+# Compilation du TypeScript
 RUN npm run build
 
 
@@ -34,11 +34,11 @@ RUN npm install
 # Copie du code compilé
 COPY --from=builder /app/dist ./dist
 
-# Copie du client Prisma (important)
+# Copie du client Prisma 
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Si tu as besoin du fichier schema.prisma (ex: pour les migrations à runtime)
+# Copie du dossier prisma (pour les migrations à runtime)
 COPY --from=builder /app/src/prisma ./src/prisma
 
 EXPOSE 5000
