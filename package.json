@@ -17,7 +17,6 @@
     "schema": "src/prisma/schema.prisma"
   },
   "dependencies": {
-    "@eslint/eslintrc": "^3.3.1",
     "@prisma/client": "^6.7.0",
     "ajv": "^8.17.1",
     "axios": "^1.8.4",
@@ -40,9 +39,11 @@
     "punycode": "^2.3.1",
     "sequelize": "^6.37.7",
     "socket.io": "^4.8.1",
+    "tsconfig-paths": "^4.2.0",
     "winston": "^3.17.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
     "@types/bcrypt": "^5.0.2",
     "@types/compression": "^1.7.5",
     "@types/cookie-parser": "^1.4.8",
@@ -57,7 +58,6 @@
     "prettier": "^3.5.3",
     "prisma": "^6.7.0",
     "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.2"
   }
 }
