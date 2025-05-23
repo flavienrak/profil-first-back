@@ -1,7 +1,7 @@
 import { CvMinuteInterface } from '../../user/cv-minute/cvMinute.interface';
-import { CvThequeCompetenceInterface } from './cvtheque-competence.interface';
-import { CvThequeUserInterface } from './cvtheque-user.interface';
-import { CvThequeViewInterface } from './cvtheque-view.interface';
+import { CvThequeCompetenceInterface } from './cvthequeCompetence.interface';
+import { CvThequeUserInterface } from './cvthequeUser.interface';
+import { CvThequeViewInterface } from './cvthequeView.interface';
 
 export interface CvThequeCritereInterface {
   id: number;

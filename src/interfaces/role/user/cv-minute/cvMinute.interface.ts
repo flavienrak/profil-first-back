@@ -1,9 +1,9 @@
-import { AdviceInterface } from './advice.interface';
+import { CvMinuteAdviceInterface } from './cvMinuteAdvice.interface';
 import { CvMinuteSectionInterface } from './cvMinuteSection.interface';
-import { EvaluationInterface } from './evaluation.interface';
+import { EvaluationInterface } from '../../../evaluation.interface';
 import { FileInterface } from '../../../file.interface';
-import { CvThequeViewInterface } from '../../recruiter/cvtheque/cvtheque-view.interface';
-import { CvThequeContactInterface } from '../../recruiter/cvtheque/cvtheque-contact.interface';
+import { CvThequeViewInterface } from '../../recruiter/cvtheque/cvthequeView.interface';
+import { CvThequeContactInterface } from '../../recruiter/cvtheque/cvthequeContact.interface';
 
 export interface CvMinuteInterface {
   id: number;
@@ -20,7 +20,7 @@ export interface CvMinuteInterface {
   cvThequeCritereId: number | null;
 
   files?: FileInterface[];
-  advices?: AdviceInterface[];
+  advices?: CvMinuteAdviceInterface[];
   cvMinuteSections?: CvMinuteSectionInterface[];
   evaluation?: EvaluationInterface;
   cvThequeViews?: CvThequeViewInterface[];

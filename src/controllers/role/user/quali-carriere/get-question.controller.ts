@@ -14,7 +14,7 @@ import {
   qualiCarriereNextQuestionPrompt,
   qualiCarriereResumePrompt,
 } from '@/utils/prompts/quali-carriere.prompt';
-import { QualiCarriereQuestionInteface } from '@/interfaces/role/user/quali-carriere/questionInterface';
+import { QualiCarriereQuestionInteface } from '@/interfaces/role/user/quali-carriere/qualiCarriereQuestionInterface';
 import { CvMinuteInterface } from '@/interfaces/role/user/cv-minute/cvMinute.interface';
 
 const prisma = new PrismaClient();
@@ -46,13 +46,7 @@ const getQualiCarriereQuestion = async (
     if (!cvMinute) {
       const cvMinutes = await prisma.cvMinute.findMany({
         where: { userId: user.id },
-        include: {
-          cvMinuteSections: {
-            include: {
-              sectionInfos: true,
-            },
-          },
-        },
+        include: { cvMinuteSections: true },
       });
 
       if (cvMinutes.length === 0) {
@@ -65,17 +59,12 @@ const getQualiCarriereQuestion = async (
       let bestCvMinuteSections: CvMinuteSectionInterface[] = [];
 
       for (const c of cvMinutes) {
-        const experiences = c.cvMinuteSections.find(
-          (s) =>
-            s.sectionInfos.length > 0 &&
-            s.sectionInfos[0].title?.toLowerCase().includes('experience'),
+        const experiences = c.cvMinuteSections.filter(
+          (item) => item.name === 'experience',
         );
 
-        if (
-          experiences &&
-          experiences.sectionInfos.length > maxExperienceCount
-        ) {
-          maxExperienceCount = experiences.sectionInfos.length;
+        if (experiences && experiences.length > maxExperienceCount) {
+          maxExperienceCount = experiences.length;
           bestCvMinute = c;
           bestCvMinuteSections = c.cvMinuteSections;
         }
@@ -100,34 +89,22 @@ const getQualiCarriereQuestion = async (
         },
       });
 
-      await Promise.all(
-        bestCvMinuteSections.map(async (s) => {
-          const newSection = await prisma.cvMinuteSection.create({
-            data: {
-              cvMinuteId: newCvMinute.id,
-              sectionId: s.sectionId,
-              sectionOrder: s.sectionOrder,
-              sectionTitle: s.sectionTitle,
-            },
-          });
+      const sectionInfosToCreate = bestCvMinuteSections?.map((info) => ({
+        name: info.name,
+        title: info.title,
+        content: info.content,
+        date: info.date,
+        company: info.company,
+        contrat: info.contrat,
+        icon: info.icon,
+        iconSize: info.iconSize,
+        order: info.order ?? 1,
+        cvMinuteId: bestCvMinute.id,
+      }));
 
-          const sectionInfosToCreate = s.sectionInfos?.map((info) => ({
-            cvMinuteSectionId: newSection.id,
-            title: info.title,
-            content: info.content,
-            date: info.date,
-            company: info.company,
-            contrat: info.contrat,
-            icon: info.icon,
-            iconSize: info.iconSize,
-            order: info.order,
-          }));
-
-          if (sectionInfosToCreate) {
-            await prisma.sectionInfo.createMany({ data: sectionInfosToCreate });
-          }
-        }),
-      );
+      if (sectionInfosToCreate) {
+        await prisma.cvMinuteSection.createMany({ data: sectionInfosToCreate });
+      }
 
       cvMinute = newCvMinute;
     }
@@ -135,29 +112,20 @@ const getQualiCarriereQuestion = async (
     // Chargement final des données nécessaires
     const cvMinuteSections = await prisma.cvMinuteSection.findMany({
       where: { cvMinuteId: cvMinute.id },
-      include: { sectionInfos: true },
-    });
-
-    const sectionIds = cvMinuteSections.map((s) => s.sectionId);
-    const sections = await prisma.section.findMany({
-      where: { id: { in: sectionIds } },
     });
 
     const getCvMinuteSection = (value: string) => {
-      const section = sections.find(
-        (s) => s.name.toLowerCase() === value.toLowerCase(),
-      );
-      return cvMinuteSections.find((s) => s.sectionId === section?.id);
+      return cvMinuteSections.filter((s) => s.name === value);
     };
 
     const experiencesSection = getCvMinuteSection('experiences');
 
-    if (!experiencesSection || experiencesSection.sectionInfos.length === 0) {
+    if (!experiencesSection || experiencesSection.length === 0) {
       res.json({ noExperiences: true });
       return;
     }
 
-    const sectionInfos = experiencesSection.sectionInfos;
+    const sectionInfos = experiencesSection;
 
     const qualiCarriereQuestions = await prisma.qualiCarriereQuestion.findMany({
       where: { userId: user.id },
@@ -190,7 +158,7 @@ const getQualiCarriereQuestion = async (
       const messages = await prisma.qualiCarriereChat.findMany({
         where: { userId: user.id },
       });
-      const experiences = await prisma.sectionInfo.findMany({
+      const experiences = await prisma.cvMinuteSection.findMany({
         where: { id: { in: sectionInfos.map((s) => s.id) } },
         include: { qualiCarriereResumes: true, qualiCarriereCompetences: true },
       });
@@ -217,7 +185,7 @@ const getQualiCarriereQuestion = async (
           if (qualiCarriereResponses.length >= restQuestions) {
             const qualiCarriereResume =
               await prisma.qualiCarriereResume.findUnique({
-                where: { sectionInfoId: s.id },
+                where: { cvMinuteSectionId: s.id },
               });
 
             if (!qualiCarriereResume) {
@@ -260,9 +228,9 @@ const getQualiCarriereQuestion = async (
 
                   await prisma.qualiCarriereResume.create({
                     data: {
-                      sectionInfoId: s.id,
                       userId: user.id,
                       content: jsonData.resume.trim().toLocaleLowerCase(),
+                      cvMinuteSectionId: s.id,
                     },
                   });
 
@@ -271,8 +239,8 @@ const getQualiCarriereQuestion = async (
                     await prisma.qualiCarriereCompetence.create({
                       data: {
                         userId: user.id,
-                        sectionInfoId: s.id,
                         content: c,
+                        cvMinuteSectionId: s.id,
                       },
                     });
                   }
@@ -321,7 +289,7 @@ const getQualiCarriereQuestion = async (
           ) {
             io.to(`user-${user.id}`).emit('qualiCarriereQuestion', {
               experience: sectionInfos.find(
-                (sInfo) => sInfo.id === nextQuestion.sectionInfoId,
+                (sInfo) => sInfo.id === nextQuestion.cvMinuteSectionId,
               ),
               question: nextQuestion,
               totalQuestions,
@@ -371,9 +339,9 @@ const getQualiCarriereQuestion = async (
                     await prisma.qualiCarriereQuestion.create({
                       data: {
                         userId: user.id,
-                        sectionInfoId: s.id,
                         content: jsonData.question.trim().toLocaleLowerCase(),
                         order: qualiCarriereQuestions.length + 1,
+                        cvMinuteSectionId: s.id,
                       },
                     });
 
@@ -426,10 +394,10 @@ const getQualiCarriereQuestion = async (
                 const newQualiCarriereQuestion =
                   await prisma.qualiCarriereQuestion.create({
                     data: {
-                      userId: user.id,
-                      sectionInfoId: s.id,
                       content: q.trim().toLocaleLowerCase(),
                       order: qualiCarriereQuestions.length + i + 1,
+                      userId: user.id,
+                      cvMinuteSectionId: s.id,
                     },
                   });
 

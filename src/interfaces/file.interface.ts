@@ -6,7 +6,7 @@ export interface FileInterface {
   usage: string;
   userId: number;
   cvMinuteId: number | null;
-  sectionInfoId: number | null;
+  cvMinuteSectionId: number | null;
 
   createdAt: Date;
   updatedAt: Date;

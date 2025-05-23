@@ -80,7 +80,7 @@ const cvThequeCirterePrompts = [
       - Anonymiser l’organisation.
       - Reformuler les missions pour maximiser l’alignement avec l’offre.
 
-      1. Phrase d’accroche :
+      1. Titre de l’expérience :
       - Ton neutre et structuré.
       - 1 à 2 phrases max ≤ 200 caractères.
       - Pas d’effet de style ni exagération.
@@ -127,13 +127,13 @@ const cvThequeCirterePrompts = [
 
       Contraintes :
       - Pas de doublons, ni de copier-coller de libellés d’offres.
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu :
       [
         {
-          title: "Accroche",
+          title: "Titre",
           date: "Durée",
           company: "Type – secteur – marché – portée",
           description: "• Bullet point 1\\n\\n• Bullet point 2\\n\\n..." (chaque bullet point sur une nouvelle ligne)
@@ -175,7 +175,7 @@ const cvThequeCirterePrompts = [
       - Ne jamais citer le nom de l’établissement.
       - Aucune abréviation non universelle.
       - Aucune spécialisation technique.
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu (array of string) :
@@ -202,12 +202,12 @@ const cvThequeCirterePrompts = [
       - Une seule formation mise en valeur.
       - Les autres sont mentionnées sans détail.
       - Jamais de mots comme "initiation", "notions", "bases"
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu :
       { content: "
-          [Poids] – [Thème professionnel valorisé, 5 à 8 mots] | [Organisme connu ou nom raccourci]\n  
+          [Priorité] – [Thème professionnel valorisé, 5 à 8 mots] | [Organisme connu ou nom raccourci]\n  
           + X autres dont X reconnue / renforçante / pertinente pour le domaine
         "
       }
@@ -238,14 +238,13 @@ const cvThequeCirterePrompts = [
       - Une compétence par ligne.
       - Une ligne vide entre chaque compétence.
       - Total : 4 lignes (la dernière peut être "Outils de [type]")
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
       
       Format attendu :
       {
         content: "Compétence 1\nCompétence 2\nCompétence 3\nCompétence 4 ou Outils de [type]"
       }
-
     `,
   },
   {
@@ -288,7 +287,7 @@ const cvThequeCirterePrompts = [
       Contraintes :
       - 1 à 3 phrases – 200 caractères max.  
       - Ton affirmé, direct, axé valeur livrée.
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu :
@@ -360,15 +359,15 @@ const cvThequeCirterePrompts = [
       - Produit le bloc formaté complet.
 
       Contraintes :
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Pas de doublons, ni de copier-coller de libellés d’offres.
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu :
       [
         {
-          title: "Accroche", // Titre court et percutant
+          title: "Titre", // Court et percutant
           date: "Durée", // Calculée avec +2 mois. Ex : "10 mois" ou "2 ans et 5 mois"
           company: "Type – secteur – marché – portée", // Organisation anonymisée selon la taxonomie fournie
           description: "• Bullet point 1\\n\\n• Bullet point 2\\n\\n..." // 5 bullet points valorisants
@@ -408,12 +407,12 @@ const cvThequeCirterePrompts = [
       - Ne jamais citer l’école ou la spécialité exacte.
       - Adapter les compétences au poste ciblé.
       - Toujours privilégier des savoir-faire activables, transversaux, lisibles.
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu (array of string) :
-      [ " 
-        Bac +[niveau] / Domaine étudié : [domaine général reformulé]\\n\\n 
+      [ "
+        Bac +[niveau] / Domaine étudié : [domaine général reformulé]\\n\\n
         Compétences certaines : [compétence 1], [compétence 2], [compétence 3]
       " ]
     `,
@@ -444,7 +443,7 @@ const cvThequeCirterePrompts = [
       - Ne pas introduire de jugement de valeur ou de hiérarchie.
       - Ne pas ajouter de phrases hors format.
       - Ne pas citer de dates, de diplômes ou d’institutions.
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu :
@@ -481,7 +480,7 @@ const cvThequeCirterePrompts = [
       Outils de gestion de projet
 
       Contraintes :
-      - Respecter les sauts à la ligne demandé
+      - Respecter les retours à la ligne demandé
       - Ne jamais sortir du format demandé.
 
       Format attendu : 
@@ -629,13 +628,13 @@ const cvThequeCirterePrompts = [
 
       Contraintes :
       - Pas de doublons, ni de copier-coller de libellés d’offres.
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu :
       [
         {
-          title: "Accroche", // Titre court et percutant
+          title: "Titre", // Court et percutant
           date: "Durée", // Calculée avec +2 mois. Ex : "10 mois" ou "2 ans et 5 mois"
           company: "Type – secteur – marché – portée", // Organisation anonymisée selon la taxonomie fournie
           description: "• Bullet point 1\\n\\n• Bullet point 2\\n\\n..." // 5 bullet points valorisants
@@ -681,7 +680,7 @@ const cvThequeCirterePrompts = [
       - Ne jamais écrire hors format.
       - Ne pas ajouter de commentaires ou d’explications.
       - Ne jamais utiliser de jargon technique dans le “Sujet”
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu (array of string) :
@@ -716,7 +715,7 @@ const cvThequeCirterePrompts = [
       - Syntaxe synthétique et impactante.  
       - Aucun jargon trop technique ou hermétique.  
       - Interdiction d’introduire des commentaires ou phrases hors format.
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu : 
@@ -757,7 +756,7 @@ const cvThequeCirterePrompts = [
       Outils de gestion de projet
 
       Contraintes :
-      - Respecter les sauts à la ligne demandé.
+      - Respecter les retours à la ligne demandé.
       - Ne jamais sortir du format demandé.
 
       Format attendu : 

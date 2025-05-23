@@ -5,7 +5,7 @@ export interface EvaluationInterface {
   content: string;
   weakContent: string | null;
   cvMinuteId: number | null;
-  sectionInfoId: number | null;
+  cvMinuteSectionId: number | null;
 
   createdAt: Date;
   updatedAt: Date;

@@ -9,9 +9,9 @@ import {
   cvThequeCirterePrompts,
   cvThequeUserEvaluationPrompt,
 } from '@/utils/prompts/cvtheque.prompt';
-import { CvThequeCritereInterface } from '@/interfaces/role/recruiter/cvtheque/cvtheque-critere.interface';
+import { CvThequeCritereInterface } from '@/interfaces/role/recruiter/cvtheque/cvthequeCritere.interface';
 import { CvMinuteInterface } from '@/interfaces/role/user/cv-minute/cvMinute.interface';
-import { CompatibleUserInterface } from '@/interfaces/role/recruiter/cvtheque/compatible-user.interface';
+import { CompatibleUserInterface } from '@/interfaces/role/recruiter/cvtheque/compatibleUser.interface';
 
 const prisma = new PrismaClient();
 
@@ -37,7 +37,7 @@ const resendCvThequeCritere = async (
         cvThequeViews: true,
         cvMinutes: {
           include: {
-            cvMinuteSections: { include: { sectionInfos: true } },
+            cvMinuteSections: true,
           },
         },
       },
@@ -52,7 +52,7 @@ const resendCvThequeCritere = async (
       include: {
         cvMinuteDomains: true,
         cvMinutes: {
-          include: { cvMinuteSections: { include: { sectionInfos: true } } },
+          include: { cvMinuteSections: true },
         },
       },
     });
@@ -125,71 +125,32 @@ const resendCvThequeCritere = async (
             let maxExperienceCount = 0;
 
             for (const c of cvMinutes) {
-              const sections = await prisma.section.findMany({
-                where: {
-                  id: {
-                    in: c.cvMinuteSections?.map((section) => section.sectionId),
-                  },
-                },
-              });
-
               const getCvMinuteSection = (value: string) => {
-                const section = sections.find(
-                  (s) => s.name.toLowerCase() === value.toLowerCase(),
-                );
-                return c.cvMinuteSections?.find(
-                  (s) => s.sectionId === section?.id,
-                );
+                return c.cvMinuteSections?.filter((s) => s.name === value);
               };
 
               const experiences = getCvMinuteSection('experiences');
 
-              if (
-                experiences?.sectionInfos &&
-                experiences.sectionInfos.length > maxExperienceCount
-              ) {
-                maxExperienceCount = experiences.sectionInfos.length;
+              if (experiences && experiences.length > maxExperienceCount) {
+                maxExperienceCount = experiences.length;
                 cvMinute = c;
               }
             }
 
             if (cvMinute) {
-              const sections = await prisma.section.findMany({
-                where: {
-                  id: {
-                    in: cvMinute.cvMinuteSections?.map(
-                      (section) => section.sectionId,
-                    ),
-                  },
-                },
-              });
-
               const getCvMinuteSection = (value: string) => {
-                const section = sections.find(
-                  (s) => s.name.toLowerCase() === value.toLowerCase(),
-                );
-                return cvMinute.cvMinuteSections?.find(
-                  (s) => s.sectionId === section?.id,
+                return cvMinute.cvMinuteSections?.filter(
+                  (s) => s.name === value,
                 );
               };
 
               const experiences = getCvMinuteSection('experiences');
 
-              if (
-                experiences &&
-                experiences.sectionInfos &&
-                experiences.sectionInfos.length > 0
-              ) {
+              if (experiences && experiences.length > 0) {
                 let messageContent = '';
-                const editableSections = sections.filter((s) => s.editable);
+                const editableSections = experiences.filter((s) => s.editable);
                 const allCvMinuteSections = editableSections
-                  .map((s) => {
-                    const cvMinuteSection = getCvMinuteSection(s.name);
-                    if (cvMinuteSection && cvMinuteSection.sectionInfos) {
-                      return `${cvMinuteSection.sectionTitle} : ${cvMinuteSection.sectionInfos[0].content}`;
-                    }
-                    return null;
-                  })
+                  .map((s) => `${s.name} : ${s.content}`)
                   .filter((r) => r)
                   .join('\n');
 
@@ -202,10 +163,10 @@ const resendCvThequeCritere = async (
                   messageContent = `
                 Contenus du CV :\n
                 Expériences : 
-                ${experiences.sectionInfos
+                ${experiences
                   .map(
                     (item) =>
-                      `${item.date}, ${item.company}, ${item.title} : ${item.content}, synthèse : ${qualiCarriereResumes.find((r) => r.sectionInfoId === item.id)?.content}`,
+                      `${item.date}, ${item.company}, ${item.title} : ${item.content}, synthèse : ${qualiCarriereResumes.find((r) => r.cvMinuteSectionId === item.id)?.content}`,
                   )
                   .join('\n')}\n
                 Sections : ${allCvMinuteSections}\n
@@ -215,7 +176,7 @@ const resendCvThequeCritere = async (
                   messageContent = `
                 Contenus du CV :\n
                 Expériences : 
-                ${experiences.sectionInfos
+                ${experiences
                   .map(
                     (item) =>
                       `${item.date}, ${item.company}, ${item.title} : ${item.content}`,
@@ -338,30 +299,6 @@ const resendCvThequeCritere = async (
       });
 
       for (const s of cvThequesections) {
-        let section = await prisma.section.findUnique({
-          where: {
-            name: s.name.trim().toLowerCase(),
-          },
-        });
-
-        if (!section) {
-          section = await prisma.section.create({
-            data: {
-              name: s.name.trim().toLowerCase(),
-              editable: true,
-            },
-          });
-        }
-
-        const cvMinuteSection = await prisma.cvMinuteSection.create({
-          data: {
-            cvMinuteId: newCvMinute.id,
-            sectionId: section.id,
-            sectionOrder: s.order,
-            sectionTitle: s.name.trim(),
-          },
-        });
-
         if (s.name === 'title') {
           // TITLE
           const openaiSectionResponse = await openai.chat.completions.create({
@@ -399,10 +336,12 @@ const resendCvThequeCritere = async (
                 return;
               }
 
-              await prisma.sectionInfo.create({
+              await prisma.cvMinuteSection.create({
                 data: {
-                  cvMinuteSectionId: cvMinuteSection.id,
+                  order: Number(s.order),
+                  name: s.name.trim(),
                   content: jsonData.content,
+                  cvMinuteId: newCvMinute.id,
                 },
               });
             }
@@ -445,10 +384,12 @@ const resendCvThequeCritere = async (
                 return;
               }
 
-              await prisma.sectionInfo.create({
+              await prisma.cvMinuteSection.create({
                 data: {
-                  cvMinuteSectionId: cvMinuteSection.id,
+                  order: Number(s.order),
+                  name: s.name.trim(),
                   content: jsonData.content,
+                  cvMinuteId: newCvMinute.id,
                 },
               });
             }
@@ -494,14 +435,15 @@ const resendCvThequeCritere = async (
 
               for (let i = 0; i < jsonData.length; i++) {
                 const item = jsonData[i];
-                await prisma.sectionInfo.create({
+                await prisma.cvMinuteSection.create({
                   data: {
-                    cvMinuteSectionId: cvMinuteSection.id,
+                    name: s.name.trim(),
                     title: item.title,
                     content: item.description,
                     date: item.date,
                     company: item.company,
                     order: i + 1,
+                    cvMinuteId: newCvMinute.id,
                   },
                 });
               }
@@ -544,10 +486,12 @@ const resendCvThequeCritere = async (
 
               await Promise.all(
                 jsonData.map(async (item) => {
-                  await prisma.sectionInfo.create({
+                  await prisma.cvMinuteSection.create({
                     data: {
-                      cvMinuteSectionId: cvMinuteSection.id,
+                      order: Number(s.order),
+                      name: s.name.trim(),
                       content: item,
+                      cvMinuteId: newCvMinute.id,
                     },
                   });
                 }),
@@ -591,10 +535,12 @@ const resendCvThequeCritere = async (
                 return;
               }
 
-              await prisma.sectionInfo.create({
+              await prisma.cvMinuteSection.create({
                 data: {
-                  cvMinuteSectionId: cvMinuteSection.id,
+                  order: Number(s.order),
+                  name: s.name.trim(),
                   content: jsonData.content,
+                  cvMinuteId: newCvMinute.id,
                 },
               });
             }
@@ -636,10 +582,12 @@ const resendCvThequeCritere = async (
                 return;
               }
 
-              await prisma.sectionInfo.create({
+              await prisma.cvMinuteSection.create({
                 data: {
-                  cvMinuteSectionId: cvMinuteSection.id,
+                  order: Number(s.order),
+                  name: s.name.trim(),
                   content: jsonData.content,
+                  cvMinuteId: newCvMinute.id,
                 },
               });
             }

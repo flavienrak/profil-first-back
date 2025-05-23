@@ -12,14 +12,12 @@ import { addCvMinute } from '@/controllers/role/user/cv-minute/add-cv-minute.con
 import {
   copyCvMinute,
   deleteCvMinuteSection,
-  deleteSectionInfo,
   getAllCvMinute,
   getCvMinute,
   updateCvMinuteName,
   updateCvMinuteProfile,
   updateCvMinuteSectionOrder,
   updateCvMinuteVisibility,
-  updateSectionInfoOrder,
 } from '@/controllers/role/user/cv-minute/crud-cv-minute.controller';
 import { optimizeCvMinute } from '@/controllers/role/user/cv-minute/optimize-cv-minute.controller';
 import {
@@ -102,14 +100,6 @@ router.delete(
   deleteCvMinuteSection,
 );
 
-// UPDATE SECTIONINFO ORDER
-router.put(
-  '/:id/section-info/order',
-  updateSectionInfoOrderValidation,
-  checkCvMinuteOwner,
-  updateSectionInfoOrder,
-);
-
 // GENERATE SECTIONINFO ADVICE
 router.post(
   '/:id/section-info/:sectionInfoId',
@@ -124,14 +114,6 @@ router.put(
   sectionInfoIdValidation,
   checkCvMinuteOwner,
   updateSectionInfoScore,
-);
-
-// DELETE SECTIONINFO
-router.delete(
-  '/:id/section-info/:sectionInfoId',
-  sectionInfoIdValidation,
-  checkCvMinuteOwner,
-  deleteSectionInfo,
 );
 
 export default router;

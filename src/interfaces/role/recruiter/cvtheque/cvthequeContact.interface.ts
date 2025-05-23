@@ -1,4 +1,4 @@
-import { CvThequeContactViewInterface } from './cvtheque-contact-view.interface';
+import { CvThequeContactViewInterface } from './cvthequeContactView.interface';
 
 export interface CvThequeContactInterface {
   id: number;

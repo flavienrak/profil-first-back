@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { io, openai } from '@/socket';
 import { extractJson } from '@/utils/functions';
 import { qualiCarriereChatResponsePrompt } from '@/utils/prompts/quali-carriere.prompt';
-import { QualiCarriereChatInterface } from '@/interfaces/role/user/quali-carriere/chatInterface';
+import { QualiCarriereChatInterface } from '@/interfaces/role/user/quali-carriere/qualiCarriereChatInterface';
 
 const prisma = new PrismaClient();
 

@@ -9,7 +9,8 @@ import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
 import { openai } from '@/socket';
 import { extractJson } from '@/utils/functions';
-import { domains, formattedDate } from '@/utils/constants';
+import { formattedDate } from '@/utils/constants';
+import { addCvMinutePrompt } from '@/utils/prompts/cv-minute.prompt';
 
 const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -68,7 +69,7 @@ const addCvMinute = async (
           name: fileName,
           extension,
           originalName: req.file.originalname,
-          usage: 'cv',
+          usage: 'cvMinute',
           userId: user.id,
           cvMinuteId: cvMinute.id,
         },
@@ -95,83 +96,13 @@ const addCvMinute = async (
         messages: [
           {
             role: 'system',
-            content: `
-              Tu es un expert en rédaction et optimisation de CV.
-
-              Mission :
-              À partir du contenu du CV et de l’offre ciblée, 
-              - Extraire les informations du CV.
-              - Attribue 1 à 3 domaines le profil.
-              - Évaluer la compatibilité avec l'offre ciblée.
-              - Retourner une structure JSON strictement conforme au format donné.
-
-              Domaines : 
-              - ${domains.map((d) => d.label).join('- \n')}
-
-              Contraintes :
-              - Tous les champs doivent être présents, même si vides ou "à ajouter".
-              - Scores entre 0 et 100.
-              - Les phrases doivent être claires, aérées (retours à la ligne quand nécessaire).
-              - Utilise des icônes de lucide-static pour les contacts.
-              - Choisir parmis les domaines données.
-              - Donne uniquement un objet JSON (pas de texte autour).
-              - Respecter les sauts à la ligne demandé.
-              - Ne jamais sortir du format demandé.
-              
-              Format attendu :
-              {
-                name: string,
-                firstname: string,
-                cvTitle: {
-                  title: string,
-                  titleAdvice: string
-                },
-                profilePresentation: {
-                  presentation: string,
-                  presentationAdvice: string
-                },
-                contacts: [
-                  {
-                    contactIcon: string,
-                    contactContent: string,
-                    contactOrder: string
-                  }
-                ],
-                experiences: [
-                  {
-                    postTitle: string,
-                    postDate: string,
-                    postCompany: string,
-                    postContrat: string,
-                    postDescription: string,
-                    postOrder: string,
-                    postScore: string,
-                    postHigh: string,
-                    postWeak: string
-                  }
-                ],
-                sections: [
-                  {
-                    sectionTitle: string,
-                    sectionContent: string,
-                    sectionOrder: string,
-                    sectionAdvice: string
-                  }
-                ],
-                domains: [...],
-                newSectionsAdvice: string,
-                evaluations: {
-                  globalScore: string,
-                  recommendations: string
-                }
-              }
-            `.trim(),
+            content: addCvMinutePrompt.trim(),
           },
           {
             role: 'user',
             content: `
               CV :
-              ${lignes.join('\n')}
+              ${lignes.join('\n')}\n
 
               Offre ciblée :
               ${body.position}
@@ -220,7 +151,7 @@ const addCvMinute = async (
               postWeak: string;
             }[];
             sections: {
-              sectionTitle: string;
+              sectionName: string;
               sectionContent: string;
               sectionOrder: string;
               sectionAdvice: string;
@@ -265,7 +196,7 @@ const addCvMinute = async (
               advice: string;
             };
           }[] = [
-            { name: 'profile', content: 'cv-profile' },
+            { name: 'profile', content: 'cvMinute-profile' },
             { name: 'name', content: jsonData.name },
             { name: 'firstname', content: jsonData.firstname },
             {
@@ -324,8 +255,7 @@ const addCvMinute = async (
               ),
             },
             ...jsonData.sections.map((section) => ({
-              name: section.sectionTitle.trim().toLocaleLowerCase(),
-              title: section.sectionTitle.trim().toLocaleLowerCase(),
+              name: section.sectionName.trim().toLocaleLowerCase(),
               content: section.sectionContent.trim(),
               order: section.sectionOrder,
               advice: section.sectionAdvice,
@@ -336,88 +266,69 @@ const addCvMinute = async (
           // CVMINUTE SECTION
           await Promise.all(
             allSections.map(async (s) => {
-              let section = await prisma.section.findUnique({
-                where: { name: s.name.trim().toLowerCase() },
-              });
-
-              if (!section) {
-                section = await prisma.section.create({
-                  data: {
-                    name: s.name.trim().toLowerCase(),
-                    editable: s.editable,
-                  },
-                });
-              }
-
-              const cvMinuteSection = await prisma.cvMinuteSection.create({
-                data: {
-                  cvMinuteId: cvMinute.id,
-                  sectionId: section.id,
-                  sectionOrder: s.order ? Number(s.order) : 1,
-                  sectionTitle: s.title,
-                },
-              });
-
-              if (s.advice) {
-                await prisma.advice.create({
-                  data: {
-                    cvMinuteSectionId: cvMinuteSection.id,
-                    content: s.advice,
-                    type: 'advice',
-                  },
-                });
-              }
-
-              // SECTIONI INFO
               if (s.content && typeof s.content === 'string') {
-                await prisma.sectionInfo.create({
+                // PROFILE & NAME & FIRSTNAME & SECTIONS
+                const cvMinuteSection = await prisma.cvMinuteSection.create({
                   data: {
-                    cvMinuteSectionId: cvMinuteSection.id,
+                    name: s.name,
                     content: s.content,
-                    order: 1,
+                    order: Number(s.order) ?? 1,
+                    editable: s.editable,
+                    cvMinuteId: cvMinute.id,
                   },
                 });
+
+                // await prisma.advice.create({
+                //   data: {
+                //     type: 'cvMinuteSectionAdvice',
+                //     content: s.advice,
+                //     cvMinuteSectionId: cvMinuteSection.id,
+                //   },
+                // });
               } else if (s.withAdvice) {
-                const sectionInfo = await prisma.sectionInfo.create({
+                // TITLE & PRESENTATION
+                const cvMinuteSection = await prisma.cvMinuteSection.create({
                   data: {
-                    cvMinuteSectionId: cvMinuteSection.id,
+                    name: s.name,
                     content: s.withAdvice.content,
-                    order: 1,
+                    cvMinuteId: cvMinute.id,
                   },
                 });
 
                 await prisma.advice.create({
                   data: {
-                    sectionInfoId: sectionInfo.id,
+                    type: 'cvMinuteSectionAdvice',
                     content: s.withAdvice.advice,
-                    type: 'advice',
+                    cvMinuteSectionId: cvMinuteSection.id,
                   },
                 });
               } else {
                 if (Array.isArray(s.content)) {
                   await Promise.all(
                     s.content.map(async (item) => {
-                      const sectionInfo = await prisma.sectionInfo.create({
-                        data: {
-                          cvMinuteSectionId: cvMinuteSection.id,
-                          title: item.title,
-                          content: item.content ?? '',
-                          date: item.date,
-                          company: item.company,
-                          contrat: item.contrat,
-                          icon: item.icon,
-                          iconSize: 16,
-                          order: Number(item.order),
-                        },
-                      });
+                      const cvMinuteSection =
+                        await prisma.cvMinuteSection.create({
+                          data: {
+                            name: s.name,
+                            title: item.title,
+                            content: item.content ?? '',
+                            date: item.date,
+                            company: item.company,
+                            contrat: item.contrat,
+                            icon: item.icon,
+                            iconSize: 16,
+                            order: Number(item.order) ?? 1,
+                            cvMinuteId: cvMinute.id,
+                          },
+                        });
 
                       if (item.score) {
                         await prisma.evaluation.create({
                           data: {
-                            sectionInfoId: sectionInfo.id,
-                            initialScore: Number(item.score),
+                            initialScore: Number(item.score) ?? 0,
                             content: item.high ?? '',
                             weakContent: item.weak,
+                            cvMinuteSectionId: cvMinuteSection.id,
                           },
                         });
                       }

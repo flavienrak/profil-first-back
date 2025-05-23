@@ -16,7 +16,7 @@ const getCvAnonym = async (
       where: { id: Number(cvAnonymId) },
       include: {
         cvThequeContacts: true,
-        cvMinuteSections: { include: { sectionInfos: true } },
+        cvMinuteSections: true,
       },
     });
 
@@ -48,15 +48,11 @@ const getCvAnonym = async (
       where: { id: cvMinute.id },
       include: {
         cvThequeContacts: true,
-        cvMinuteSections: { include: { sectionInfos: true } },
+        cvMinuteSections: true,
       },
     });
 
-    const sections = await prisma.section.findMany({
-      where: { id: { in: cvMinute?.cvMinuteSections.map((c) => c.sectionId) } },
-    });
-
-    res.status(200).json({ cvAnonym: cvMinute, sections });
+    res.status(200).json({ cvAnonym: cvMinute });
     return;
   } catch (error) {
     if (error instanceof Error) {

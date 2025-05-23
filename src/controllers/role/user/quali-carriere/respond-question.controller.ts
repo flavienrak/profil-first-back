@@ -31,10 +31,11 @@ const respondQualiCarriereQuestion = async (
 
     const { user } = res.locals;
     const { id } = req.params;
-    const body: { content?: string } = req.body;
+    const body: { cvMinuteSectionId: number; content?: string } = req.body;
 
     const cvMinute = await prisma.cvMinute.findFirst({
       where: { qualiCarriereRef: true, userId: user.id },
+      include: { cvMinuteSections: true },
     });
     if (!cvMinute) {
       res.json({ cvMinuteNotFound: true });
@@ -63,13 +64,22 @@ const respondQualiCarriereQuestion = async (
       return;
     }
 
+    const cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+      where: { id: body.cvMinuteSectionId },
+    });
+
+    if (!cvMinuteSection) {
+      res.json({ cvMinuteSectionNotFound: true });
+      return;
+    }
+
     if (body.content) {
       const qualiCarriereResponse = await prisma.qualiCarriereResponse.create({
         data: {
-          sectionInfoId: actualQuestion.sectionInfoId,
           questionId: actualQuestion.id,
           userId: user.id,
           content: body.content,
+          cvMinuteSectionId: cvMinuteSection.id,
         },
       });
       qualiCarriereResponses.push(qualiCarriereResponse);
@@ -105,10 +115,10 @@ const respondQualiCarriereQuestion = async (
         const qualiCarriereResponse = await prisma.qualiCarriereResponse.create(
           {
             data: {
-              sectionInfoId: actualQuestion.sectionInfoId,
               userId: user.id,
               questionId: actualQuestion.id,
               content: response.data.text,
+              cvMinuteSectionId: cvMinuteSection.id,
             },
           },
         );
@@ -118,32 +128,13 @@ const respondQualiCarriereQuestion = async (
       fs.unlinkSync(filePath);
     }
 
-    const cvMinuteSections = await prisma.cvMinuteSection.findMany({
-      where: { cvMinuteId: cvMinute.id },
-      include: { sectionInfos: true },
-    });
-
-    const sections = await prisma.section.findMany({
-      where: {
-        id: {
-          in: cvMinuteSections.map(
-            (section: CvMinuteSectionInterface) => section.sectionId,
-          ),
-        },
-      },
-    });
-
     const getCvMinuteSection = (value: string) => {
-      const section = sections.find(
-        (s) => s.name.toLowerCase() === value.toLowerCase(),
-      );
-      return cvMinuteSections.find((s) => s.sectionId === section?.id);
+      return cvMinute.cvMinuteSections.filter((s) => s.name === value);
     };
 
     const experiences = getCvMinuteSection('experiences');
-    const sectionInfos = experiences?.sectionInfos;
 
-    if (!sectionInfos || (sectionInfos && sectionInfos.length === 0)) {
+    if (!experiences || (experiences && experiences.length === 0)) {
       res.json({ noExperiences: true });
       return;
     }
@@ -158,15 +149,15 @@ const respondQualiCarriereQuestion = async (
         qualiCarriereQuestions.findIndex((q) => q.id === nextQuestion?.id) + 1
       ];
 
-    const totalQuestions = questionNumber(sectionInfos.length);
+    const totalQuestions = questionNumber(experiences.length);
 
     if (qualiCarriereResponses.length === totalQuestions) {
       res.status(200).json({ nextStep: true });
       return;
     }
 
-    for (let i = 0; i < sectionInfos.length; i++) {
-      const s = sectionInfos[i];
+    for (let i = 0; i < experiences.length; i++) {
+      const s = experiences[i];
       const userExperience = `title : ${s.title}, date : ${s.date}, company : ${s.company}, contrat : ${s.contrat}, description : ${s.content}`;
 
       const restQuestions = questionNumberByIndex(i);
@@ -181,8 +172,8 @@ const respondQualiCarriereQuestion = async (
 
       if (qualiCarriereResponses.length <= restQuestions - 1 && nextQuestion) {
         io.to(`user-${user.id}`).emit('qualiCarriereQuestion', {
-          experience: sectionInfos.find(
-            (sInfo) => sInfo.id === nextQuestion.sectionInfoId,
+          experience: experiences.find(
+            (sInfo) => sInfo.id === nextQuestion.cvMinuteSectionId,
           ),
           question: nextQuestion,
           totalQuestions,
@@ -235,9 +226,9 @@ const respondQualiCarriereQuestion = async (
                 await prisma.qualiCarriereQuestion.create({
                   data: {
                     userId: user.id,
-                    sectionInfoId: s.id,
                     content: jsonData.question.trim().toLocaleLowerCase(),
                     order: qualiCarriereQuestions.length + 1,
+                    cvMinuteSectionId: s.id,
                   },
                 });
 

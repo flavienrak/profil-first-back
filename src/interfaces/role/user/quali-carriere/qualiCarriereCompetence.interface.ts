@@ -1,8 +1,8 @@
-export interface QualiCarriereResumeInterface {
+export interface QualiCarriereCompetenceInteface {
   id: number;
   content: string;
-  sectionInfoId: number;
   userId: number;
+  cvMinuteSectionId: number;
 
   createdAt: Date;
   updatedAt: Date;

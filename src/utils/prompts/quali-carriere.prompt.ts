@@ -5,7 +5,7 @@ const qualiCarriereChatResponsePrompt = `
 
   Contraintes :
   - Max 300 caractères.
-  - Respecter les sauts à la ligne demandé.
+  - Respecter les retours à la ligne demandé.
   - Ne jamais sortir du format demandé.
 
   Format attendu : 
@@ -42,7 +42,7 @@ const qualiCarriereFirstQuestionPrompt = `
   - Basé sur l’expérience utilisateur.
   - Génère les **2 premières questions** de l’échange.
   - Max 110 caractères par question.
-  - Respecter les sauts à la ligne demandé.
+  - Respecter les retours à la ligne demandé.
   - Ne jamais sortir du format demandé.
 
   Format attendu :
@@ -118,7 +118,7 @@ const qualiCarriereResumePrompt = `
   - Privilégie des termes métiers, précis et actionnables.
   - Évite les soft skills vagues ou évidentes (ex : rigueur, curiosité…).
   - Ne reformule pas plusieurs fois une même idée.
-  - Respecter les sauts à la ligne demandé.
+  - Respecter les retours à la ligne demandé.
   - Ne jamais sortir du format demandé.
 
   Format attendu :

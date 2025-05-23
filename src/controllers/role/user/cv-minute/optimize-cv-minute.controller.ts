@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { openai } from '@/socket';
 import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
 import { extractJson } from '@/utils/functions';
-import { SectionInterface } from '@/interfaces/role/user/cv-minute/section.interface';
+import { optimizeCvMinutePrompt } from '@/utils/prompts/cv-minute.prompt';
 
 const prisma = new PrismaClient();
 
@@ -18,12 +18,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       include: {
         advices: true,
         evaluation: true,
-        cvMinuteSections: {
-          include: {
-            sectionInfos: { include: { evaluation: true, advices: true } },
-            advices: true,
-          },
-        },
+        cvMinuteSections: { include: { evaluation: true, advices: true } },
       },
     });
 
@@ -32,45 +27,34 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    let sections = await prisma.section.findMany({
-      where: {
-        id: {
-          in: cvMinute.cvMinuteSections.map(
-            (c: CvMinuteSectionInterface) => c.sectionId,
-          ),
-        },
-      },
-    });
-
-    const getCvMinuteSection = (value: string) => {
-      const section = sections.find((s) => s.name === value);
-      return cvMinute?.cvMinuteSections.find(
-        (c) => c.sectionId === section?.id,
-      );
+    const getCvMinuteSection = (name: string) => {
+      return cvMinute?.cvMinuteSections.find((item) => item.name === name);
     };
 
     const title = getCvMinuteSection('title');
     const presentation = getCvMinuteSection('presentation');
-    const experiences = getCvMinuteSection('experiences');
-    const editableSections = sections.filter((s) => s.editable);
-
-    const titleAdvice = title?.sectionInfos[0].advices.find(
-      (a) => a.type === 'advice',
+    const experiences = cvMinute.cvMinuteSections.filter(
+      (item) => item.name === 'experiences',
     );
+    const editableSections = cvMinute.cvMinuteSections.filter(
+      (item) => item.editable,
+    );
+
+    const titleAdvice = title?.advices.find((a) => a.type === 'advice');
     const existTitle = `
-      sectionInfoId : ${title?.sectionInfos[0]?.id}, 
+      sectionInfoId : ${title?.id}, 
       adviceId : ${titleAdvice?.id}, 
-      cvTitle : ${title?.sectionInfos[0]?.content}, 
+      cvTitle : ${title?.content}, 
       advices : ${titleAdvice?.content}
     `;
 
-    const presentationAdvice = presentation?.sectionInfos[0].advices.find(
+    const presentationAdvice = presentation?.advices.find(
       (a) => a.type === 'advice',
     );
     const existPresentation = `
-      sectionInfoId :${presentation?.sectionInfos[0]?.id}, 
+      sectionInfoId :${presentation?.id}, 
       adviceId : ${presentationAdvice?.id}, 
-      profilePresentation : ${presentation?.sectionInfos[0]?.content}, 
+      profilePresentation : ${presentation?.content}, 
       advices : ${presentationAdvice?.content}
     `;
 
@@ -91,15 +75,15 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
         return `
           cvMinuteSectionId : ${cvMinuteSection?.id}, 
           adviceId : ${cvMinuteSectionAdvice?.id}, 
-          sectionTitle : ${cvMinuteSection?.sectionTitle}, 
-          sectionContent : ${cvMinuteSection?.sectionInfos[0]?.content}, 
+          sectionTitle : ${cvMinuteSection?.name}, 
+          sectionContent : ${cvMinuteSection?.content}, 
           sectionAdvice : ${cvMinuteSectionAdvice?.content}
         `;
       })
       .join('\n');
 
-    const existExperiences = experiences?.sectionInfos
-      .map((item) => {
+    const existExperiences = experiences
+      ?.map((item) => {
         return `
           sectionInfoId :${item.id},
           evaluationId : ${item.evaluation?.id}, 
@@ -117,69 +101,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       messages: [
         {
           role: 'system',
-          content: `
-            Tu es expert en rédaction et optimisation de CV. 
-
-            Complément : rôle RH
-            Tu es aussi un expert RH. Tu détectes les attentes implicites de l’offre et rédiges pour faire “tilt” chez un recruteur en 5 secondes de scan.
-            
-            Mission :
-            À partir du contenu du CV et de l’offre ciblée, optimise tout le contenu du CV en respectant les contraintes suivantes :
-
-            Contraintes générales :
-            - Aucun contenu ne doit être perdu (sortie >= entrée).
-            - Optimiser chaque contenu pour maximiser la compatibilité avec l'offre.
-            - Ne modifie pas les sections suivantes : "formations", "centres d'intérêt", "certifications", "diplômes" (renvoie-les telles quelles).
-            - Génère de nouvelles sections appelées "rubriques" selon les conseils.
-            - Scores : entre 0 et 100.
-            - Ne jamais inclure d’introduction ou d’explication.
-            - Respecter les sauts à la ligne demandé.
-            - Ne jamais sortir du format demandé.
-
-            Format attendu :
-            {
-              cvTitle: {
-                sectionInfoId: (identique à l’entrée),
-                adviceId: (identique à l’entrée),
-                title: string,
-                titleAdvice: string // 1 à 3 phrases, une par ligne
-              },
-              profilePresentation: {
-                sectionInfoId: (identique à l’entrée),
-                adviceId: (identique à l’entrée),
-                presentation: string,
-                presentationAdvice: string // 1 à 3 phrases, une par ligne
-              },
-              experiences: [
-                {
-                  sectionInfoId: (identique à l’entrée),
-                  evaluationId: (identique à l’entrée),
-                  postTitle: (identique à l’entrée),
-                  postDescription: string, // très explicite
-                  postDate: (identique à l’entrée),
-                  postOrder: string, // "1" = plus récent
-                  postScore: string, // 0 à 100
-                  postHigh: string, // 1 à 3 phrases, une par ligne
-                  postWeak: string  // 1 à 3 phrases, une par ligne
-                }
-              ],
-              sections: [
-                {
-                  cvMinuteSectionId: (identique ou "new" si générée),
-                  adviceId: (identique ou "new" si générée),
-                  sectionTitle: string,
-                  sectionContent: string, // contenu à la ligne, explicite
-                  sectionOrder: string, // "1", "2", ...
-                  sectionAdvice: string // 1 à 3 phrases, une par ligne
-                }
-              ],
-              newSectionsAdvice: string // 1 à 3 phrases, une par ligne
-              evaluations: {
-                globalScore: string, // 0 à 100
-                recommendations: string // 1 à 3 phrases, une par ligne
-              }
-            }
-          `.trim(),
+          content: optimizeCvMinutePrompt.trim(),
         },
         {
           role: 'user',
@@ -233,7 +155,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
           sections: {
             cvMinuteSectionId: string;
             adviceId: string;
-            sectionTitle: string;
+            sectionName: string;
             sectionContent: string;
             sectionOrder: string;
             sectionAdvice: string;
@@ -323,15 +245,14 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
             (section: {
               cvMinuteSectionId: string;
               adviceId: string;
-              sectionTitle: string;
+              sectionName: string;
               sectionContent: string;
               sectionOrder: string;
               sectionAdvice: string;
             }) => ({
               cvMinuteSectionId: section.cvMinuteSectionId,
               adviceId: section.adviceId,
-              name: section.sectionTitle.trim().toLocaleLowerCase(),
-              title: section.sectionTitle.trim().toLocaleLowerCase(),
+              name: section.sectionName.trim().toLocaleLowerCase(),
               content: section.sectionContent.trim(),
               order: section.sectionOrder,
               advice: section.sectionAdvice,
@@ -344,63 +265,31 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
         await Promise.all(
           allSections.map(async (s) => {
             if (cvMinute) {
-              let section: SectionInterface | null = null;
               let cvMinuteSection: CvMinuteSectionInterface | null = null;
 
               if (s.cvMinuteSectionId === 'new') {
-                section = await prisma.section.findUnique({
-                  where: { name: s.name.trim().toLowerCase() },
-                });
-
-                if (!section) {
-                  section = await prisma.section.create({
-                    data: {
-                      name: s.name.trim().toLowerCase(),
-                      editable: s.editable,
-                    },
-                  });
-                }
-
-                cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-                  where: {
-                    cvMinuteId_sectionId: {
-                      cvMinuteId: cvMinute.id,
-                      sectionId: section.id,
-                    },
-                  },
-                });
-
-                if (!cvMinuteSection) {
+                if (typeof s.content === 'string') {
                   cvMinuteSection = await prisma.cvMinuteSection.create({
                     data: {
-                      cvMinuteId: cvMinute.id,
-                      sectionId: section.id,
-                      sectionOrder: s.order ? Number(s.order) : 1,
-                      sectionTitle: s.title,
-                    },
-                  });
-                }
-
-                if (typeof s.content === 'string') {
-                  await prisma.sectionInfo.create({
-                    data: {
-                      cvMinuteSectionId: cvMinuteSection.id,
+                      name: s.name.trim(),
+                      order: s.order ? Number(s.order) : 1,
                       content: s.content,
+                      cvMinuteId: cvMinute.id,
+                    },
+                  });
+
+                  await prisma.advice.create({
+                    data: {
+                      type: 'advice',
+                      content: s.advice ?? '',
+                      cvMinuteSectionId: cvMinuteSection.id,
                     },
                   });
                 }
-
-                await prisma.advice.create({
-                  data: {
-                    cvMinuteSectionId: cvMinuteSection.id,
-                    content: s.advice ?? '',
-                    type: 'advice',
-                  },
-                });
               } else if (s.cvMinuteSectionId) {
                 cvMinuteSection = await prisma.cvMinuteSection.update({
                   where: { id: Number(s.cvMinuteSectionId) },
-                  data: { sectionTitle: s.title },
+                  data: { name: s.name.trim() },
                 });
 
                 await prisma.advice.update({
@@ -411,7 +300,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
 
               // SECTION INFO
               if (s.withAdvice) {
-                await prisma.sectionInfo.update({
+                await prisma.cvMinuteSection.update({
                   where: { id: Number(s.withAdvice.sectionInfoId) },
                   data: { content: s.withAdvice.content },
                 });
@@ -425,7 +314,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
                   await Promise.all(
                     s.content.map(async (item) => {
                       if (typeof item === 'object') {
-                        await prisma.sectionInfo.update({
+                        await prisma.cvMinuteSection.update({
                           where: { id: Number(item.sectionInfoId) },
                           data: {
                             content: item.content,
@@ -476,23 +365,11 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       include: {
         advices: true,
         evaluation: true,
-        cvMinuteSections: {
-          include: {
-            sectionInfos: { include: { evaluation: true, advices: true } },
-            advices: true,
-          },
-        },
+        cvMinuteSections: { include: { evaluation: true, advices: true } },
       },
     });
 
-    sections = await prisma.section.findMany({
-      where: { id: { in: cvMinute?.cvMinuteSections.map((c) => c.sectionId) } },
-    });
-
-    res.status(200).json({
-      cvMinute,
-      sections,
-    });
+    res.status(200).json({ cvMinute });
     return;
   } catch (error) {
     if (error instanceof Error) {
