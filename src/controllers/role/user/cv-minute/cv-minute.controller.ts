@@ -1,20 +1,20 @@
 import express from 'express';
-import isEmpty from '@/utils/isEmpty';
 
 import { validationResult } from 'express-validator';
-import { openai } from '@/socket';
 import { PrismaClient } from '@prisma/client';
 import { extractJson } from '@/utils/functions';
 import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
 import { EvaluationInterface } from '@/interfaces/evaluation.interface';
 import {
-  cvMinuteExperienceAdvicePrompt,
-  cvMinutePresentationAdvicePrompt,
-  cvMinuteTitleAdvicePrompt,
+  cvMinuteExperienceAdvicesPrompt,
+  cvMinutePresentationAdvicesPrompt,
+  cvMinuteTitleAdvicesPrompt,
   cvMinuteEvaluationPrompt,
   experienceEvaluationPrompt,
   newCvMinuteSectionPrompt,
+  editableSectionEvaluationPrompt,
 } from '@/utils/prompts/cv-minute.prompt';
+import { gpt3 } from '@/utils/openai';
 
 const prisma = new PrismaClient();
 
@@ -48,10 +48,17 @@ const updateCvMinuteSection = async (
       tertiaryBg?: string;
 
       updateBg?: boolean;
-      newSection?: boolean;
+      updateName?: boolean;
+      updateFirstname?: boolean;
+      updateContact?: boolean;
+      updateEditableSection?: boolean;
+      updateTitle?: boolean;
+      updatePresentation?: boolean;
       updateExperience?: boolean;
-      updateContactSection?: boolean;
-      updateCvMinuteSection?: boolean;
+
+      newContact?: boolean;
+      newEditableSection?: boolean;
+      newExperience?: boolean;
 
       cvMinuteSectionId?: number;
     } = req.body;
@@ -76,9 +83,9 @@ const updateCvMinuteSection = async (
       const updatedCvMinute = await prisma.cvMinute.update({
         where: { id: cvMinute.id },
         data: {
-          primaryBg: body.primaryBg.trim(),
-          secondaryBg: body.secondaryBg.trim(),
-          tertiaryBg: body.tertiaryBg.trim(),
+          primaryBg: body.primaryBg,
+          secondaryBg: body.secondaryBg,
+          tertiaryBg: body.tertiaryBg,
         },
       });
 
@@ -87,63 +94,110 @@ const updateCvMinuteSection = async (
           primaryBg: updatedCvMinute.primaryBg,
           secondaryBg: updatedCvMinute.secondaryBg,
           tertiaryBg: updatedCvMinute.tertiaryBg,
+          updatedAt: updatedCvMinute.updatedAt,
         },
       });
       return;
     } else if (
+      body.updateContact &&
       body.cvMinuteSectionId &&
-      body.updateContactSection &&
       body.content &&
-      body.icon
+      body.icon &&
+      body.iconSize
     ) {
-      // (create | update) contact
-      cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+      cvMinuteSection = await prisma.cvMinuteSection.update({
         where: { id: body.cvMinuteSectionId },
-        include: { evaluation: true, advices: true },
+        data: {
+          content: body.content,
+          icon: body.icon,
+          iconSize: body.iconSize,
+        },
       });
 
-      if (!cvMinuteSection) {
-        res.json({ cvMinuteSectionNotFound: true });
-        return;
-      }
+      res.status(200).json({ cvMinuteSection });
+      return;
+    } else if (body.newContact && body.content && body.icon && body.iconSize) {
+      await prisma.cvMinuteSection.updateMany({
+        where: { cvMinuteId: cvMinute.id },
+        data: { order: { increment: 1 } },
+      });
 
-      const infosToUpdate = {
-        content: body.content.trim(),
-        icon: body.icon.trim(),
-        iconSize: body.iconSize,
-      };
-
-      // (update | create) cvMinuteSection
-      if (body.cvMinuteSectionId) {
-        cvMinuteSection = await prisma.cvMinuteSection.update({
-          where: { id: body.cvMinuteSectionId },
-          data: infosToUpdate,
-        });
-      } else {
-        await prisma.cvMinuteSection.updateMany({
-          where: { cvMinuteId: cvMinute.id },
-          data: { order: { increment: 1 } },
-        });
-
-        cvMinuteSection = await prisma.cvMinuteSection.create({
-          data: {
-            ...infosToUpdate,
-            name: 'contacts',
-            order: 1,
-            cvMinuteId: cvMinute.id,
-          },
-        });
-      }
-    } else if (body.newSection && body.title && body.content) {
-      // create cvMinute & cvMinuteSection
       cvMinuteSection = await prisma.cvMinuteSection.create({
         data: {
-          name: body.title.trim().toLocaleLowerCase(),
-          order: body.order ?? 1,
-          content: body.content.trim(),
+          name: 'contacts',
+          order: 1,
+          content: body.content,
+          icon: body.icon,
+          iconSize: body.iconSize,
           cvMinuteId: cvMinute.id,
         },
       });
+
+      res.status(200).json({ cvMinuteSection });
+      return;
+    } else if (body.newEditableSection && body.title && body.content) {
+      await prisma.cvMinuteSection.updateMany({
+        where: { cvMinuteId: cvMinute.id, editable: true },
+        data: { order: { increment: 1 } },
+      });
+
+      cvMinuteSection = await prisma.cvMinuteSection.create({
+        data: {
+          name: body.title,
+          order: 1,
+          editable: true,
+          content: body.content,
+          cvMinuteId: cvMinute.id,
+        },
+      });
+
+      const details = `${cvMinuteSection.name} ${cvMinuteSection.content}`;
+
+      const openaiResponse = await gpt3([
+        {
+          role: 'system',
+          content: editableSectionEvaluationPrompt.trim(),
+        },
+        {
+          role: 'user',
+          content: `
+            Section :\n${details}\n
+            Offre :\n${cvMinute.position}
+          `.trim(),
+        },
+      ]);
+
+      if ('error' in openaiResponse) {
+        res.json({ openaiError: openaiResponse.error });
+        return;
+      }
+
+      for (const r of openaiResponse.choices) {
+        await prisma.openaiResponse.create({
+          data: {
+            responseId: openaiResponse.id,
+            cvMinuteId: cvMinute.id,
+            request: 'cvMinuteSectionAdvice',
+            response: r.message.content ?? '',
+            index: r.index,
+          },
+        });
+
+        const jsonData: { content: string } = extractJson(r.message.content);
+
+        if (!jsonData) {
+          res.json({ parsingError: true });
+          return;
+        }
+
+        await prisma.advice.create({
+          data: {
+            type: 'cvMinuteSectionAdvice',
+            content: jsonData.content,
+            cvMinuteSectionId: cvMinuteSection.id,
+          },
+        });
+      }
 
       cvMinuteSection = await prisma.cvMinuteSection.findUnique({
         where: { id: cvMinuteSection.id },
@@ -152,57 +206,49 @@ const updateCvMinuteSection = async (
 
       res.status(201).json({ cvMinuteSection });
       return;
-    } else if (body.updateCvMinuteSection) {
-      // update (cvMinuteSection &| sectionInfo)
-      cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+    } else if ((body.updateName || body.updateFirstname) && body.content) {
+      cvMinuteSection = await prisma.cvMinuteSection.update({
         where: { id: body.cvMinuteSectionId },
+        data: { content: body.content },
       });
 
-      if (!cvMinuteSection) {
-        // CREATE CVMINUTE SECTION
-        await prisma.cvMinuteSection.updateMany({
-          where: { cvMinuteId: cvMinute.id },
-          data: { order: { increment: 1 } },
-        });
+      res.status(200).json({ cvMinuteSection });
+      return;
+    } else if ((body.updateTitle || body.updatePresentation) && body.content) {
+      cvMinuteSection = await prisma.cvMinuteSection.update({
+        where: { id: body.cvMinuteSectionId },
+        data: { content: body.content || ' ' },
+      });
 
-        cvMinuteSection = await prisma.cvMinuteSection.create({
-          data: {
-            order: 1,
-            name: body.name?.trim() ?? '',
-            content: body.content?.trim() || ' ',
-            cvMinuteId: cvMinute.id,
-          },
-        });
-      } else {
-        cvMinuteSection = await prisma.cvMinuteSection.update({
-          where: { id: cvMinuteSection.id },
-          data: {
-            name: body.name?.trim() ?? '',
-            content: body.content?.trim() || ' ',
-          },
-        });
+      cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+        where: { id: cvMinuteSection.id },
+        include: { evaluation: true, advices: true },
+      });
 
-        cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-          where: { id: cvMinuteSection.id },
-          include: { evaluation: true, advices: true },
-        });
+      res.status(200).json({ cvMinuteSection });
+      return;
+    } else if (body.updateEditableSection && body.name && body.content) {
+      cvMinuteSection = await prisma.cvMinuteSection.update({
+        where: { id: body.cvMinuteSectionId },
+        data: { name: body.name, content: body.content },
+      });
 
-        res.status(200).json({ cvMinuteSection });
-        return;
-      }
+      cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+        where: { id: cvMinuteSection.id },
+        include: { advices: true },
+      });
+
+      res.status(200).json({ cvMinuteSection });
+      return;
     } else if (
       body.updateExperience &&
+      body.cvMinuteSectionId &&
       body.title &&
       body.content &&
       body.company &&
       body.date &&
       body.contrat
     ) {
-      // (create | update) experience
-      cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-        where: { id: body.cvMinuteSectionId },
-      });
-
       const infosToUpdate = {
         title: body.title.trim(),
         content: body.content.trim(),
@@ -211,97 +257,110 @@ const updateCvMinuteSection = async (
         contrat: body.contrat.trim(),
       };
 
-      if (cvMinuteSection) {
-        cvMinuteSection = await prisma.cvMinuteSection.update({
-          where: { id: cvMinuteSection.id },
-          data: infosToUpdate,
-        });
-      } else {
-        await prisma.cvMinuteSection.updateMany({
-          where: { cvMinuteId: cvMinute.id },
-          data: { order: { increment: 1 } },
-        });
+      cvMinuteSection = await prisma.cvMinuteSection.update({
+        where: { id: body.cvMinuteSectionId },
+        data: infosToUpdate,
+      });
 
-        cvMinuteSection = await prisma.cvMinuteSection.create({
+      cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+        where: { id: cvMinuteSection.id },
+        include: { evaluation: true, advices: true },
+      });
+
+      res.status(200).json({ cvMinuteSection });
+      return;
+    } else if (
+      body.newExperience &&
+      body.title &&
+      body.content &&
+      body.company &&
+      body.date &&
+      body.contrat
+    ) {
+      await prisma.cvMinuteSection.updateMany({
+        where: { name: 'experiences', cvMinuteId: cvMinute.id },
+        data: { order: { increment: 1 } },
+      });
+
+      cvMinuteSection = await prisma.cvMinuteSection.create({
+        data: {
+          name: 'experiences',
+          order: 1,
+          title: body.title.trim(),
+          content: body.content.trim(),
+          company: body.company.trim(),
+          date: body.date.trim(),
+          contrat: body.contrat.trim(),
+          cvMinuteId: cvMinute.id,
+        },
+      });
+
+      const details = `
+        postTitle : ${cvMinuteSection.title}, 
+        postDate : ${cvMinuteSection.date}, 
+        postDescription : ${cvMinuteSection.content}, 
+      `;
+
+      const openaiResponse = await gpt3([
+        {
+          role: 'system',
+          content: experienceEvaluationPrompt.trim(),
+        },
+        {
+          role: 'user',
+          content: `
+            Expérience :\n${details}\n
+            Offre :\n${cvMinute.position}
+          `.trim(),
+        },
+      ]);
+
+      if ('error' in openaiResponse) {
+        res.json({ openaiError: openaiResponse.error });
+        return;
+      }
+
+      for (const r of openaiResponse.choices) {
+        await prisma.openaiResponse.create({
           data: {
-            ...infosToUpdate,
-            order: 1,
-            name: body.name?.trim() ?? '',
+            responseId: openaiResponse.id,
             cvMinuteId: cvMinute.id,
+            request: 'cvMinuteSectionEvaluation',
+            response: r.message.content ?? '',
+            index: r.index,
           },
         });
 
-        const details = `
-          postTitle : ${cvMinuteSection.title}, 
-          postDate : ${cvMinuteSection.date}, 
-          postDescription : ${cvMinuteSection.content}, 
-        `;
+        const jsonData: {
+          postScore: string;
+          postHigh: string;
+          postWeak: string;
+        } = extractJson(r.message.content);
 
-        const openaiResponse = await openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: experienceEvaluationPrompt.trim(),
-            },
-            {
-              role: 'user',
-              content: `
-                Expérience :\n${details}\n
-                Offre :\n${cvMinute.position}
-              `.trim(),
-            },
-          ],
-        });
-
-        if (openaiResponse.id) {
-          for (const r of openaiResponse.choices) {
-            await prisma.openaiResponse.create({
-              data: {
-                responseId: openaiResponse.id,
-                cvMinuteId: cvMinute.id,
-                request: 'cv-minute-evaluation',
-                response: r.message.content ?? 'cv-minute-evaluation-response',
-                index: r.index,
-              },
-            });
-
-            const jsonData: {
-              postScore: string;
-              postHigh: string;
-              postWeak: string;
-            } = extractJson(r.message.content);
-
-            if (!jsonData) {
-              res.json({ parsingError: true });
-              return;
-            }
-
-            await prisma.evaluation.create({
-              data: {
-                initialScore: Number(jsonData.postScore),
-                content: jsonData.postHigh,
-                weakContent: jsonData.postWeak,
-                cvMinuteSectionId: cvMinuteSection.id,
-              },
-            });
-          }
+        if (!jsonData) {
+          res.json({ parsingError: true });
+          return;
         }
-      }
-    }
 
-    if (!cvMinuteSection) {
-      res.json({ cvMinuteSectionNotFound: true });
+        await prisma.evaluation.create({
+          data: {
+            initialScore: Number(jsonData.postScore),
+            actualScore: Number(jsonData.postScore),
+            content: jsonData.postHigh,
+            weakContent: jsonData.postWeak,
+            cvMinuteSectionId: cvMinuteSection.id,
+          },
+        });
+      }
+
+      cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+        where: { id: cvMinuteSection.id },
+        include: { evaluation: true, advices: true },
+      });
+
+      res.status(200).json({ cvMinuteSection });
       return;
     }
-
-    cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-      where: { id: cvMinuteSection.id },
-      include: { evaluation: true, advices: true },
-    });
-
-    res.status(200).json({ cvMinuteSection });
-    return;
   } catch (error) {
     if (error instanceof Error) {
       res.status(500).json({ error: error.message });
@@ -312,7 +371,7 @@ const updateCvMinuteSection = async (
   }
 };
 
-const generateCvMinuteSectionAdvice = async (
+const generateNewCvMinuteSections = async (
   req: express.Request,
   res: express.Response,
 ): Promise<void> => {
@@ -321,7 +380,10 @@ const generateCvMinuteSectionAdvice = async (
 
     const cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
-      include: { advices: true, cvMinuteSections: true },
+      include: {
+        advices: true,
+        cvMinuteSections: { orderBy: { order: 'asc' } },
+      },
     });
 
     if (!cvMinute) {
@@ -329,57 +391,61 @@ const generateCvMinuteSectionAdvice = async (
       return;
     }
 
-    const advice = cvMinute.advices.find((a) => a.type === 'advice');
+    const advice = cvMinute.advices.find((a) => a.type === 'cvMinuteAdvice');
 
-    const openaiResponse = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: newCvMinuteSectionPrompt.trim(),
-        },
-        {
-          role: 'user',
-          content: `
+    const openaiResponse = await gpt3([
+      {
+        role: 'system',
+        content: newCvMinuteSectionPrompt.trim(),
+      },
+      {
+        role: 'user',
+        content: `
             Sections existantes :\n${cvMinute.cvMinuteSections.map((item) => item.name).join('\n')}\n
             Conseils :\n${advice?.content}\n
             Offre :\n${cvMinute.position}
           `.trim(),
+      },
+    ]);
+
+    if ('error' in openaiResponse) {
+      res.json({ openaiError: openaiResponse.error });
+      return;
+    }
+
+    for (const r of openaiResponse.choices) {
+      await prisma.openaiResponse.create({
+        data: {
+          responseId: openaiResponse.id,
+          cvMinuteId: cvMinute.id,
+          request: 'newCvMinuteSectionSuggestion',
+          response: r.message.content ?? '',
+          index: r.index,
         },
-      ],
-    });
+      });
 
-    if (openaiResponse.id) {
-      for (const r of openaiResponse.choices) {
-        await prisma.openaiResponse.create({
-          data: {
-            responseId: openaiResponse.id,
-            cvMinuteId: cvMinute.id,
-            request: 'cv-minute-advice',
-            response: r.message.content ?? 'cv-minute-advice-response',
-            index: r.index,
-          },
-        });
+      const jsonData: { sections: string[] } = extractJson(r.message.content);
 
-        const jsonData: { sections: string[] } = extractJson(r.message.content);
-
-        if (!jsonData) {
-          res.json({ parsingError: true });
-          return;
-        }
-
-        await Promise.all(
-          jsonData.sections.map(async (s) => {
-            await prisma.advice.create({
-              data: {
-                cvMinuteId: cvMinute.id,
-                content: s,
-                type: 'suggestion',
-              },
-            });
-          }),
-        );
+      if (!jsonData) {
+        res.json({ parsingError: true });
+        return;
       }
+
+      await prisma.advice.deleteMany({
+        where: { cvMinuteId: cvMinute.id, type: 'suggestion' },
+      });
+
+      await Promise.all(
+        jsonData.sections.map(async (s) => {
+          await prisma.advice.create({
+            data: {
+              type: 'suggestion',
+              content: s,
+              cvMinuteId: cvMinute.id,
+            },
+          });
+        }),
+      );
     }
 
     const updatedCvMinute = await prisma.cvMinute.findUnique({
@@ -398,7 +464,7 @@ const generateCvMinuteSectionAdvice = async (
   }
 };
 
-const generateSectionInfoAdvice = async (
+const generateCvMinuteSectionAdvices = async (
   req: express.Request,
   res: express.Response,
 ): Promise<void> => {
@@ -413,11 +479,10 @@ const generateSectionInfoAdvice = async (
     let messageUser = '';
     const { cvMinute } = res.locals;
     const { cvMinuteSectionId } = req.params;
-    const body: { section: string } = req.body;
 
     let cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-      where: { id: Number(cvMinuteSectionId) },
-      include: { advices: true },
+      where: { id: Number(cvMinuteSectionId), cvMinuteId: cvMinute.id },
+      include: { advices: true, evaluation: true },
     });
 
     if (!cvMinuteSection) {
@@ -425,12 +490,12 @@ const generateSectionInfoAdvice = async (
       return;
     }
 
-    const advice = cvMinuteSection?.advices.find(
-      (a) => a.type === 'advice',
+    const advice = cvMinuteSection.advices.find(
+      (a) => a.type === 'cvMinuteSectionAdvice',
     )?.content;
 
-    if (body.section === 'title') {
-      messageSystem = cvMinuteTitleAdvicePrompt.trim();
+    if (cvMinuteSection.name === 'title') {
+      messageSystem = cvMinuteTitleAdvicesPrompt.trim();
 
       messageUser = `
         Titre actuel :
@@ -438,8 +503,8 @@ const generateSectionInfoAdvice = async (
         Conseils : ${advice}\n
         Offre: ${cvMinute.position}
       `;
-    } else if (body.section === 'presentation') {
-      messageSystem = cvMinutePresentationAdvicePrompt.trim();
+    } else if (cvMinuteSection.name === 'presentation') {
+      messageSystem = cvMinutePresentationAdvicesPrompt.trim();
 
       messageUser = `
         Présentation actuelle : 
@@ -447,8 +512,8 @@ const generateSectionInfoAdvice = async (
         Conseils :\n${advice} \n 
         Offre: ${cvMinute.position}
       `;
-    } else if (body.section === 'experience') {
-      messageSystem = cvMinuteExperienceAdvicePrompt.trim();
+    } else if (cvMinuteSection.name === 'experiences') {
+      messageSystem = cvMinuteExperienceAdvicesPrompt.trim();
 
       messageUser = `
         Titre du poste: ${cvMinuteSection.title}\n 
@@ -458,57 +523,62 @@ const generateSectionInfoAdvice = async (
       `;
     }
 
-    const openaiResponse = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: messageSystem.trim(),
+    const openaiResponse = await gpt3([
+      {
+        role: 'system',
+        content: messageSystem.trim(),
+      },
+      {
+        role: 'user',
+        content: messageUser.trim(),
+      },
+    ]);
+
+    if ('error' in openaiResponse) {
+      res.json({ openaiError: openaiResponse.error });
+      return;
+    }
+
+    for (const r of openaiResponse.choices) {
+      await prisma.openaiResponse.create({
+        data: {
+          responseId: openaiResponse.id,
+          cvMinuteId: cvMinute.id,
+          request: 'cvMinuteSectionSuggestion',
+          response: r.message.content ?? '',
+          index: r.index,
         },
-        {
-          role: 'user',
-          content: messageUser.trim(),
-        },
-      ],
-    });
+      });
 
-    if (openaiResponse.id) {
-      for (const r of openaiResponse.choices) {
-        await prisma.openaiResponse.create({
-          data: {
-            responseId: openaiResponse.id,
-            cvMinuteId: cvMinute.id,
-            request: 'cv-minute-advice',
-            response: r.message.content ?? 'cv-minute-advice-response',
-            index: r.index,
-          },
-        });
+      const jsonData: { advices: string[] } = extractJson(r.message.content);
 
-        const jsonData: { advices: string[] } = extractJson(r.message.content);
-
-        if (!jsonData) {
-          res.json({ parsingError: true });
-          return;
-        }
-
-        await Promise.all(
-          jsonData.advices.map(async (item) => {
-            await prisma.advice.create({
-              data: {
-                type: 'suggestion',
-                content: item,
-                cvMinuteSectionId: cvMinuteSection?.id,
-              },
-            });
-          }),
-        );
+      if (!jsonData) {
+        res.json({ parsingError: true });
+        return;
       }
+
+      await prisma.advice.deleteMany({
+        where: { type: 'suggestion', cvMinuteSectionId: cvMinuteSection.id },
+      });
+
+      await Promise.all(
+        jsonData.advices.map(async (item) => {
+          await prisma.advice.create({
+            data: {
+              type: 'suggestion',
+              content: item,
+              cvMinuteSectionId: cvMinuteSection?.id,
+            },
+          });
+        }),
+      );
     }
 
     cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: cvMinuteSection.id },
-      include: { advices: true },
+      include: { advices: true, evaluation: true },
     });
+
     res.status(200).json({ cvMinuteSection });
     return;
   } catch (error) {
@@ -531,7 +601,11 @@ const updateCvMinuteScore = async (
 
     const cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
-      include: { advices: true, evaluation: true },
+      include: {
+        cvMinuteSections: { orderBy: { order: 'asc' } },
+        advices: true,
+        evaluation: true,
+      },
     });
 
     if (!cvMinute) {
@@ -544,74 +618,86 @@ const updateCvMinuteScore = async (
       return;
     }
 
-    const cvMinuteSections = await prisma.cvMinuteSection.findMany({
-      where: { cvMinuteId: cvMinute.id },
-    });
-
-    const getCvMinuteSection = (name: string) => {
-      return cvMinuteSections.find((item) => item.name === name);
+    const getCvMinuteSection = (value: string) => {
+      return cvMinute.cvMinuteSections.find((item) => item.name === value);
     };
 
     const title = getCvMinuteSection('title');
     const presentation = getCvMinuteSection('presentation');
-    const experiences = cvMinuteSections.filter(
+
+    const experiences = cvMinute.cvMinuteSections.filter(
       (item) => item.name === 'experiences',
     );
-    const editableSections = cvMinuteSections.filter((s) => s.editable);
-    const allCvMinuteSections = editableSections
+
+    const editableSections = cvMinute.cvMinuteSections.filter(
+      (s) => s.editable,
+    );
+
+    const allEditableSections = editableSections
       .map((s) => `${s.name}: ${s.content}`)
       .filter((r) => r)
       .join('\n');
 
     const cvDetails = `
-      cvTitle : ${title?.content}, 
-      profilePresentation : ${presentation?.content}, 
-      experiences : ${experiences?.map((item, index) => `${index}. poste : ${item.title}, contrat : ${item.contrat}, description : ${item.content}`).join('\n')}, 
-      sections : ${allCvMinuteSections}
+      cvTitle: ${title?.content}, 
+      profilePresentation: ${presentation?.content}, 
+      experiences: ${experiences?.map((item, index) => `${index}. poste: ${item.title}, contrat: ${item.contrat}, description: ${item.content}`).join('\n')}, 
+      sections: ${allEditableSections}
     `;
 
-    const openaiResponse = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: cvMinuteEvaluationPrompt.trim(),
+    const openaiResponse = await gpt3([
+      {
+        role: 'system',
+        content: cvMinuteEvaluationPrompt.trim(),
+      },
+      {
+        role: 'user',
+        content: `
+          Contenu du CV : ${cvDetails}\n 
+          Offre ciblée : ${cvMinute.position}
+        `.trim(),
+      },
+    ]);
+
+    if ('error' in openaiResponse) {
+      res.json({ openaiError: openaiResponse.error });
+      return;
+    }
+
+    for (const r of openaiResponse.choices) {
+      await prisma.openaiResponse.create({
+        data: {
+          responseId: openaiResponse.id,
+          cvMinuteId: cvMinute.id,
+          request: 'cvMinuteMatchingScore',
+          response: r.message.content ?? '',
+          index: r.index,
         },
-        {
-          role: 'user',
-          content: `
-            Contenu du CV : ${cvDetails}\n 
-            Offre ciblée : ${cvMinute.position}
-          `.trim(),
-        },
-      ],
-    });
+      });
 
-    if (openaiResponse.id) {
-      for (const r of openaiResponse.choices) {
-        await prisma.openaiResponse.create({
-          data: {
-            responseId: openaiResponse.id,
-            cvMinuteId: cvMinute.id,
-            request: 'cv-minute-matching-score',
-            response: r.message.content ?? 'cv-minute-matching-score-response',
-            index: r.index,
-          },
-        });
+      const jsonData: { globalScore: string; recommendations: string } =
+        extractJson(r.message.content);
 
-        const jsonData: { globalScore: string; recommendations: string } =
-          extractJson(r.message.content);
+      if (!jsonData) {
+        res.json({ parsingError: true });
+        return;
+      }
 
-        if (!jsonData) {
-          res.json({ parsingError: true });
-          return;
-        }
-
+      if (cvMinute.evaluation) {
         evaluation = await prisma.evaluation.update({
           where: { id: cvMinute.evaluation.id },
           data: {
             actualScore: Number(jsonData.globalScore),
             content: jsonData.recommendations,
+          },
+        });
+      } else {
+        evaluation = await prisma.evaluation.create({
+          data: {
+            initialScore: Number(jsonData.globalScore),
+            actualScore: Number(jsonData.globalScore),
+            content: jsonData.recommendations,
+            cvMinuteId: cvMinute.id,
           },
         });
       }
@@ -629,25 +715,21 @@ const updateCvMinuteScore = async (
   }
 };
 
-const updateSectionInfoScore = async (
+const updateCvMinuteSectionScore = async (
   req: express.Request,
   res: express.Response,
 ): Promise<void> => {
   try {
-    let evaluation: EvaluationInterface | null = null;
     const { cvMinute } = res.locals;
     const { cvMinuteSectionId } = req.params;
 
     let cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: Number(cvMinuteSectionId) },
-      include: { evaluation: true, advices: true },
+      include: { evaluation: true },
     });
 
     if (!cvMinuteSection) {
       res.json({ cvMinuteSectionNotFound: true });
-      return;
-    } else if (!cvMinuteSection.evaluation) {
-      res.json({ evaluationNotFound: true });
       return;
     }
 
@@ -657,51 +739,63 @@ const updateSectionInfoScore = async (
       description : ${cvMinuteSection.content}
     `;
 
-    const openaiResponse = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: experienceEvaluationPrompt.trim(),
-        },
-        {
-          role: 'user',
-          content: `
-            Contenu de l'expérience : 
-            ${experience}\n 
-            Offre ciblée : ${cvMinute.position}
-          `.trim(),
-        },
-      ],
-    });
+    const openaiResponse = await gpt3([
+      {
+        role: 'system',
+        content: experienceEvaluationPrompt.trim(),
+      },
+      {
+        role: 'user',
+        content: `
+          Contenu de l'expérience : 
+          ${experience}\n 
+          Offre ciblée : ${cvMinute.position}
+        `.trim(),
+      },
+    ]);
 
-    if (openaiResponse.id) {
-      for (const r of openaiResponse.choices) {
-        await prisma.openaiResponse.create({
+    if ('error' in openaiResponse) {
+      res.json({ openaiError: openaiResponse.error });
+      return;
+    }
+
+    for (const r of openaiResponse.choices) {
+      await prisma.openaiResponse.create({
+        data: {
+          responseId: openaiResponse.id,
+          cvMinuteId: cvMinute.id,
+          request: 'cvMinuteSectionMatchingScore',
+          response: r.message.content ?? '',
+          index: r.index,
+        },
+      });
+
+      const jsonData: {
+        postScore: string;
+        postHigh: string;
+        postWeak: string;
+      } = extractJson(r.message.content);
+
+      if (!jsonData) {
+        res.json({ parsingError: true });
+        return;
+      }
+
+      if (!cvMinuteSection.evaluation) {
+        await prisma.evaluation.create({
           data: {
-            responseId: openaiResponse.id,
-            cvMinuteId: cvMinute.id,
-            request: 'cv-minute-matching-score',
-            response: r.message.content ?? 'cv-minute-matching-score-response',
-            index: r.index,
+            initialScore: Number(jsonData.postScore),
+            actualScore: Number(jsonData.postScore),
+            content: jsonData.postHigh,
+            weakContent: jsonData.postWeak,
+            cvMinuteSectionId: cvMinuteSection.id,
           },
         });
-
-        const jsonData: {
-          score: string;
-          postHigh: string;
-          postWeak: string;
-        } = extractJson(r.message.content);
-
-        if (!jsonData) {
-          res.json({ parsingError: true });
-          return;
-        }
-
-        evaluation = await prisma.evaluation.update({
+      } else {
+        await prisma.evaluation.update({
           where: { id: cvMinuteSection.evaluation.id },
           data: {
-            actualScore: Number(jsonData.score),
+            actualScore: Number(jsonData.postScore),
             content: jsonData.postHigh,
             weakContent: jsonData.postWeak,
           },
@@ -709,7 +803,12 @@ const updateSectionInfoScore = async (
       }
     }
 
-    res.status(200).json({ evaluation });
+    cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+      where: { id: cvMinuteSection.id },
+      include: { evaluation: true, advices: true },
+    });
+
+    res.status(200).json({ cvMinuteSection });
     return;
   } catch (error) {
     if (error instanceof Error) {
@@ -723,8 +822,8 @@ const updateSectionInfoScore = async (
 
 export {
   updateCvMinuteSection,
-  generateCvMinuteSectionAdvice,
-  generateSectionInfoAdvice,
+  generateNewCvMinuteSections,
+  generateCvMinuteSectionAdvices,
   updateCvMinuteScore,
-  updateSectionInfoScore,
+  updateCvMinuteSectionScore,
 };

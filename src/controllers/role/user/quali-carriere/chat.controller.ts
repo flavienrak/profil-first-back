@@ -2,10 +2,11 @@ import express from 'express';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { io, openai } from '@/socket';
+import { io } from '@/socket';
 import { extractJson } from '@/utils/functions';
 import { qualiCarriereChatResponsePrompt } from '@/utils/prompts/quali-carriere.prompt';
 import { QualiCarriereChatInterface } from '@/interfaces/role/user/quali-carriere/qualiCarriereChatInterface';
+import { gpt3 } from '@/utils/openai';
 
 const prisma = new PrismaClient();
 
@@ -51,59 +52,56 @@ const sendQualiCarriereMessage = async (
       where: { userId: user.id },
     });
 
-    const openaiResponse = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: qualiCarriereChatResponsePrompt.trim(),
-        },
-        {
-          role: 'user',
-          content: `
+    const openaiResponse = await gpt3([
+      {
+        role: 'system',
+        content: qualiCarriereChatResponsePrompt.trim(),
+      },
+      {
+        role: 'user',
+        content: `
           Résumé du candidat :
-          ${qualiCarriereResumes.map((r) => r.content).join('\n')}
-
-          Offre ciblée :
-          ${cvMinute.position}
-
+          ${qualiCarriereResumes.map((r) => r.content).join('\n')}\n
+          
           Historique de la discussion :
-          ${prevMessages.map((m, index) => `${index + 1}. ${m.role} : ${m.content}`).join('\n')}
+          ${prevMessages.map((m, index) => `${index + 1}. ${m.role} : ${m.content}`).join('\n')}\n
 
           Dernier message :
           ${message.content}
         `.trim(),
+      },
+    ]);
+
+    if ('error' in openaiResponse) {
+      res.json({ openaiError: openaiResponse.error });
+      return;
+    }
+
+    for (const r of openaiResponse.choices) {
+      await prisma.openaiResponse.create({
+        data: {
+          responseId: openaiResponse.id,
+          userId: user.id,
+          request: 'qualiCarriereChat',
+          response: r.message.content ?? '',
+          index: r.index,
         },
-      ],
-    });
+      });
 
-    if (openaiResponse.id) {
-      for (const r of openaiResponse.choices) {
-        await prisma.openaiResponse.create({
-          data: {
-            responseId: openaiResponse.id,
-            userId: user.id,
-            request: 'quali-carriere-chat',
-            response: r.message.content ?? 'quali-carriere-chat-response',
-            index: r.index,
-          },
-        });
+      const jsonData: { response: string } = extractJson(r.message.content);
 
-        const jsonData: { response: string } = extractJson(r.message.content);
-
-        if (!jsonData) {
-          res.json({ parsingError: true });
-          return;
-        }
-
-        response = await prisma.qualiCarriereChat.create({
-          data: {
-            userId: user.id,
-            role: 'system',
-            content: jsonData.response,
-          },
-        });
+      if (!jsonData) {
+        res.json({ parsingError: true });
+        return;
       }
+
+      response = await prisma.qualiCarriereChat.create({
+        data: {
+          role: 'system',
+          content: jsonData.response,
+          userId: user.id,
+        },
+      });
     }
 
     res.status(200).json({ response });

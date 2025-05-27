@@ -6,8 +6,7 @@ import FormData from 'form-data';
 
 import { validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
-import { io, openai } from '@/socket';
-import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
+import { io } from '@/socket';
 import {
   extractJson,
   questionNumber,
@@ -15,6 +14,7 @@ import {
   questionRangeByIndex,
 } from '@/utils/functions';
 import { qualiCarriereNextQuestionPrompt } from '@/utils/prompts/quali-carriere.prompt';
+import { gpt3 } from '@/utils/openai';
 
 const prisma = new PrismaClient();
 
@@ -35,8 +35,9 @@ const respondQualiCarriereQuestion = async (
 
     const cvMinute = await prisma.cvMinute.findFirst({
       where: { qualiCarriereRef: true, userId: user.id },
-      include: { cvMinuteSections: true },
+      include: { cvMinuteSections: { orderBy: { order: 'asc' } } },
     });
+
     if (!cvMinute) {
       res.json({ cvMinuteNotFound: true });
       return;
@@ -64,9 +65,9 @@ const respondQualiCarriereQuestion = async (
       return;
     }
 
-    const cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-      where: { id: body.cvMinuteSectionId },
-    });
+    const cvMinuteSection = cvMinute.cvMinuteSections.find(
+      (c) => c.id === actualQuestion.cvMinuteSectionId,
+    );
 
     if (!cvMinuteSection) {
       res.json({ cvMinuteSectionNotFound: true });
@@ -128,11 +129,9 @@ const respondQualiCarriereQuestion = async (
       fs.unlinkSync(filePath);
     }
 
-    const getCvMinuteSection = (value: string) => {
-      return cvMinute.cvMinuteSections.filter((s) => s.name === value);
-    };
-
-    const experiences = getCvMinuteSection('experiences');
+    const experiences = cvMinute.cvMinuteSections.filter(
+      (s) => s.name === 'experiences',
+    );
 
     if (!experiences || (experiences && experiences.length === 0)) {
       res.json({ noExperiences: true });
@@ -157,8 +156,14 @@ const respondQualiCarriereQuestion = async (
     }
 
     for (let i = 0; i < experiences.length; i++) {
-      const s = experiences[i];
-      const userExperience = `title : ${s.title}, date : ${s.date}, company : ${s.company}, contrat : ${s.contrat}, description : ${s.content}`;
+      const experience = experiences[i];
+      const userExperience = `
+        title: ${experience.title}, 
+        date: ${experience.date}, 
+        company: ${experience.company}, 
+        contrat: ${experience.contrat}, 
+        description: ${experience.content}
+      `;
 
       const restQuestions = questionNumberByIndex(i);
       const range = questionRangeByIndex(i);
@@ -166,14 +171,14 @@ const respondQualiCarriereQuestion = async (
         .slice(range.start)
         .map(
           (q) =>
-            `question : ${q.content}, réponse : ${qualiCarriereResponses.find((r) => r.questionId === q.id)?.content}`,
+            `question: ${q.content}, réponse: ${qualiCarriereResponses.find((r) => r.questionId === q.id)?.content}`,
         )
         .join('\n');
 
       if (qualiCarriereResponses.length <= restQuestions - 1 && nextQuestion) {
         io.to(`user-${user.id}`).emit('qualiCarriereQuestion', {
           experience: experiences.find(
-            (sInfo) => sInfo.id === nextQuestion.cvMinuteSectionId,
+            (exp) => exp.id === nextQuestion.cvMinuteSectionId,
           ),
           question: nextQuestion,
           totalQuestions,
@@ -183,59 +188,56 @@ const respondQualiCarriereQuestion = async (
           !afterNextQuestion &&
           qualiCarriereResponses.length < restQuestions - 1
         ) {
-          const openaiResponse = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: [
-              {
-                role: 'system',
-                content: qualiCarriereNextQuestionPrompt.trim(),
-              },
-              {
-                role: 'user',
-                content: `
-                  Expérience : ${userExperience}\n 
-                  Entretien : ${prevQuestions}
+          const openaiResponse = await gpt3([
+            {
+              role: 'system',
+              content: qualiCarriereNextQuestionPrompt.trim(),
+            },
+            {
+              role: 'user',
+              content: `
+                  Expérience: ${userExperience}\n 
+                  Entretien: ${prevQuestions}
                 `,
+            },
+          ]);
+
+          if ('error' in openaiResponse) {
+            res.json({ openaiError: openaiResponse.error });
+            return;
+          }
+
+          for (const r of openaiResponse.choices) {
+            await prisma.openaiResponse.create({
+              data: {
+                responseId: openaiResponse.id,
+                userId: user.id,
+                request: 'qualiCarriereQuestion',
+                response: r.message.content ?? '',
+                index: r.index,
               },
-            ],
-          });
+            });
 
-          if (openaiResponse.id) {
-            for (const r of openaiResponse.choices) {
-              await prisma.openaiResponse.create({
-                data: {
-                  responseId: openaiResponse.id,
-                  userId: user.id,
-                  request: 'quali-carriere-question',
-                  response:
-                    r.message.content ?? 'quali-carriere-question-response',
-                  index: r.index,
-                },
-              });
+            const jsonData: { question: string } = extractJson(
+              r.message.content,
+            );
 
-              const jsonData: { question: string } = extractJson(
-                r.message.content,
-              );
-
-              if (!jsonData) {
-                res.json({ parsingError: true });
-                return;
-              }
-
-              if (jsonData) {
-                await prisma.qualiCarriereQuestion.create({
-                  data: {
-                    userId: user.id,
-                    content: jsonData.question.trim().toLocaleLowerCase(),
-                    order: qualiCarriereQuestions.length + 1,
-                    cvMinuteSectionId: s.id,
-                  },
-                });
-
-                res.status(200).json({ nextQuestion: true });
-                return;
-              }
+            if (!jsonData) {
+              res.json({ parsingError: true });
+              return;
             }
+
+            await prisma.qualiCarriereQuestion.create({
+              data: {
+                userId: user.id,
+                content: jsonData.question,
+                order: qualiCarriereQuestions.length + 1,
+                cvMinuteSectionId: experience.id,
+              },
+            });
+
+            res.status(200).json({ nextQuestion: true });
+            return;
           }
         }
       }

@@ -33,4 +33,33 @@ const checkCvMinuteOwner = async (
   next();
 };
 
-export { checkCvMinuteOwner };
+const checkCvMinuteSection = async (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) => {
+  const { cvMinute } = res.locals;
+  const { cvMinuteSectionId } = req.params;
+
+  if (isNaN(Number(cvMinuteSectionId))) {
+    res.json({ invalidCvMinuteSectionId: true });
+    return;
+  }
+
+  const cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+    where: { id: Number(cvMinuteSectionId) },
+  });
+
+  if (!cvMinuteSection) {
+    res.json({ cvMinuteSectionNotFound: true });
+    return;
+  } else if (cvMinuteSection.cvMinuteId !== cvMinute.id) {
+    res.json({ unAuthorized: true });
+    return;
+  }
+
+  res.locals.cvMinuteSection = cvMinuteSection;
+  next();
+};
+
+export { checkCvMinuteOwner, checkCvMinuteSection };

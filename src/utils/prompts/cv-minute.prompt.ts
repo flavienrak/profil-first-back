@@ -5,18 +5,22 @@ const addCvMinutePrompt = `
 
   Mission :
   À partir du contenu du CV et de l’offre ciblée : 
-  - Extraire les informations du CV.
+  - Extraire et structurer le contenu du CV.
   - Attribue 1 à 3 domaines le profil.
   - Évaluer la compatibilité avec l'offre ciblée.
+  - Donner des suggestions.
   - Retourner une structure JSON strictement conforme au format donné.
 
   Domaines : 
   - ${domains.map((d) => d.label).join('- \n')}
 
   Contraintes :
-  - Tous les champs doivent être présents, même si vides ou "à ajouter".
+  - Aucun contenu ne doit être perdu (sortie >= entrée).
+  - Tous les champs doivent être présents.
   - Scores entre 0 et 100.
-  - Les phrases doivent être claires, aérées (retours à la ligne quand nécessaire).
+  - Ordonner du plus récent au plus ancien.
+  - Les contenus doivent être claires, **aérées** avec des retours à la ligne.
+  - Mettre des **bullet points** pour les contenus liste et ajouter des retours à la ligne.
   - Utilise des icônes de lucide-static pour les contacts.
   - Choisir parmis les domaines données.
   - Donne uniquement un objet JSON (pas de texte autour).
@@ -29,11 +33,11 @@ const addCvMinutePrompt = `
     firstname: string,
     cvTitle: {
       title: string,
-      titleAdvice: string
+      titleAdvice: string // Suggestion d'amélioration du contenu
     },
     profilePresentation: {
-      presentation: string,
-      presentationAdvice: string
+      presentation: string, // Limiter à 300 caractères 
+      presentationAdvice: string // Suggestion d'amélioration du contenu
     },
     contacts: [
       {
@@ -48,26 +52,26 @@ const addCvMinutePrompt = `
         postDate: string,
         postCompany: string,
         postContrat: string,
-        postDescription: string,
+        postDescription: string, // Contenu html simple : <p>...</p>. Mettre des bullet points si c'est une liste (• ). Mettre un retour à la ligne avant une liste.
         postOrder: string,
         postScore: string,
-        postHigh: string,
-        postWeak: string
+        postHigh: string, // Points forts
+        postWeak: string // Points à améliorer
       }
     ],
     sections: [
       {
         sectionName: string,
-        sectionContent: string,
+        sectionContent: string, // Mettre des bullet points si c'est une liste (• ).  Mettre un retour à la ligne avant une liste.
         sectionOrder: string,
-        sectionAdvice: string
+        sectionAdvice: string // Suggestion d'amélioration du contenu
       }
     ],
     domains: [...],
-    newSectionsAdvice: string,
+    newSectionsAdvice: string, // Suggestion de nouvelles sections à ajouter
     evaluations: {
-      globalScore: string,
-      recommendations: string
+      globalScore: string, // Evaluation globale du CV
+      recommendations: string // Suggestion d'amélioration global du CV
     }
   }
 `;
@@ -79,9 +83,9 @@ const optimizeCvMinutePrompt = `
   Tu es aussi un expert RH. Tu détectes les attentes implicites de l’offre et rédiges pour faire “tilt” chez un recruteur en 5 secondes de scan.
 
   Mission :
-  À partir du contenu du CV et de l’offre ciblée, optimise tout le contenu du CV en respectant les contraintes suivantes :
+  À partir du contenu du CV et de l’offre ciblée, optimise tout le contenu du CV.
 
-  Contraintes générales :
+  Contraintes :
   - Aucun contenu ne doit être perdu (sortie >= entrée).
   - Optimiser chaque contenu pour maximiser la compatibilité avec l'offre.
   - Ne modifie pas les sections suivantes : "formations", "centres d'intérêt", "certifications", "diplômes" (renvoie-les telles quelles).
@@ -94,46 +98,53 @@ const optimizeCvMinutePrompt = `
   Format attendu :
   {
     cvTitle: {
-      sectionInfoId: (identique à l’entrée),
-      adviceId: (identique à l’entrée),
+      sectionId: (identique à l’entrée),
       title: string,
-      titleAdvice: string // 1 à 3 phrases, une par ligne
     },
     profilePresentation: {
-      sectionInfoId: (identique à l’entrée),
-      adviceId: (identique à l’entrée),
+      sectionId: (identique à l’entrée),
       presentation: string,
-      presentationAdvice: string // 1 à 3 phrases, une par ligne
     },
     experiences: [
       {
-        sectionInfoId: (identique à l’entrée),
-        evaluationId: (identique à l’entrée),
-        postTitle: (identique à l’entrée),
-        postDescription: string, // très explicite
-        postDate: (identique à l’entrée),
+        sectionId: (identique à l’entrée),
+        postDescription: string, // très explicite. Contenu html simple : <p>...</p>. Mettre des bullet points si c'est une liste (• ). Mettre un retour à la ligne avant une liste.
         postOrder: string, // "1" = plus récent
-        postScore: string, // 0 à 100
-        postHigh: string, // 1 à 3 phrases, une par ligne
-        postWeak: string  // 1 à 3 phrases, une par ligne
+        postScore: string, // Compatibilité de l'expérience par rapport à l'offre
+        postHigh: string, // Points forts
+        postWeak: string // Points à améliorer
       }
     ],
     sections: [
       {
-        cvMinuteSectionId: (identique ou "new" si générée),
-        adviceId: (identique ou "new" si générée),
+        sectionId: (identique ou "new" si générée),
         sectionName: string,
-        sectionContent: string, // contenu à la ligne, explicite
-        sectionOrder: string, // "1", "2", ...
-        sectionAdvice: string // 1 à 3 phrases, une par ligne
+        sectionContent: string, // Explicite. Mettre un retour à la ligne avant une liste.
       }
     ],
-    newSectionsAdvice: string // 1 à 3 phrases, une par ligne
     evaluations: {
       globalScore: string, // 0 à 100
-      recommendations: string // 1 à 3 phrases, une par ligne
+      recommendations: string // 1 à 3 phrases de suggestion globale, une phrase par ligne
     }
   }
+`;
+
+const editableSectionEvaluationPrompt = `
+  Tu es expert en évaluation de CV.
+
+  Complément : rôle RH
+  Tu es aussi un expert RH. Tu détectes les attentes implicites de l’offre.
+
+  Mission :
+  À partir du contenu de la section et de l’offre ciblée, donne des suggestions d'améliorations.
+
+  Contraintes :
+  - Phrases clairs, constructives et baséés sur les attentes du poste.
+  - Pas d’introduction ni de phrase hors sujet.
+  - Ne jamais sortir du format demandé.
+
+  Format attendu :
+  { content: "...", // 1 à 3 phrases }
 `;
 
 const experienceEvaluationPrompt = `
@@ -152,8 +163,8 @@ const experienceEvaluationPrompt = `
   Format attendu :
   {
     postScore: string, // Score sur 100 mesurant l'adéquation
-    postHigh: string,  // 1 à 3 phrases sur les points forts (chaque phrase sur une nouvelle ligne)
-    postWeak: string   // 1 à 3 phrases sur les axes d'amélioration (chaque phrase sur une nouvelle ligne)
+    postHigh: "✓ ... ✓ ... ✓ ...",  // 1 à 3 phrases
+    postWeak: "• ... • ... • ..."   // 1 à 3 phrases
   }
 `;
 
@@ -193,10 +204,11 @@ const newCvMinuteSectionPrompt = `
   { sections: ["Nom de la section 1", "Nom de la section 2"] }
 `;
 
-const cvMinuteTitleAdvicePrompt = `
+const cvMinuteTitleAdvicesPrompt = `
   Tu es expert en optimisation de CV.
   
-  Objectif : Proposer 1 à 3 titres de CV adaptés à l’offre et aux conseils fournis.
+  Objectif : 
+  - Proposer 3 titres de CV adaptés à l’offre et aux conseils fournis.
   
   Contraintes :
   - Pas de phrases explicatives.
@@ -207,23 +219,23 @@ const cvMinuteTitleAdvicePrompt = `
   { advices: ["Titre 1", "Titre 2", "Titre 3"] }
 `;
 
-const cvMinutePresentationAdvicePrompt = `
+const cvMinutePresentationAdvicesPrompt = `
   Tu es expert en rédaction de CV.
 
-  Objectif : Suggérer 1 à 3 présentations de profil percutantes, selon l’offre et les conseils.
+  Objectif : Suggérer 3 présentations de profil percutantes, selon l’offre et les conseils.
   
   Contraintes :
-  - Réponses claires, sans introduction
-  - Ne jamais sortir du format demandé
+  - Réponses claires, sans introduction.
+  - Ne jamais sortir du format demandé.
 
   Format attendu :
-  { advices: ["Proposition 1", "Proposition 2"] }
+  { advices: ["Proposition 1", "Proposition 2", "Proposition 3"] }
 `;
 
-const cvMinuteExperienceAdvicePrompt = `
+const cvMinuteExperienceAdvicesPrompt = `
   Tu es expert en rédaction de CV.
 
-  Objectif : Proposer 1 à 3 enrichissements à ajouter à une expérience, selon les conseils et l’offre.
+  Objectif : Proposer 3 enrichissements à ajouter à une expérience, selon les conseils et l’offre.
   
   Contraintes :
   - Max 300 caractères par ligne.
@@ -238,10 +250,11 @@ const cvMinuteExperienceAdvicePrompt = `
 export {
   addCvMinutePrompt,
   optimizeCvMinutePrompt,
+  editableSectionEvaluationPrompt,
   experienceEvaluationPrompt,
   cvMinuteEvaluationPrompt,
   newCvMinuteSectionPrompt,
-  cvMinuteTitleAdvicePrompt,
-  cvMinutePresentationAdvicePrompt,
-  cvMinuteExperienceAdvicePrompt,
+  cvMinuteTitleAdvicesPrompt,
+  cvMinutePresentationAdvicesPrompt,
+  cvMinuteExperienceAdvicesPrompt,
 };

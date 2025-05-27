@@ -2,10 +2,9 @@ import { Request, Response } from 'express';
 
 import { htmlToText } from 'html-to-text';
 import { PrismaClient } from '@prisma/client';
-import { openai } from '@/socket';
-import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
-import { extractJson } from '@/utils/functions';
+import { extractJson, formatTextWithStrong } from '@/utils/functions';
 import { optimizeCvMinutePrompt } from '@/utils/prompts/cv-minute.prompt';
+import { gpt4 } from '@/utils/openai';
 
 const prisma = new PrismaClient();
 
@@ -18,7 +17,10 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       include: {
         advices: true,
         evaluation: true,
-        cvMinuteSections: { include: { evaluation: true, advices: true } },
+        cvMinuteSections: {
+          include: { evaluation: true, advices: true },
+          orderBy: { order: 'asc' },
+        },
       },
     });
 
@@ -33,51 +35,48 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
 
     const title = getCvMinuteSection('title');
     const presentation = getCvMinuteSection('presentation');
+
     const experiences = cvMinute.cvMinuteSections.filter(
       (item) => item.name === 'experiences',
     );
+
     const editableSections = cvMinute.cvMinuteSections.filter(
       (item) => item.editable,
     );
 
-    const titleAdvice = title?.advices.find((a) => a.type === 'advice');
+    const titleAdvice = title?.advices.find(
+      (item) => item.type === 'cvMinuteSectionAdvice',
+    );
     const existTitle = `
-      sectionInfoId : ${title?.id}, 
-      adviceId : ${titleAdvice?.id}, 
-      cvTitle : ${title?.content}, 
-      advices : ${titleAdvice?.content}
+      sectionId: ${title?.id}, 
+      cvTitle: ${title?.content}, 
+      titleAdvice: ${titleAdvice?.content}
     `;
 
     const presentationAdvice = presentation?.advices.find(
-      (a) => a.type === 'advice',
+      (item) => item.type === 'cvMinuteSectionAdvice',
     );
     const existPresentation = `
-      sectionInfoId :${presentation?.id}, 
-      adviceId : ${presentationAdvice?.id}, 
-      profilePresentation : ${presentation?.content}, 
-      advices : ${presentationAdvice?.content}
+      sectionId:${presentation?.id}, 
+      profilePresentation: ${presentation?.content}, 
+      presentationAdvice: ${presentationAdvice?.content}
     `;
 
-    const newSectionsAdvice = cvMinute.advices.find((a) => a.type === 'advice');
+    const newSectionsAdvice = cvMinute.advices.find(
+      (item) => item.type === 'cvMinuteSectionAdvice',
+    );
     const newSections = `
-      adviceId : ${newSectionsAdvice?.id}, 
-      newSectionsAdvice : ${newSectionsAdvice?.content}
+      adviceId: ${newSectionsAdvice?.id}, 
+      newSectionsAdvice: ${newSectionsAdvice?.content}
     `;
 
     const existSections = editableSections
-      .map((s) => {
-        const cvMinuteSection = getCvMinuteSection(s.name);
-        const cvMinuteSectionAdvice = cvMinuteSection?.advices.find(
-          (a) =>
-            a.cvMinuteSectionId === cvMinuteSection?.id && a.type === 'advice',
-        );
-
+      .map((item) => {
         return `
-          cvMinuteSectionId : ${cvMinuteSection?.id}, 
-          adviceId : ${cvMinuteSectionAdvice?.id}, 
-          sectionTitle : ${cvMinuteSection?.name}, 
-          sectionContent : ${cvMinuteSection?.content}, 
-          sectionAdvice : ${cvMinuteSectionAdvice?.content}
+          sectionId: ${item.id}, 
+          sectionTitle: ${item.name}, 
+          sectionContent: ${item.content}, 
+          sectionAdvice: ${item.content}
         `;
       })
       .join('\n');
@@ -85,287 +84,246 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
     const existExperiences = experiences
       ?.map((item) => {
         return `
-          sectionInfoId :${item.id},
-          evaluationId : ${item.evaluation?.id}, 
-          postTitle : ${item.title}, 
-          postDate : ${item.date},
-          postDescription : ${htmlToText(item.content)}, 
-          postHigh : ${item.evaluation?.content},
-          postWeak : ${item.evaluation?.weakContent}
+          sectionId:${item.id},
+          postDescription: ${htmlToText(item.content)}, 
+          postHigh: ${item.evaluation?.content},
+          postWeak: ${item.evaluation?.weakContent}
         `;
       })
       .join('\n');
 
-    const openaiResponse = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
+    const openaiResponse = await gpt4([
+      {
+        role: 'system',
+        content: optimizeCvMinutePrompt.trim(),
+      },
+      {
+        role: 'user',
+        content: `
+          Contenu du CV: ${existTitle}\n 
+          Présentation: ${existPresentation}\n 
+          Sections: ${existSections}\n 
+          Expériences: ${existExperiences}\n 
+          Nouvelles sections proposées: ${newSections}\n 
+          Offre ciblée: ${cvMinute.position}
+        `.trim(),
+      },
+    ]);
+
+    if ('error' in openaiResponse) {
+      res.json({ openaiError: openaiResponse.error });
+      return;
+    }
+
+    for (const r of openaiResponse.choices) {
+      await prisma.openaiResponse.create({
+        data: {
+          responseId: openaiResponse.id,
+          cvMinuteId: cvMinute.id,
+          request: 'optimizeCvMiute',
+          response: r.message.content ?? '',
+          index: r.index,
+        },
+      });
+
+      const jsonData: {
+        cvTitle: {
+          sectionId: string;
+          title: string;
+        };
+        profilePresentation: {
+          sectionId: string;
+          presentation: string;
+        };
+        experiences: {
+          sectionId: string;
+          postDescription: string;
+          postOrder: string;
+          postScore: string;
+          postHigh: string;
+          postWeak: string;
+        }[];
+        sections: {
+          sectionId: string;
+          sectionName: string;
+          sectionContent: string;
+          sectionOrder: string;
+        }[];
+        evaluations: {
+          globalScore: string;
+          recommendations: string;
+        };
+      } = extractJson(r.message.content);
+
+      if (!jsonData) {
+        res.json({ parsingError: true });
+        return;
+      }
+
+      const allSections: {
+        name: string;
+        title?: string;
+        editable?: boolean;
+        advice?: string;
+        adviceId?: string;
+        sectionId?: string;
+        content?:
+          | string
+          | {
+              sectionId: string;
+              content: string;
+              order: string;
+              postScore: string;
+              postHigh: string;
+              postWeak: string;
+            }[];
+        withAdvice?: {
+          sectionId: string;
+          content: string;
+        };
+      }[] = [
         {
-          role: 'system',
-          content: optimizeCvMinutePrompt.trim(),
+          name: 'title',
+          withAdvice: {
+            sectionId: jsonData.cvTitle.sectionId,
+            content: jsonData.cvTitle.title,
+          },
         },
         {
-          role: 'user',
-          content: `
-            Contenu du CV : ${existTitle}\n 
-            Présentation : ${existPresentation}\n 
-            Sections : ${existSections}\n 
-            Expériences : ${existExperiences}\n 
-            Nouvelles sections proposées : ${newSections}\n 
-            Offre ciblée : ${cvMinute.position}
-          `.trim(),
+          name: 'presentation',
+          withAdvice: {
+            sectionId: jsonData.profilePresentation.sectionId,
+            content: jsonData.profilePresentation.presentation,
+          },
         },
-      ],
-    });
-
-    if (openaiResponse.id) {
-      for (const r of openaiResponse.choices) {
-        await prisma.openaiResponse.create({
-          data: {
-            responseId: openaiResponse.id,
-            cvMinuteId: cvMinute.id,
-            request: 'optimize-cv',
-            response: r.message.content ?? 'optimize-cv-response',
-            index: r.index,
-          },
-        });
-
-        const jsonData: {
-          cvTitle: {
-            sectionInfoId: string;
-            adviceId: string;
-            title: string;
-            titleAdvice: string;
-          };
-          profilePresentation: {
-            sectionInfoId: string;
-            adviceId: string;
-            presentation: string;
-            presentationAdvice: string;
-          };
-          experiences: {
-            sectionInfoId: string;
-            evaluationId: string;
-            postTitle: string;
-            postDescription: string;
-            postOrder: string;
-            postScore: string;
-            postHigh: string;
-            postWeak: string;
-          }[];
-          sections: {
-            cvMinuteSectionId: string;
-            adviceId: string;
-            sectionName: string;
-            sectionContent: string;
-            sectionOrder: string;
-            sectionAdvice: string;
-          }[];
-          newSectionsAdvice: string;
-          evaluations: {
-            globalScore: string;
-            recommendations: string;
-          };
-        } = extractJson(r.message.content);
-
-        if (!jsonData) {
-          res.json({ parsingError: true });
-          return;
-        }
-
-        const allSections: {
-          name: string;
-          title?: string;
-          order?: string;
-          editable?: boolean;
-          advice?: string;
-          adviceId?: string;
-          cvMinuteSectionId?: string;
-          content?:
-            | string
-            | {
-                sectionInfoId: string;
-                evaluationId: string;
-                title: string;
-                content: string;
-                order: string;
-                score: string;
-                high: string;
-                weak: string;
-              }[];
-          withAdvice?: {
-            sectionInfoId: string;
-            adviceId: string;
-            content: string;
-            advice: string;
-          };
-        }[] = [
-          {
-            name: 'title',
-            withAdvice: {
-              sectionInfoId: jsonData.cvTitle.sectionInfoId,
-              adviceId: jsonData.cvTitle.adviceId,
-              content: jsonData.cvTitle.title,
-              advice: jsonData.cvTitle.titleAdvice,
-            },
-          },
-          {
-            name: 'presentation',
-            withAdvice: {
-              sectionInfoId: jsonData.profilePresentation.sectionInfoId,
-              adviceId: jsonData.profilePresentation.adviceId,
-              content: jsonData.profilePresentation.presentation,
-              advice: jsonData.profilePresentation.presentationAdvice,
-            },
-          },
-          {
-            name: 'experiences',
-            content: jsonData.experiences.map(
-              (item: {
-                sectionInfoId: string;
-                evaluationId: string;
-                postTitle: string;
-                postDescription: string;
-                postOrder: string;
-                postScore: string;
-                postHigh: string;
-                postWeak: string;
-              }) => ({
-                sectionInfoId: item.sectionInfoId,
-                evaluationId: item.evaluationId,
-                title: item.postTitle,
-                content: item.postDescription,
-                order: item.postOrder,
-                score: item.postScore,
-                high: item.postHigh,
-                weak: item.postWeak,
-              }),
-            ),
-          },
-          ...jsonData.sections.map(
-            (section: {
-              cvMinuteSectionId: string;
-              adviceId: string;
-              sectionName: string;
-              sectionContent: string;
-              sectionOrder: string;
-              sectionAdvice: string;
+        {
+          name: 'experiences',
+          content: jsonData.experiences.map(
+            (item: {
+              sectionId: string;
+              postDescription: string;
+              postOrder: string;
+              postScore: string;
+              postHigh: string;
+              postWeak: string;
             }) => ({
-              cvMinuteSectionId: section.cvMinuteSectionId,
-              adviceId: section.adviceId,
-              name: section.sectionName.trim().toLocaleLowerCase(),
-              content: section.sectionContent.trim(),
-              order: section.sectionOrder,
-              advice: section.sectionAdvice,
-              editable: true,
+              sectionId: item.sectionId,
+              content: item.postDescription,
+              order: item.postOrder,
+              postScore: item.postScore,
+              postHigh: item.postHigh,
+              postWeak: item.postWeak,
             }),
           ),
-        ];
+        },
+        ...jsonData.sections.map(
+          (section: {
+            sectionId: string;
+            sectionName: string;
+            sectionContent: string;
+          }) => ({
+            sectionId: section.sectionId,
+            name: section.sectionName.trim().toLocaleLowerCase(),
+            content: section.sectionContent.trim(),
+          }),
+        ),
+      ];
 
-        // CVMINUTE SECTION
-        await Promise.all(
-          allSections.map(async (s) => {
-            if (cvMinute) {
-              let cvMinuteSection: CvMinuteSectionInterface | null = null;
-
-              if (s.cvMinuteSectionId === 'new') {
-                if (typeof s.content === 'string') {
-                  cvMinuteSection = await prisma.cvMinuteSection.create({
-                    data: {
-                      name: s.name.trim(),
-                      order: s.order ? Number(s.order) : 1,
-                      content: s.content,
-                      cvMinuteId: cvMinute.id,
-                    },
-                  });
-
-                  await prisma.advice.create({
-                    data: {
-                      type: 'advice',
-                      content: s.advice ?? '',
-                      cvMinuteSectionId: cvMinuteSection.id,
-                    },
-                  });
-                }
-              } else if (s.cvMinuteSectionId) {
-                cvMinuteSection = await prisma.cvMinuteSection.update({
-                  where: { id: Number(s.cvMinuteSectionId) },
-                  data: { name: s.name.trim() },
+      // CVMINUTE SECTIONS
+      await Promise.all(
+        allSections.map(async (s) => {
+          if (cvMinute) {
+            if (s.sectionId === 'new') {
+              if (typeof s.content === 'string') {
+                await prisma.cvMinuteSection.updateMany({
+                  where: { cvMinuteId: cvMinute.id, editable: true },
+                  data: { order: { increment: 1 } },
                 });
 
-                await prisma.advice.update({
-                  where: { id: Number(s.adviceId) },
-                  data: { content: s.advice },
+                await prisma.cvMinuteSection.create({
+                  data: {
+                    name: s.name.trim(),
+                    order: 1,
+                    content: s.content.trim(),
+                    cvMinuteId: cvMinute.id,
+                  },
                 });
               }
+            } else {
+              if (Array.isArray(s.content)) {
+                await Promise.all(
+                  s.content.map(async (item) => {
+                    const cvMinuteSection = await prisma.cvMinuteSection.update(
+                      {
+                        where: { id: Number(item.sectionId) },
+                        data: {
+                          content: formatTextWithStrong(item.content),
+                          order: Number(item.order),
+                        },
+                      },
+                    );
 
-              // SECTION INFO
-              if (s.withAdvice) {
+                    const evaluation = await prisma.evaluation.findFirst({
+                      where: { cvMinuteSectionId: cvMinuteSection.id },
+                    });
+
+                    if (evaluation) {
+                      await prisma.evaluation.update({
+                        where: { id: evaluation.id },
+                        data: {
+                          actualScore: Number(item.postScore),
+                          content: item.postHigh,
+                          weakContent: item.postWeak,
+                        },
+                      });
+                    } else {
+                      await prisma.evaluation.create({
+                        data: {
+                          initialScore: Number(item.postScore),
+                          actualScore: Number(item.postScore),
+                          content: item.postHigh,
+                          weakContent: item.postWeak,
+                          cvMinuteSectionId: cvMinuteSection.id,
+                        },
+                      });
+                    }
+                  }),
+                );
+              } else if (s.withAdvice) {
                 await prisma.cvMinuteSection.update({
-                  where: { id: Number(s.withAdvice.sectionInfoId) },
+                  where: { id: Number(s.withAdvice.sectionId) },
                   data: { content: s.withAdvice.content },
                 });
-
-                await prisma.advice.update({
-                  where: { id: Number(s.withAdvice.adviceId) },
-                  data: { content: s.withAdvice.advice },
-                });
               } else {
-                if (s.content && Array.isArray(s.content)) {
-                  await Promise.all(
-                    s.content.map(async (item) => {
-                      if (typeof item === 'object') {
-                        await prisma.cvMinuteSection.update({
-                          where: { id: Number(item.sectionInfoId) },
-                          data: {
-                            content: item.content,
-                            order: Number(item.order),
-                          },
-                        });
-
-                        await prisma.evaluation.update({
-                          where: { id: Number(item.evaluationId) },
-                          data: {
-                            actualScore: Number(item.score),
-                            content: item.high,
-                            weakContent: item.weak,
-                          },
-                        });
-                      }
-                    }),
-                  );
-                }
+                await prisma.cvMinuteSection.update({
+                  where: { id: Number(s.sectionId) },
+                  data: { name: s.name, content: s.content },
+                });
               }
             }
-          }),
-        );
+          }
+        }),
+      );
 
-        await prisma.evaluation.update({
-          where: { cvMinuteId: cvMinute.id },
-          data: {
-            actualScore: Number(jsonData.evaluations.globalScore),
-            content: jsonData.evaluations.recommendations,
-          },
-        });
-
-        const cvMinuteAdvice = await prisma.advice.findFirst({
-          where: { cvMinuteId: cvMinute.id, type: 'advice' },
-        });
-
-        if (cvMinuteAdvice) {
-          await prisma.advice.update({
-            where: { id: cvMinuteAdvice.id },
-            data: { content: jsonData.newSectionsAdvice },
-          });
-        }
-      }
+      await prisma.evaluation.update({
+        where: { cvMinuteId: cvMinute.id },
+        data: {
+          actualScore: Number(jsonData.evaluations.globalScore),
+          content: jsonData.evaluations.recommendations,
+        },
+      });
     }
 
     cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
       include: {
         advices: true,
+        files: true,
         evaluation: true,
-        cvMinuteSections: { include: { evaluation: true, advices: true } },
+        cvMinuteSections: {
+          include: { evaluation: true, advices: true, files: true },
+          orderBy: { order: 'asc' },
+        },
       },
     });
 

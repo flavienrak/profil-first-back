@@ -44,7 +44,7 @@ const updateCvMinuteProfileValidation = [
       throw new Error('File required');
     }
 
-    return true;
+    return !isNaN(Number(req.body.cvMinuteSectionId));
   }),
 ];
 
@@ -58,21 +58,39 @@ const updateCvMinuteSectionValidation = [
         !isEmpty(body.secondaryBg) &&
         !isEmpty(body.tertiaryBg)
       );
-    } else if (body.updateContactSection) {
+    } else if (
+      body.updateName ||
+      body.updateFirstName ||
+      body.updatePresentation
+    ) {
+      return !isEmpty(body.content);
+    } else if (body.updateTitle) {
+      return body.content.length > 0;
+    } else if (body.updateContact) {
       return (
         !isEmpty(body.cvMinuteSectionId) &&
         !isNaN(body.cvMinuteSectionId) &&
         !isEmpty(body.content) &&
         !isEmpty(body.icon) &&
         !isEmpty(body.iconSize) &&
-        !isNaN(Number(body.iconSize))
+        !isNaN(body.iconSize)
       );
+    } else if (body.updateEditableSection) {
+      return !isEmpty(body.name) && !isEmpty(body.content);
     } else if (body.newSection) {
       return !isEmpty(body.content) && !isEmpty(body.title);
     } else if (body.updateExperience) {
       return (
         !isEmpty(body.cvMinuteSectionId) &&
         !isNaN(body.cvMinuteSectionId) &&
+        !isEmpty(body.title) &&
+        !isEmpty(body.content) &&
+        !isEmpty(body.company) &&
+        !isEmpty(body.date) &&
+        !isEmpty(body.contrat)
+      );
+    } else if (body.newExperience) {
+      return (
         !isEmpty(body.title) &&
         !isEmpty(body.content) &&
         !isEmpty(body.company) &&
@@ -90,41 +108,29 @@ const updateCvMinuteSectionOrderValidation = [
     .withMessage('cvMinuteSectionId required')
     .isInt()
     .withMessage('invalid cvMinuteSectionId'),
+  body('dragIndex')
+    .notEmpty()
+    .withMessage('dragIndex required')
+    .isInt()
+    .withMessage('invalid dragIndex'),
   body('targetCvMinuteSectionId')
     .notEmpty()
     .withMessage('targetCvMinuteSectionId required')
     .isInt()
     .withMessage('invalid targetCvMinuteSectionId'),
+  body('dropIndex')
+    .notEmpty()
+    .withMessage('dropIndex required')
+    .isInt()
+    .withMessage('invalid dropIndex'),
 ];
 
-const updateSectionInfoOrderValidation = [
-  body('sectionInfoId')
+const cvMinuteSectionIdValidation = [
+  param('cvMinuteSectionId')
     .notEmpty()
-    .withMessage('sectionInfoId required')
+    .withMessage('cvMinuteSectionId required')
     .isInt()
-    .withMessage('invalid sectionInfoId'),
-  body('targetSectionInfoId')
-    .notEmpty()
-    .withMessage('targetSectionInfoId required')
-    .isInt()
-    .withMessage('invalid targetSectionInfoId'),
-];
-
-const sectionInfoIdValidation = [
-  param('sectionInfoId')
-    .notEmpty()
-    .withMessage('sectionInfoId required')
-    .isInt()
-    .withMessage('invalid sectionInfoId'),
-];
-
-const generateSectionInfoAdviceValidation = [
-  param('sectionInfoId')
-    .notEmpty()
-    .withMessage('sectionInfoId required')
-    .isInt()
-    .withMessage('invalid sectionInfoId'),
-  body('section').trim().notEmpty().withMessage('section required'),
+    .withMessage('invalid cvMinuteSectionId'),
 ];
 
 export {
@@ -134,7 +140,5 @@ export {
   updateCvMinuteProfileValidation,
   updateCvMinuteSectionValidation,
   updateCvMinuteSectionOrderValidation,
-  updateSectionInfoOrderValidation,
-  sectionInfoIdValidation,
-  generateSectionInfoAdviceValidation,
+  cvMinuteSectionIdValidation,
 };

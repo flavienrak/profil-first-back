@@ -1,3 +1,4 @@
+import { logger } from '@/socket';
 import JSON5 from 'json5';
 
 // return total questions
@@ -60,6 +61,40 @@ const questionRangeByIndex = (value: number) => {
   return { start, end };
 };
 
+const formatTextWithStrong = (value: string): string => {
+  // On découpe sur le bullet et on récupère les morceaux
+  const parts = value.split('•');
+
+  return parts
+    .map((chunk, index) => {
+      // chunk peut être :
+      // - avant le premier • (index===0)
+      // - le reste, qui commence par " content : desc" ou " content. desc", etc.
+
+      // Si c'est le tout premier segment (index===0), on le conserve tel quel
+      if (index === 0) {
+        return chunk;
+      }
+
+      // Pour les suivants, on cherche le séparateur ':' ou '.'
+      const m = chunk.match(/^\s*(.*?)\s*([:.])\s*(.*)$/);
+      if (!m) {
+        // s’il n’y a pas de séparateur, on remet quand même le bullet
+        return `•${chunk}`;
+      }
+
+      const [, boldPart, sep, desc] = m;
+
+      // On ajoute <br> avant chaque bullet *sauf* si index===1 ET qu'avant le bullet
+      // il n’y a pas vraiment de contenu => c’est exactement le cas où parts[0] est vide ou ne contient que des espaces
+      const hasContentBefore = parts[0].trim().length > 0;
+      const needBr = index > 1 || (index === 1 && hasContentBefore);
+
+      return `${needBr ? '<br>' : ''}• <strong>${boldPart.trim()}</strong>${sep} ${desc}`;
+    })
+    .join('');
+};
+
 /**
  * Échappe les retours à la ligne à l’intérieur des littéraux de chaîne JSON
  */
@@ -93,14 +128,14 @@ const extractJson = (value?: string | null): any | null => {
   try {
     return JSON.parse(prepped);
   } catch {
-    console.warn('JSON.parse a échoué, essai avec JSON5.parse');
+    logger.warn('JSON.parse a échoué, essai avec JSON5.parse');
   }
 
   // 4) Tenter JSON5.parse (plus permissif)
   try {
     return JSON5.parse(prepped);
   } catch {
-    console.warn('JSON5.parse a échoué, sanitation en dernier recours');
+    logger.warn('JSON5.parse a échoué, sanitation en dernier recours');
   }
 
   // 5) Sanitation + dernier essai JSON5.parse
@@ -111,7 +146,7 @@ const extractJson = (value?: string | null): any | null => {
   try {
     return JSON5.parse(sanitized);
   } catch (err) {
-    console.error('Sanitation + JSON5.parse a échoué :', err);
+    logger.error('Sanitation + JSON5.parse a échoué :', err);
     return null;
   }
 };
@@ -120,5 +155,6 @@ export {
   questionNumber,
   questionNumberByIndex,
   questionRangeByIndex,
+  formatTextWithStrong,
   extractJson,
 };

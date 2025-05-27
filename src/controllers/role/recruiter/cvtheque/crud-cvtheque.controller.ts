@@ -16,7 +16,7 @@ const getCvAnonym = async (
       where: { id: Number(cvAnonymId) },
       include: {
         cvThequeContacts: true,
-        cvMinuteSections: true,
+        cvMinuteSections: { orderBy: { order: 'asc' } },
       },
     });
 
@@ -48,7 +48,7 @@ const getCvAnonym = async (
       where: { id: cvMinute.id },
       include: {
         cvThequeContacts: true,
-        cvMinuteSections: true,
+        cvMinuteSections: { orderBy: { order: 'desc' } },
       },
     });
 

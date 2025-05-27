@@ -34,6 +34,7 @@ CREATE TABLE "CvMinute" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL DEFAULT 'CV',
     "position" TEXT NOT NULL,
+    "content" TEXT NOT NULL DEFAULT '',
     "primaryBg" TEXT NOT NULL DEFAULT '#2A7F8B',
     "secondaryBg" TEXT NOT NULL DEFAULT '#1A5F6B',
     "tertiaryBg" TEXT NOT NULL DEFAULT '#BEDBFF',
@@ -318,7 +319,7 @@ ALTER TABLE "CvMinuteDomain" ADD CONSTRAINT "CvMinuteDomain_userId_fkey" FOREIGN
 ALTER TABLE "CvMinuteDomain" ADD CONSTRAINT "CvMinuteDomain_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "CvMinuteSection" ADD CONSTRAINT "CvMinuteSection_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "CvMinuteSection" ADD CONSTRAINT "CvMinuteSection_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Advice" ADD CONSTRAINT "Advice_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE CASCADE ON UPDATE CASCADE;

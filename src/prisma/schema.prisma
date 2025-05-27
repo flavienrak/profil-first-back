@@ -32,9 +32,10 @@ model User {
   qualiCarriereCompetences  QualiCarriereCompetence[]
   cvThequeCriteres          CvThequeCritere[]
   cvThequeUsers             CvThequeUser[]
+  cvThequeContactViews      CvThequeContactView[]
+
   userCvThequeContacts      CvThequeContact[]         @relation("UserCvThequeContact")
   recruiterCvThequeContacts CvThequeContact[]         @relation("RecruiterCvThequeContact")
-  cvThequeContactViews      CvThequeContactView[]
 }
 
 model File {
@@ -59,6 +60,7 @@ model CvMinute {
   id                Int     @id @default(autoincrement())
   name              String  @default("CV")
   position          String
+  content           String  @default("")
   primaryBg         String  @default("#2A7F8B")
   secondaryBg       String  @default("#1A5F6B")
   tertiaryBg        String  @default("#BEDBFF")
@@ -72,9 +74,6 @@ model CvMinute {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cvThequeCritere CvThequeCritere? @relation(fields: [cvThequeCritereId], references: [id], onDelete: Cascade)
-
   files            File[]
   advices          Advice[]
   cvMinuteSections CvMinuteSection[]
@@ -83,6 +82,9 @@ model CvMinute {
   cvThequeViews    CvThequeView[]
   cvMinuteDomains  CvMinuteDomain[]
   cvThequeContacts CvThequeContact[]
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cvThequeCritere CvThequeCritere? @relation(fields: [cvThequeCritereId], references: [id], onDelete: Cascade)
 }
 
 model CvMinuteDomain {
@@ -122,8 +124,9 @@ model CvMinuteSection {
   qualiCarriereResponses   QualiCarriereResponse[]
   qualiCarriereResumes     QualiCarriereResume[]
   qualiCarriereCompetences QualiCarriereCompetence[]
-  CvMinute                 CvMinute                  @relation(fields: [cvMinuteId], references: [id])
-  OpenaiResponse           OpenaiResponse[]
+  openaiResponses           OpenaiResponse[]
+
+  cvMinute                 CvMinute                  @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
 }
 
 model Advice {
