@@ -14,6 +14,7 @@ import cvMinuteRoutes from '@/routes/role/user/cv-minute.routes';
 import qualiCarriereRoutes from '@/routes/role/user/quali-quarriere.routes';
 
 import cvThequeRoutes from '@/routes/role/recruiter/cvtheque.routes';
+import crossSourcingRoutes from '@/routes/role/recruiter/cross-sourcing.routes';
 
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
@@ -45,6 +46,12 @@ app.use(
   isAuthenticated,
   checkIsRecruiter,
   cvThequeRoutes,
+);
+app.use(
+  '/api/role/recruiter/cross-sourcing',
+  isAuthenticated,
+  checkIsRecruiter,
+  crossSourcingRoutes,
 );
 
 const port = process.env.BACKEND_PORT;

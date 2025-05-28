@@ -263,7 +263,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
                       },
                     );
 
-                    const evaluation = await prisma.evaluation.findFirst({
+                    const evaluation = await prisma.evaluation.findUnique({
                       where: { cvMinuteSectionId: cvMinuteSection.id },
                     });
 

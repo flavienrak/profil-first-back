@@ -26,22 +26,26 @@ const getUser = async (
     const { user } = res.locals;
     let cvMinuteCount = 0;
 
-    const profile = await prisma.file.findFirst({
-      where: { userId: user.id, usage: 'profile' },
-      select: { name: true },
-      orderBy: { updatedAt: 'desc' },
+    const userData = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { files: true },
     });
 
-    if (user.role === 'user') {
+    if (!userData) {
+      res.json({ userNotFound: true });
+      return;
+    }
+
+    if (userData.role === 'user') {
       cvMinuteCount = await prisma.cvMinute.count({
-        where: { userId: user.id, qualiCarriereRef: false },
+        where: { userId: userData.id, qualiCarriereRef: false },
       });
     }
 
-    const { password, ...userWithoutPassword } = user;
+    const { password, ...userWithoutPassword } = userData;
 
     res.status(200).json({
-      user: { ...userWithoutPassword, image: profile?.name || null },
+      user: { ...userWithoutPassword },
       cvMinuteCount,
     });
     return;
