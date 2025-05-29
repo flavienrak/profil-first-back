@@ -1,5 +1,9 @@
 import { body, param } from 'express-validator';
 
+const getUsersValidation = [
+  param('domainId').notEmpty().withMessage('domainId required'),
+];
+
 const getUserCvMinutesValidation = [
   param('id')
     .notEmpty()
@@ -21,4 +25,8 @@ const getUserCvMinuteValidation = [
     .withMessage('invalid cvMinuteId'),
 ];
 
-export { getUserCvMinutesValidation, getUserCvMinuteValidation };
+export {
+  getUsersValidation,
+  getUserCvMinutesValidation,
+  getUserCvMinuteValidation,
+};

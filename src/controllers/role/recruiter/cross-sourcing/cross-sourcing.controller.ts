@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { PrismaClient } from '@prisma/client';
+import { domains } from '@/utils/constants';
 
 const prisma = new PrismaClient();
 
@@ -9,10 +10,29 @@ const getUsers = async (
   res: express.Response,
 ): Promise<void> => {
   try {
+    const { domainId } = req.params;
+
+    const filterId = Number(domainId);
+    let filterLabel: string | null = null;
+
+    if (!isNaN(filterId)) {
+      const foundDomain = domains.find((d) => d.id === filterId);
+      filterLabel = foundDomain?.label ?? null;
+    }
+
     const users = await prisma.user.findMany({
-      where: { role: 'user' },
-      include: { cvMinuteDomains: true },
-      orderBy: { updatedAt: 'desc' },
+      where: {
+        role: 'user',
+        ...(filterLabel && {
+          cvMinuteDomains: { some: { content: filterLabel } },
+        }),
+      },
+      include: {
+        cvMinuteDomains: true,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
     });
 
     res.status(200).json({ users });

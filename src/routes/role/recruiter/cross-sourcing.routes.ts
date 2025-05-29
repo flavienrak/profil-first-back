@@ -8,15 +8,16 @@ import {
 import {
   getUserCvMinutesValidation,
   getUserCvMinuteValidation,
+  getUsersValidation,
 } from '@/validations/role/recruiter/cross-sourcing.validation';
 import { checkCrossSourcingUser } from '@/middlewares/role/recruiter/cross-sourcing.middleware';
 
 const router = express.Router();
 
-router.get('/', getUsers);
+router.get('/:domainId', getUsersValidation, getUsers);
 
 router.get(
-  '/:id',
+  '/:id/cv-minute',
   getUserCvMinutesValidation,
   checkCrossSourcingUser,
   getUserCvMinutes,
