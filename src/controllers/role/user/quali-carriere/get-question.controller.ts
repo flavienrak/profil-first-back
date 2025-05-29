@@ -173,90 +173,97 @@ const getQualiCarriereQuestion = async (
       } else {
         for (let i = 0; i < cvMinuteExperiences.length; i++) {
           const experience = cvMinuteExperiences[i];
-          const userExperience = `
-            title: ${experience.title}, 
-            date: ${experience.date}, 
-            company: ${experience.company}, 
-            contrat: ${experience.contrat}, 
-            description: ${experience.content}
-          `;
 
-          const restQuestions = questionNumberByIndex(i);
-          const range = questionRangeByIndex(i);
+          const existResume = await prisma.qualiCarriereResume.findUnique({
+            where: { cvMinuteSectionId: experience.id },
+          });
 
-          const prevQuestions = qualiCarriereQuestions
-            .slice(range.start)
-            .map(
-              (q) =>
-                `question: ${q.content}, réponse: ${qualiCarriereResponses.find((r) => r.questionId === q.id)?.content}`,
-            )
-            .join('\n');
+          if (!existResume) {
+            const userExperience = `
+              title: ${experience.title}, 
+              date: ${experience.date}, 
+              company: ${experience.company}, 
+              contrat: ${experience.contrat}, 
+              description: ${experience.content}
+            `;
 
-          if (qualiCarriereResponses.length >= restQuestions) {
-            const qualiCarriereResume =
-              await prisma.qualiCarriereResume.findUnique({
-                where: { cvMinuteSectionId: experience.id },
-              });
+            const restQuestions = questionNumberByIndex(i);
+            const range = questionRangeByIndex(i);
 
-            if (!qualiCarriereResume) {
-              const openaiResponse = await gpt4([
-                {
-                  role: 'system',
-                  content: qualiCarriereResumePrompt.trim(),
-                },
-                {
-                  role: 'user',
-                  content: `
-                    Expérience: ${userExperience}\n
-                    Entretien structuré: ${prevQuestions}
-                  `.trim(),
-                },
-              ]);
+            const prevQuestions = qualiCarriereQuestions
+              .slice(range.start)
+              .map(
+                (q) =>
+                  `question: ${q.content}, réponse: ${qualiCarriereResponses.find((r) => r.questionId === q.id)?.content}`,
+              )
+              .join('\n');
 
-              if ('error' in openaiResponse) {
-                res.json({ openaiError: openaiResponse.error });
-                return;
-              }
-
-              for (const r of openaiResponse.choices) {
-                await prisma.openaiResponse.create({
-                  data: {
-                    responseId: openaiResponse.id,
-                    userId: user.id,
-                    request: 'qualiCarriereResume',
-                    response: r.message.content ?? '',
-                    index: r.index,
-                  },
+            if (qualiCarriereResponses.length >= restQuestions) {
+              const qualiCarriereResume =
+                await prisma.qualiCarriereResume.findUnique({
+                  where: { cvMinuteSectionId: experience.id },
                 });
-                const jsonData: { resume: string; competences: string[] } =
-                  extractJson(r.message.content);
 
-                if (!jsonData) {
-                  res.json({ parsingError: true });
+              if (!qualiCarriereResume) {
+                const openaiResponse = await gpt4([
+                  {
+                    role: 'system',
+                    content: qualiCarriereResumePrompt.trim(),
+                  },
+                  {
+                    role: 'user',
+                    content: `
+                      Expérience: ${userExperience}\n
+                      Entretien structuré: ${prevQuestions}
+                    `.trim(),
+                  },
+                ]);
+
+                if ('error' in openaiResponse) {
+                  res.json({ openaiError: openaiResponse.error });
                   return;
                 }
 
-                await prisma.qualiCarriereResume.create({
-                  data: {
-                    userId: user.id,
-                    content: jsonData.resume,
-                    cvMinuteSectionId: experience.id,
-                  },
-                });
-
-                for (const c of jsonData.competences) {
-                  await prisma.qualiCarriereCompetence.create({
+                for (const r of openaiResponse.choices) {
+                  await prisma.openaiResponse.create({
                     data: {
-                      content: c,
+                      responseId: openaiResponse.id,
                       userId: user.id,
+                      request: 'qualiCarriereResume',
+                      response: r.message.content ?? '',
+                      index: r.index,
+                    },
+                  });
+                  const jsonData: { resume: string; competences: string[] } =
+                    extractJson(r.message.content);
+
+                  if (!jsonData) {
+                    res.json({ parsingError: true });
+                    return;
+                  }
+
+                  await prisma.qualiCarriereResume.create({
+                    data: {
+                      userId: user.id,
+                      content: jsonData.resume,
                       cvMinuteSectionId: experience.id,
                     },
                   });
+
+                  for (const c of jsonData.competences) {
+                    await prisma.qualiCarriereCompetence.create({
+                      data: {
+                        content: c,
+                        userId: user.id,
+                        cvMinuteSectionId: experience.id,
+                      },
+                    });
+                  }
                 }
               }
-            }
 
-            continue;
+              continue;
+            }
           }
         }
 

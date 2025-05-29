@@ -7,11 +7,11 @@ const qualiCarriereChatResponsePrompt = `
 
   Contraintes :
   - Max 300 caractères.
-  - Respecter les retours à la ligne demandé.
+  - Aérer la réponse avec des retours à la ligne.
   - Ne jamais sortir du format demandé.
 
   Format attendu : 
-  { response: "..." }
+  { response: "..." } // Mettre des retours à la ligne quand c'est nécessaire.
 `;
 
 const qualiCarriereFirstQuestionPrompt = `

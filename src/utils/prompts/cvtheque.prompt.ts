@@ -177,13 +177,7 @@ const cvThequeCirterePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu (array of string):
-      [ " 
-        Sujet: [Intitulé reformulé]\\n
-        Niveau: [Bac +X ou Master/Maîtrise/Licence/BTS]\\n
-        Type d'établissement: [Catégorie]\\n
-        Reconnaissance: [Description en 1-7 mots]\\n
-        Réputation: [★☆☆☆☆ à ★★★★★] + [Commentaire]
-      " ]
+      [ "Sujet: [Intitulé reformulé]\\nNiveau: [Bac +X ou Master/Maîtrise/Licence/BTS]\\nType d'établissement: [Catégorie]\\nReconnaissance: [Description en 1-7 mots]\\nRéputation: [★☆☆☆☆ à ★★★★★] + [Commentaire]" ]
     `,
     formation: `
       Tu es expert en rédaction de CV à fort impact.
@@ -401,10 +395,7 @@ const cvThequeCirterePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu (array of string):
-      [ "
-        Bac +[niveau] / Domaine étudié: [domaine général reformulé]\\n
-        Compétences certaines: [compétence 1], [compétence 2], [compétence 3]
-      " ]
+      [ "Bac +[niveau] / Domaine étudié: [domaine général reformulé]\\nCompétences certaines: [compétence 1], [compétence 2], [compétence 3]" ]
     `,
     formation: `
       Tu es expert en rédaction de CV à fort impact.
@@ -665,12 +656,7 @@ const cvThequeCirterePrompts = [
       - Ne jamais sortir du format demandé.
 
       Format attendu (array of string):
-      [ "
-        Niveau: [BTS/Licence/Maîtrise/Master 2]\\n  
-        Sujet: [Domaine reformulé]\\n  
-        Origine: [domine l’expertise / référence dans le milieu / émergente]\\n  
-        [Acquis au cours des X dernières années] *(uniquement si applicable)* 
-      " ]
+      [ "Niveau: [BTS/Licence/Maîtrise/Master 2]\\nSujet: [Domaine reformulé]\\nOrigine: [domine l’expertise / référence dans le milieu / émergente]\\n[Acquis au cours des X dernières années] *(uniquement si applicable)*" ]
     `,
     formation: `
       Tu es expert en rédaction de CV à fort impact.
