@@ -62,33 +62,33 @@ const questionRangeByIndex = (value: number) => {
 };
 
 const formatTextWithStrong = (value: string): string => {
-  // On découpe sur le bullet et on récupère les morceaux
+  // On découpe la chaîne en plusieurs segments selon le caractère « • »
   const parts = value.split('•');
+
+  // On supprime les balises HTML dans le premier segment puis on regarde s'il reste du texte « réel »
+  const hasRealContentBefore =
+    parts[0].replace(/<[^>]+>/g, '').trim().length > 0;
 
   return parts
     .map((chunk, index) => {
-      // chunk peut être :
-      // - avant le premier • (index===0)
-      // - le reste, qui commence par " content : desc" ou " content. desc", etc.
-
-      // Si c'est le tout premier segment (index===0), on le conserve tel quel
+      // Si c'est le tout premier segment (index===0), on le renvoie tel quel.
       if (index === 0) {
         return chunk;
       }
 
-      // Pour les suivants, on cherche le séparateur ':' ou '.'
+      // Pour les segments suivants, on essaie de capter la partie à mettre en <strong>
       const m = chunk.match(/^\s*(.*?)\s*([:.])\s*(.*)$/);
       if (!m) {
-        // s’il n’y a pas de séparateur, on remet quand même le bullet
+        // S’il n’y a pas de séparateur « : » ou « . », on remet quand même le bullet sans <strong>
         return `•${chunk}`;
       }
 
       const [, boldPart, sep, desc] = m;
 
-      // On ajoute <br> avant chaque bullet *sauf* si index===1 ET qu'avant le bullet
-      // il n’y a pas vraiment de contenu => c’est exactement le cas où parts[0] est vide ou ne contient que des espaces
-      const hasContentBefore = parts[0].trim().length > 0;
-      const needBr = index > 1 || (index === 1 && hasContentBefore);
+      // On ajoute un <br> quand :
+      // - index > 1 : on est au 3ᵉ bullet ou plus
+      // - OU index === 1 ET qu’il y avait du contenu texte AVANT la première puce
+      const needBr = index > 1 || (index === 1 && hasRealContentBefore);
 
       return `${needBr ? '<br>' : ''}• <strong>${boldPart.trim()}</strong>${sep} ${desc}`;
     })
