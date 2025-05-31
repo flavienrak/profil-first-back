@@ -240,34 +240,41 @@ const updateCvMinuteSection = async (
 
       res.status(200).json({ cvMinuteSection });
       return;
-    } else if (
-      body.updateExperience &&
-      body.cvMinuteSectionId &&
-      body.title &&
-      body.content &&
-      body.company &&
-      body.date &&
-      body.contrat
-    ) {
-      const infosToUpdate = {
-        title: body.title.trim(),
-        content: body.content.trim(),
-        company: body.company.trim(),
-        date: body.date.trim(),
-        contrat: body.contrat.trim(),
-      };
+    } else if (body.updateExperience && body.cvMinuteSectionId) {
+      const fields = [
+        'title',
+        'content',
+        'company',
+        'date',
+        'contrat',
+      ] as const;
 
-      cvMinuteSection = await prisma.cvMinuteSection.update({
-        where: { id: body.cvMinuteSectionId },
-        data: infosToUpdate,
+      const infosToUpdate: Partial<Pick<typeof body, (typeof fields)[number]>> =
+        {};
+
+      fields.forEach((field) => {
+        const value = body[field];
+        if (typeof value === 'string' && value.trim().length > 0) {
+          infosToUpdate[field] = value.trim();
+        }
       });
 
-      cvMinuteSection = await prisma.cvMinuteSection.findUnique({
-        where: { id: cvMinuteSection.id },
-        include: { evaluation: true, advices: true },
-      });
+      if (Object.keys(infosToUpdate).length > 0) {
+        cvMinuteSection = await prisma.cvMinuteSection.update({
+          where: { id: body.cvMinuteSectionId },
+          data: infosToUpdate,
+        });
 
-      res.status(200).json({ cvMinuteSection });
+        cvMinuteSection = await prisma.cvMinuteSection.findUnique({
+          where: { id: cvMinuteSection.id },
+          include: { evaluation: true, advices: true },
+        });
+
+        res.status(200).json({ cvMinuteSection });
+        return;
+      }
+
+      res.json({ noChanges: true });
       return;
     } else if (
       body.newExperience &&

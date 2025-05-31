@@ -80,15 +80,7 @@ const updateCvMinuteSectionValidation = [
     } else if (body.newSection) {
       return !isEmpty(body.content) && !isEmpty(body.title);
     } else if (body.updateExperience) {
-      return (
-        !isEmpty(body.cvMinuteSectionId) &&
-        !isNaN(body.cvMinuteSectionId) &&
-        !isEmpty(body.title) &&
-        !isEmpty(body.content) &&
-        !isEmpty(body.company) &&
-        !isEmpty(body.date) &&
-        !isEmpty(body.contrat)
-      );
+      return !isEmpty(body.cvMinuteSectionId) && !isNaN(body.cvMinuteSectionId);
     } else if (body.newExperience) {
       return (
         !isEmpty(body.title) &&
