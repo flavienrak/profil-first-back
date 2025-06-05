@@ -1,6 +1,7 @@
+import prisma from '@/lib/db';
+
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
 import { io } from '@/socket';
 import {
   extractJson,
@@ -16,8 +17,6 @@ import {
 import { QualiCarriereQuestionInteface } from '@/interfaces/role/user/quali-carriere/qualiCarriereQuestionInterface';
 import { CvMinuteInterface } from '@/interfaces/role/user/cv-minute/cvMinute.interface';
 import { gpt3, gpt4 } from '@/utils/openai';
-
-const prisma = new PrismaClient();
 
 const getQualiCarriereQuestion = async (
   req: Request,
@@ -327,7 +326,10 @@ const getQualiCarriereQuestion = async (
                 },
                 {
                   role: 'user',
-                  content: `Expérience: ${userExperience}\n Entretien précédent: ${prevQuestions}`,
+                  content: `
+                    Expérience: ${userExperience}\n 
+                    Entretien précédent: ${prevQuestions}
+                  `,
                 },
               ]);
 

@@ -1,12 +1,10 @@
-import { Request, Response } from 'express';
+import prisma from '@/lib/db';
 
+import { Request, Response } from 'express';
 import { htmlToText } from 'html-to-text';
-import { PrismaClient } from '@prisma/client';
 import { extractJson, formatTextWithStrong } from '@/utils/functions';
 import { optimizeCvMinutePrompt } from '@/utils/prompts/cv-minute.prompt';
 import { gpt4 } from '@/utils/openai';
-
-const prisma = new PrismaClient();
 
 const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -100,7 +98,8 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       {
         role: 'user',
         content: `
-          Contenu du CV: ${existTitle}\n 
+          Contenu du CV:\n
+          Titre: ${existTitle}\n 
           Présentation: ${existPresentation}\n 
           Sections: ${existSections}\n 
           Expériences: ${existExperiences}\n 

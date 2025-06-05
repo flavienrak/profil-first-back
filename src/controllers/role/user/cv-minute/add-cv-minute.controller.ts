@@ -1,24 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import express from 'express';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
+import prisma from '@/lib/db';
 
+import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
 import { extractJson, formatTextWithStrong } from '@/utils/functions';
 import { formattedDate } from '@/utils/constants';
 import { addCvMinutePrompt } from '@/utils/prompts/cv-minute.prompt';
 import { gpt4 } from '@/utils/openai';
 
-const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
 
-const addCvMinute = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const addCvMinute = async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

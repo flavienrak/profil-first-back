@@ -1,19 +1,15 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import express from 'express';
+import prisma from '@/lib/db';
 
-import { PrismaClient } from '@prisma/client';
+import { Request, Response } from 'express';
 import { formattedDate, imageMimeTypes } from '@/utils/constants';
 import { FileInterface } from '@/interfaces/file.interface';
 
-const prisma = new PrismaClient();
 const uniqueId = crypto.randomBytes(4).toString('hex');
 
-const getCvMinute = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const getCvMinute = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -51,10 +47,7 @@ const getCvMinute = async (
   }
 };
 
-const copyCvMinute = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const copyCvMinute = async (req: Request, res: Response): Promise<void> => {
   try {
     const { user } = res.locals;
     const { id } = req.params;
@@ -198,10 +191,7 @@ const copyCvMinute = async (
   }
 };
 
-const getAllCvMinute = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const getAllCvMinute = async (req: Request, res: Response): Promise<void> => {
   try {
     const { user } = res.locals;
     const cvMinutes = await prisma.cvMinute.findMany({
@@ -226,8 +216,8 @@ const getAllCvMinute = async (
 };
 
 const updateCvMinuteName = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -253,8 +243,8 @@ const updateCvMinuteName = async (
 };
 
 const updateCvMinuteVisibility = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -295,8 +285,8 @@ const updateCvMinuteVisibility = async (
 };
 
 const updateCvMinuteProfile = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     let file: FileInterface | null = null;
@@ -358,8 +348,8 @@ const updateCvMinuteProfile = async (
 };
 
 const updateCvMinuteSectionOrder = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const body: {
@@ -392,14 +382,15 @@ const updateCvMinuteSectionOrder = async (
 };
 
 const deleteCvMinuteSection = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const { cvMinuteSectionId } = req.params;
 
     const cvMinuteSection = await prisma.cvMinuteSection.delete({
       where: { id: Number(cvMinuteSectionId) },
+      include: { evaluation: true },
     });
 
     res.status(200).json({ cvMinuteSection });

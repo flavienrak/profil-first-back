@@ -134,7 +134,7 @@ const cvThequeCirterePrompts = [
           title: "Titre",
           date: "Durée",
           company: "Type – secteur – marché – portée",
-          description: "• [mots clés]: [verbe d’action + missions clés (150 à 300 caractères)]" // Contenu html simple: <p>...<p/>. 5 bullet points (• ) valorisants au total.
+          description: "• [mots clés]: [verbe d’action + missions clés (150 à 300 caractères)]" // 5 bullet points (• ) valorisants au total.
         }
       ]
     `,
@@ -354,7 +354,7 @@ const cvThequeCirterePrompts = [
           title: "Titre", // Court et percutant
           date: "Durée", // Calculée avec +2 mois. Ex: "10 mois" ou "2 ans et 5 mois"
           company: "Type – secteur – marché – portée", // Organisation anonymisée selon la taxonomie fournie
-          description: "• [mots clés]: [coordination de..., création de..., structuration de..., etc.]" // Contenu html simple: <p>...<p/>. 5 bullet points valorisants (• ) au total.
+          description: "• [mots clés]: [coordination de..., création de..., structuration de..., etc.]" // 5 bullet points valorisants (• ) au total.
         }
       ]
     `,
@@ -609,7 +609,7 @@ const cvThequeCirterePrompts = [
           title: "Titre", // Court et percutant
           date: "Durée", // Calculée avec +2 mois. Ex: "10 mois" ou "2 ans et 5 mois"
           company: "Type – secteur – marché – portée", // Organisation anonymisée selon la taxonomie fournie
-          description: "• [mots clés]: [Verbe d’action] + [mots-clés métier] + [livrable] + [résultat/indicateur]" // Contenu html simple: <p>...<p/>. 5 bullet points (• ) valorisants au total.
+          description: "• [mots clés]: [Verbe d’action] + [mots-clés métier] + [livrable] + [résultat/indicateur]" // 5 bullet points (• ) valorisants au total.
         }
       ]
     `,

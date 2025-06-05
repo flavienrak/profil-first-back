@@ -1,11 +1,11 @@
-import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import FormData from 'form-data';
+import prisma from '@/lib/db';
 
+import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
 import { io } from '@/socket';
 import {
   extractJson,
@@ -16,11 +16,9 @@ import {
 import { qualiCarriereNextQuestionPrompt } from '@/utils/prompts/quali-carriere.prompt';
 import { gpt3 } from '@/utils/openai';
 
-const prisma = new PrismaClient();
-
 const respondQualiCarriereQuestion = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const errors = validationResult(req);
@@ -196,9 +194,9 @@ const respondQualiCarriereQuestion = async (
             {
               role: 'user',
               content: `
-                  Expérience: ${userExperience}\n 
-                  Entretien: ${prevQuestions}
-                `,
+                Expérience: ${userExperience}\n 
+                Entretien: ${prevQuestions}
+              `,
             },
           ]);
 

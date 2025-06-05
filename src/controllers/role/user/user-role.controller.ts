@@ -1,13 +1,7 @@
-import express from 'express';
+import prisma from '@/lib/db';
+import { Request, Response } from 'express';
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-const acceptConditions = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const acceptConditions = async (req: Request, res: Response): Promise<void> => {
   try {
     const { user } = res.locals;
 

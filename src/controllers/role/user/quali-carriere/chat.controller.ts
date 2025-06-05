@@ -1,18 +1,16 @@
-import express from 'express';
+import prisma from '@/lib/db';
 
+import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
 import { io } from '@/socket';
 import { extractJson } from '@/utils/functions';
 import { qualiCarriereChatResponsePrompt } from '@/utils/prompts/quali-carriere.prompt';
 import { QualiCarriereChatInterface } from '@/interfaces/role/user/quali-carriere/qualiCarriereChatInterface';
 import { gpt3 } from '@/utils/openai';
 
-const prisma = new PrismaClient();
-
 const sendQualiCarriereMessage = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const errors = validationResult(req);

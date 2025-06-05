@@ -52,7 +52,7 @@ const addCvMinutePrompt = `
         postDate: string,
         postCompany: string,
         postContrat: string,
-        postDescription: string, // Contenu html simple : <p>...</p>. Mettre des bullet points si c'est une liste (• ). Mettre un retour à la ligne avant une liste.
+        postDescription: string, // Mettre des bullet points si c'est une liste (• ).
         postOrder: string,
         postScore: string,
         postHigh: string, // Points forts
@@ -102,13 +102,13 @@ const optimizeCvMinutePrompt = `
       title: string,
     },
     profilePresentation: {
-      sectionId: (identique à l’entrée),
+      sectionId: (identique à l’entrée), // Limiter à 300 caractères
       presentation: string,
     },
     experiences: [
       {
         sectionId: (identique à l’entrée),
-        postDescription: string, // très explicite. Contenu html simple : <p>...</p>. Mettre des bullet points si c'est une liste (• ). Mettre un retour à la ligne avant une liste.
+        postDescription: string, // Format: "• MotClé : détail1, détail2, détail3, ...]\\n". Mettre un maximum de contenu.
         postOrder: string, // "1" = plus récent
         postScore: string, // Compatibilité de l'expérience par rapport à l'offre
         postHigh: string, // Points forts

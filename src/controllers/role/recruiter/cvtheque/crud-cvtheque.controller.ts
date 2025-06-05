@@ -1,14 +1,9 @@
-import express from 'express';
+import prisma from '@/lib/db';
 
-import { PrismaClient } from '@prisma/client';
+import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 
-const prisma = new PrismaClient();
-
-const getCvAnonym = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const getCvAnonym = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, cvAnonymId } = req.params;
 
@@ -65,8 +60,8 @@ const getCvAnonym = async (
 };
 
 const addCvThequeCritere = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const errors = validationResult(req);
@@ -132,8 +127,8 @@ const addCvThequeCritere = async (
 };
 
 const getCvThequeHistory = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const { user } = res.locals;
@@ -161,8 +156,8 @@ const getCvThequeHistory = async (
 };
 
 const saveCvThequeCritere = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -190,10 +185,7 @@ const saveCvThequeCritere = async (
   }
 };
 
-const contactCvAnonym = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const contactCvAnonym = async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

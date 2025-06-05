@@ -1,13 +1,11 @@
-import express from 'express';
+import prisma from '@/lib/db';
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Request, Response, NextFunction } from 'express';
 
 const checkCrossSourcingUser = async (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction,
+  req: Request,
+  res: Response,
+  next: NextFunction,
 ) => {
   const { id } = req.params;
 
@@ -25,7 +23,7 @@ const checkCrossSourcingUser = async (
     return;
   }
 
-  res.locals.crossSourcingUser = user
+  res.locals.crossSourcingUser = user;
   next();
 };
 

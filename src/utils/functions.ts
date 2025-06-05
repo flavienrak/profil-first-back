@@ -60,37 +60,30 @@ const questionRangeByIndex = (value: number) => {
 
   return { start, end };
 };
-
 const formatTextWithStrong = (value: string): string => {
-  // On découpe la chaîne en plusieurs segments selon le caractère « • »
-  const parts = value.split('•');
+  // 1. Supprimer tous les sauts de ligne (\r, \n)
+  const cleaned = value.replace(/\r?\n|\r/g, ' ');
 
-  // On supprime les balises HTML dans le premier segment puis on regarde s'il reste du texte « réel »
-  const hasRealContentBefore =
-    parts[0].replace(/<[^>]+>/g, '').trim().length > 0;
+  // 2. Découper en segments à partir de chaque « • »
+  const parts = cleaned.split('•');
 
   return parts
     .map((chunk, index) => {
-      // Si c'est le tout premier segment (index===0), on le renvoie tel quel.
+      // Si c'est le tout premier segment (avant la première puce), on le renvoie contracté
       if (index === 0) {
-        return chunk;
+        return parts[0].trim();
       }
 
-      // Pour les segments suivants, on essaie de capter la partie à mettre en <strong>
-      const m = chunk.match(/^\s*(.*?)\s*([:.])\s*(.*)$/);
-      if (!m) {
-        // S’il n’y a pas de séparateur « : » ou « . », on remet quand même le bullet sans <strong>
-        return `•${chunk}`;
+      // Pour chaque segment après une puce, on cherche “avant :” et “après :”
+      const match = chunk.match(/^\s*(.+?)\s*:\s*(.+)$/);
+      if (!match) {
+        // Si pas de “:”, on remet la puce et le texte brut
+        return `• ${chunk.trim()}`;
       }
 
-      const [, boldPart, sep, desc] = m;
+      const [, boldPart, rest] = match;
 
-      // On ajoute un <br> quand :
-      // - index > 1 : on est au 3ᵉ bullet ou plus
-      // - OU index === 1 ET qu’il y avait du contenu texte AVANT la première puce
-      const needBr = index > 1 || (index === 1 && hasRealContentBefore);
-
-      return `${needBr ? '<br>' : ''}• <strong>${boldPart.trim()}</strong>${sep} ${desc}`;
+      return `<p><strong>${boldPart.trim()}</strong> : ${rest.trim()}</p>`;
     })
     .join('');
 };

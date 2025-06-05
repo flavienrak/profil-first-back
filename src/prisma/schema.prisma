@@ -21,21 +21,21 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  files                     File[]
-  cvMinutes                 CvMinute[]
-  cvMinuteDomains           CvMinuteDomain[]
-  qualiCarriereQuestions    QualiCarriereQuestion[]
-  qualiCarriereResponses    QualiCarriereResponse[]
-  openaiResponses           OpenaiResponse[]
-  qualiCarriereChat         QualiCarriereChat[]
-  qualiCarriereResumes      QualiCarriereResume[]
-  qualiCarriereCompetences  QualiCarriereCompetence[]
-  cvThequeCriteres          CvThequeCritere[]
-  cvThequeUsers             CvThequeUser[]
-  cvThequeContactViews      CvThequeContactView[]
+  files                    File[]
+  cvMinutes                CvMinute[]
+  cvMinuteDomains          CvMinuteDomain[]
+  qualiCarriereQuestions   QualiCarriereQuestion[]
+  qualiCarriereResponses   QualiCarriereResponse[]
+  openaiResponses          OpenaiResponse[]
+  qualiCarriereChat        QualiCarriereChat[]
+  qualiCarriereResumes     QualiCarriereResume[]
+  qualiCarriereCompetences QualiCarriereCompetence[]
+  cvThequeCriteres         CvThequeCritere[]
+  cvThequeUsers            CvThequeUser[]
+  cvThequeContactViews     CvThequeContactView[]
 
-  userCvThequeContacts      CvThequeContact[]         @relation("UserCvThequeContact")
-  recruiterCvThequeContacts CvThequeContact[]         @relation("RecruiterCvThequeContact")
+  userCvThequeContacts      CvThequeContact[] @relation("UserCvThequeContact")
+  recruiterCvThequeContacts CvThequeContact[] @relation("RecruiterCvThequeContact")
 }
 
 model File {
@@ -52,8 +52,8 @@ model File {
   updatedAt DateTime @updatedAt
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id])
-  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id])
+  cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
+  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
 }
 
 model CvMinute {
@@ -124,9 +124,9 @@ model CvMinuteSection {
   qualiCarriereResponses   QualiCarriereResponse[]
   qualiCarriereResumes     QualiCarriereResume[]
   qualiCarriereCompetences QualiCarriereCompetence[]
-  openaiResponses           OpenaiResponse[]
+  openaiResponses          OpenaiResponse[]
 
-  cvMinute                 CvMinute                  @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
+  cvMinute CvMinute @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
 }
 
 model Advice {
@@ -140,7 +140,7 @@ model Advice {
   updatedAt DateTime @updatedAt
 
   cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
-  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id])
+  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
 }
 
 model Evaluation {
@@ -156,7 +156,7 @@ model Evaluation {
   updatedAt DateTime @updatedAt
 
   cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
-  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id])
+  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
 }
 
 model OpenaiResponse {
@@ -176,7 +176,7 @@ model OpenaiResponse {
   cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
   user            User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvThequeCritere CvThequeCritere? @relation(fields: [cvThequeCritereId], references: [id], onDelete: Cascade)
-  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id])
+  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
 }
 
 model QualiCarriereQuestion {
@@ -190,7 +190,7 @@ model QualiCarriereQuestion {
   updatedAt DateTime @updatedAt
 
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cvMinuteSection       CvMinuteSection?       @relation(fields: [cvMinuteSectionId], references: [id])
+  cvMinuteSection       CvMinuteSection?       @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
   qualiCarriereResponse QualiCarriereResponse?
 }
 
@@ -206,7 +206,7 @@ model QualiCarriereResponse {
 
   qualiCarriereQuestion QualiCarriereQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cvMinuteSection       CvMinuteSection?      @relation(fields: [cvMinuteSectionId], references: [id])
+  cvMinuteSection       CvMinuteSection?      @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
 }
 
 model QualiCarriereResume {
@@ -219,7 +219,7 @@ model QualiCarriereResume {
   updatedAt DateTime @updatedAt
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id])
+  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
 }
 
 model QualiCarriereCompetence {
@@ -232,7 +232,7 @@ model QualiCarriereCompetence {
   updatedAt DateTime @updatedAt
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id])
+  cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
 }
 
 model QualiCarriereChat {

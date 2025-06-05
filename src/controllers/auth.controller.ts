@@ -1,17 +1,15 @@
 import bcrypt from 'bcrypt';
-import express from 'express';
 import jwt from 'jsonwebtoken';
+import prisma from '@/lib/db';
 
-import { PrismaClient } from '@prisma/client';
+import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { maxAgeAuthToken } from '@/utils/constants';
 
 const secretKey = process.env.JWT_SECRET_KEY;
 const authTokenName = process.env.AUTH_TOKEN_NAME;
 
-const prisma = new PrismaClient();
-
-const requireAuth = (req: express.Request, res: express.Response): void => {
+const requireAuth = (req: Request, res: Response): void => {
   const { user } = res.locals;
 
   if (!user) {
@@ -23,10 +21,7 @@ const requireAuth = (req: express.Request, res: express.Response): void => {
   return;
 };
 
-const login = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const login = async (req: Request, res: Response): Promise<void> => {
   if (authTokenName && secretKey) {
     try {
       const errors = validationResult(req);
@@ -99,10 +94,7 @@ const login = async (
   }
 };
 
-const register = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -147,7 +139,7 @@ const register = async (
   }
 };
 
-const logout = async (req: express.Request, res: express.Response) => {
+const logout = async (req: Request, res: Response) => {
   if (authTokenName) {
     res.clearCookie(authTokenName, {
       httpOnly: true,

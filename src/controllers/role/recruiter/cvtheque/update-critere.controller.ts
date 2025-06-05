@@ -1,6 +1,6 @@
-import express from 'express';
+import prisma from '@/lib/db';
 
-import { PrismaClient } from '@prisma/client';
+import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { extractJson, formatTextWithStrong } from '@/utils/functions';
 import { cvThequesections, maxCvThequeUserResult } from '@/utils/constants';
@@ -13,11 +13,9 @@ import { CvMinuteInterface } from '@/interfaces/role/user/cv-minute/cvMinute.int
 import { CompatibleUserInterface } from '@/interfaces/role/recruiter/cvtheque/compatibleUser.interface';
 import { gpt3 } from '@/utils/openai';
 
-const prisma = new PrismaClient();
-
 const updateCvThequeCritere = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const errors = validationResult(req);

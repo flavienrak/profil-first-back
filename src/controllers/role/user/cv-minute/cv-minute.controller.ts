@@ -1,7 +1,7 @@
-import express from 'express';
+import prisma from '@/lib/db';
 
+import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
 import { extractJson } from '@/utils/functions';
 import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
 import { EvaluationInterface } from '@/interfaces/evaluation.interface';
@@ -16,11 +16,9 @@ import {
 } from '@/utils/prompts/cv-minute.prompt';
 import { gpt3 } from '@/utils/openai';
 
-const prisma = new PrismaClient();
-
 const updateCvMinuteSection = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const errors = validationResult(req);
@@ -161,8 +159,8 @@ const updateCvMinuteSection = async (
         {
           role: 'user',
           content: `
-            Section :\n${details}\n
-            Offre :\n${cvMinute.position}
+            Section:\n${details}\n
+            Offre:\n${cvMinute.position}
           `.trim(),
         },
       ]);
@@ -303,9 +301,9 @@ const updateCvMinuteSection = async (
       });
 
       const details = `
-        postTitle : ${cvMinuteSection.title}, 
-        postDate : ${cvMinuteSection.date}, 
-        postDescription : ${cvMinuteSection.content}, 
+        postTitle: ${cvMinuteSection.title}, 
+        postDate: ${cvMinuteSection.date}, 
+        postDescription: ${cvMinuteSection.content}, 
       `;
 
       const openaiResponse = await gpt3([
@@ -316,8 +314,8 @@ const updateCvMinuteSection = async (
         {
           role: 'user',
           content: `
-            Expérience :\n${details}\n
-            Offre :\n${cvMinute.position}
+            Expérience:\n${details}\n
+            Offre:\n${cvMinute.position}
           `.trim(),
         },
       ]);
@@ -379,8 +377,8 @@ const updateCvMinuteSection = async (
 };
 
 const generateNewCvMinuteSections = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -408,10 +406,10 @@ const generateNewCvMinuteSections = async (
       {
         role: 'user',
         content: `
-            Sections existantes :\n${cvMinute.cvMinuteSections.map((item) => item.name).join('\n')}\n
-            Conseils :\n${advice?.content}\n
-            Offre :\n${cvMinute.position}
-          `.trim(),
+          Sections existantes: ${cvMinute.cvMinuteSections.map((item) => item.name).join('\n')}\n
+          Conseils: ${advice?.content}\n
+          Offre ciblée: ${cvMinute.position}
+        `.trim(),
       },
     ]);
 
@@ -472,8 +470,8 @@ const generateNewCvMinuteSections = async (
 };
 
 const generateCvMinuteSectionAdvices = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const errors = validationResult(req);
@@ -505,28 +503,28 @@ const generateCvMinuteSectionAdvices = async (
       messageSystem = cvMinuteTitleAdvicesPrompt.trim();
 
       messageUser = `
-        Titre actuel :
+        Titre actuel:
         ${cvMinuteSection.content}\n
-        Conseils : ${advice}\n
-        Offre: ${cvMinute.position}
+        Conseils: ${advice}\n
+        Offre ciblée: ${cvMinute.position}
       `;
     } else if (cvMinuteSection.name === 'presentation') {
       messageSystem = cvMinutePresentationAdvicesPrompt.trim();
 
       messageUser = `
-        Présentation actuelle : 
+        Présentation actuelle: 
         ${cvMinuteSection.content}\n 
-        Conseils :\n${advice} \n 
-        Offre: ${cvMinute.position}
+        Conseils:\n${advice} \n 
+        Offre ciblée: ${cvMinute.position}
       `;
     } else if (cvMinuteSection.name === 'experiences') {
       messageSystem = cvMinuteExperienceAdvicesPrompt.trim();
 
       messageUser = `
         Titre du poste: ${cvMinuteSection.title}\n 
-        Description actuelle : ${cvMinuteSection.content}\n 
-        Conseils : ${advice}\n 
-        Offre: ${cvMinute.position}
+        Description actuelle: ${cvMinuteSection.content}\n 
+        Conseils: ${advice}\n 
+        Offre ciblée: ${cvMinute.position}
       `;
     }
 
@@ -599,8 +597,8 @@ const generateCvMinuteSectionAdvices = async (
 };
 
 const updateCvMinuteScore = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     let evaluation: EvaluationInterface | null = null;
@@ -660,8 +658,8 @@ const updateCvMinuteScore = async (
       {
         role: 'user',
         content: `
-          Contenu du CV : ${cvDetails}\n 
-          Offre ciblée : ${cvMinute.position}
+          Contenu du CV: ${cvDetails}\n 
+          Offre ciblée: ${cvMinute.position}
         `.trim(),
       },
     ]);
@@ -723,8 +721,8 @@ const updateCvMinuteScore = async (
 };
 
 const updateCvMinuteSectionScore = async (
-  req: express.Request,
-  res: express.Response,
+  req: Request,
+  res: Response,
 ): Promise<void> => {
   try {
     const { cvMinute } = res.locals;
@@ -741,9 +739,9 @@ const updateCvMinuteSectionScore = async (
     }
 
     const experience = `
-      titre : ${cvMinuteSection.title}, 
-      contrat : ${cvMinuteSection.contrat}, 
-      description : ${cvMinuteSection.content}
+      titre: ${cvMinuteSection.title}, 
+      contrat: ${cvMinuteSection.contrat}, 
+      description: ${cvMinuteSection.content}
     `;
 
     const openaiResponse = await gpt3([
@@ -754,9 +752,9 @@ const updateCvMinuteSectionScore = async (
       {
         role: 'user',
         content: `
-          Contenu de l'expérience : 
+          Contenu de l'expérience: 
           ${experience}\n 
-          Offre ciblée : ${cvMinute.position}
+          Offre ciblée: ${cvMinute.position}
         `.trim(),
       },
     ]);

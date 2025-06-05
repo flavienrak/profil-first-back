@@ -97,15 +97,6 @@ router.put(
   updateCvMinuteSectionOrder,
 );
 
-// DELETE CVMINUTE SECTION
-router.delete(
-  '/:id/cv-minute-section/:cvMinuteSectionId',
-  cvMinuteSectionIdValidation,
-  checkCvMinuteSection,
-  checkCvMinuteOwner,
-  deleteCvMinuteSection,
-);
-
 // GENERATE CVMINUTE SECTION ADVICES
 router.post(
   '/:id/cv-minute-section/:cvMinuteSectionId/advices',
@@ -122,6 +113,15 @@ router.put(
   checkCvMinuteOwner,
   checkCvMinuteSection,
   updateCvMinuteSectionScore,
+);
+
+// DELETE CVMINUTE SECTION
+router.delete(
+  '/:id/cv-minute-section/:cvMinuteSectionId',
+  cvMinuteSectionIdValidation,
+  checkCvMinuteOwner,
+  checkCvMinuteSection,
+  deleteCvMinuteSection,
 );
 
 export default router;

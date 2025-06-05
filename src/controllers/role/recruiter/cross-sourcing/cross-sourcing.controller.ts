@@ -1,14 +1,9 @@
-import express from 'express';
+import prisma from '@/lib/db';
 
-import { PrismaClient } from '@prisma/client';
+import { Request, Response } from 'express';
 import { domains } from '@/utils/constants';
 
-const prisma = new PrismaClient();
-
-const getUsers = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const { domainId } = req.params;
 
@@ -47,10 +42,7 @@ const getUsers = async (
   }
 };
 
-const getUserCvMinutes = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const getUserCvMinutes = async (req: Request, res: Response): Promise<void> => {
   try {
     const { crossSourcingUser } = res.locals;
 
@@ -74,10 +66,7 @@ const getUserCvMinutes = async (
   }
 };
 
-const getUserCvMinute = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<void> => {
+const getUserCvMinute = async (req: Request, res: Response): Promise<void> => {
   try {
     const { cvMinuteId } = req.params;
 
