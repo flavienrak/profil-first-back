@@ -1,5 +1,4 @@
 import express from 'express';
-import multer from 'multer';
 
 import {
   updateCvMinuteSection,
@@ -33,8 +32,8 @@ import {
   checkCvMinuteOwner,
   checkCvMinuteSection,
 } from '@/middlewares/role/user/cv-minute.middleware';
+import { upload } from '@/lib/multer';
 
-const upload = multer();
 const router = express.Router();
 
 // GET CVMINUTES

@@ -1,5 +1,4 @@
 import express from 'express';
-import multer from 'multer';
 
 import { respondQualiCarriereQuestion } from '@/controllers/role/user/quali-carriere/respond-question.controller';
 import { getQualiCarriereQuestion } from '@/controllers/role/user/quali-carriere/get-question.controller';
@@ -15,9 +14,9 @@ import {
   updateQualiCarriereCompetenceValidation,
   updateQualiCarriereResumeValidation,
 } from '@/validations/role/user/quali-carriere.validation';
+import { upload } from '@/lib/multer';
 
 const router = express.Router();
-const upload = multer();
 
 // GET QUESTION
 router.get('/', getQualiCarriereQuestion);
