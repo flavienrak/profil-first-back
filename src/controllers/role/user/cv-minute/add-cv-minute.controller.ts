@@ -380,7 +380,15 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    res.status(201).json({ cvMinuteId: cvMinute.id });
+    const cvMinuteCount = await prisma.cvMinute.count({
+      where: {
+        userId: user.id,
+        qualiCarriereRef: false,
+        generated: null,
+      },
+    });
+
+    res.status(201).json({ cvMinuteId: cvMinute.id, cvMinuteCount });
     return;
   } catch (error) {
     if (error instanceof Error) {

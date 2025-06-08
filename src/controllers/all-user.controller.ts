@@ -34,7 +34,11 @@ const getUser = async (req: Request, res: Response): Promise<void> => {
 
     if (userData.role === 'user') {
       cvMinuteCount = await prisma.cvMinute.count({
-        where: { userId: userData.id, qualiCarriereRef: false },
+        where: {
+          userId: userData.id,
+          qualiCarriereRef: false,
+          generated: null,
+        },
       });
     }
 
