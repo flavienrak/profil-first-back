@@ -1,26 +1,26 @@
 import http from 'http';
-import express from 'express';
+import path from 'path';
+import express, { Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import winston from 'winston';
 import compression from 'compression';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import fileUpload from 'express-fileupload';
 import OpenAI from 'openai';
+
 import { Server, Socket } from 'socket.io';
 
 dotenv.config();
 const app = express();
 
+const frontendUri = process.env.FRONTEND_URI || '';
+
 app.use(
   cors({
-    // origin: ["http://localhost:5173"],
-    origin: (origin, callback) => {
-      if (origin) {
-        callback(null, origin);
-      } else {
-        callback(null, '*');
-      }
-    },
+    origin: [frontendUri],
     credentials: true,
     preflightContinue: false,
     allowedHeaders: ['sessionId', 'Content-Type'],
@@ -28,10 +28,30 @@ app.use(
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   }),
 );
+app.use(helmet());
 app.use(compression());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+app.use(fileUpload({ limits: { fileSize: 100 * 1024 * 1024 } })); // 100MB
 app.use(cookieParser());
+
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+app.get('/', (req: Request, res: Response) => {
+  res.send('Backend running successfully!');
+});
+
+app.use(
+  '/api/',
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Max requests authorized',
+  }),
+);
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

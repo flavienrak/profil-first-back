@@ -1,6 +1,3 @@
-import express, { Request, Response } from 'express';
-import path from 'path';
-
 import { app, logger, server } from '@/socket';
 import { isAuthenticated } from '@/middlewares/auth.middleware';
 import { checkUserRole } from '@/middlewares/role/user/user.middleware';
@@ -15,12 +12,6 @@ import qualiCarriereRoutes from '@/routes/role/user/quali-quarriere.routes';
 
 import cvThequeRoutes from '@/routes/role/recruiter/cvtheque.routes';
 import crossSourcingRoutes from '@/routes/role/recruiter/cross-sourcing.routes';
-
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-app.get('/', (req: Request, res: Response) => {
-  res.send('Backend running successfully!');
-});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', isAuthenticated, allUserRoutes);
