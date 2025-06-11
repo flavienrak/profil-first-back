@@ -309,7 +309,9 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
                           name: s.name,
                           title: item.title,
                           content: item.content
-                            ? formatTextWithStrong(item.content)
+                            ? s.name === 'experiences'
+                              ? formatTextWithStrong(item.content)
+                              : item.content
                             : '',
                           date: item.date,
                           company: item.company,
