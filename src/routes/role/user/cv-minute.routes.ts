@@ -10,6 +10,7 @@ import {
 import { addCvMinute } from '@/controllers/role/user/cv-minute/add-cv-minute.controller';
 import {
   copyCvMinute,
+  deleteCvMinute,
   deleteCvMinuteSection,
   getAllCvMinute,
   getCvMinute,
@@ -27,6 +28,7 @@ import {
   cvMinuteSectionIdValidation,
   updateCvMinuteNameValidation,
   updateCvMinuteVisibilityValidation,
+  deleteCvMinuteIdValidation,
 } from '@/validations/role/user/cv-minute.validation';
 import {
   checkCvMinuteOwner,
@@ -44,6 +46,9 @@ router.post('/', upload.single('file'), addCvMinuteValidation, addCvMinute);
 
 // GET CV MINUTE
 router.get('/:id', checkCvMinuteOwner, getCvMinute);
+
+// DELETE CVMINUTE
+router.delete('/:id', deleteCvMinuteIdValidation, deleteCvMinute);
 
 // GENERATE NEW CVMINUTE SECTION SUGGESTIONS
 router.post(

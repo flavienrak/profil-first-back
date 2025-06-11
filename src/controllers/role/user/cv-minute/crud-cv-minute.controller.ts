@@ -191,6 +191,35 @@ const copyCvMinute = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const deleteCvMinute = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const cvMinute = await prisma.cvMinute.findUnique({
+      where: { id: Number(id) },
+    });
+
+    if (!cvMinute) {
+      res.json({ cvMinuteNotFound: true });
+      return;
+    }
+
+    await prisma.cvMinute.delete({
+      where: { id: Number(id) },
+    });
+
+    res.status(200).json({ cvMinute });
+    return;
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
+    return;
+  }
+};
+
 const getAllCvMinute = async (req: Request, res: Response): Promise<void> => {
   try {
     const { user } = res.locals;
@@ -408,6 +437,7 @@ const deleteCvMinuteSection = async (
 export {
   getCvMinute,
   copyCvMinute,
+  deleteCvMinute,
   getAllCvMinute,
   updateCvMinuteName,
   updateCvMinuteVisibility,

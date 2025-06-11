@@ -16,6 +16,14 @@ const addCvMinuteValidation = [
   }),
 ];
 
+const deleteCvMinuteIdValidation = [
+  param('id')
+    .notEmpty()
+    .withMessage('id required')
+    .isInt()
+    .withMessage('invalid id'),
+];
+
 const updateCvMinuteNameValidation = [
   param('id')
     .notEmpty()
@@ -127,6 +135,7 @@ const cvMinuteSectionIdValidation = [
 
 export {
   addCvMinuteValidation,
+  deleteCvMinuteIdValidation,
   updateCvMinuteNameValidation,
   updateCvMinuteVisibilityValidation,
   updateCvMinuteProfileValidation,

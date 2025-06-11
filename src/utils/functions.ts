@@ -60,32 +60,37 @@ const questionRangeByIndex = (value: number) => {
 
   return { start, end };
 };
+
 const formatTextWithStrong = (value: string): string => {
-  // 1. Supprimer tous les sauts de ligne (\r, \n)
+  // 1. Supprimer les sauts de ligne (\r, \n)
   const cleaned = value.replace(/\r?\n|\r/g, ' ');
 
-  // 2. Découper en segments à partir de chaque « • »
-  const parts = cleaned.split('•');
+  // 2. Extraire le contenu avant la première puce
+  const firstBulletIndex = cleaned.indexOf('•');
+  const beforeBullets =
+    firstBulletIndex !== -1
+      ? cleaned.slice(0, firstBulletIndex).trim()
+      : cleaned.trim();
 
-  return parts
-    .map((chunk, index) => {
-      // Si c'est le tout premier segment (avant la première puce), on le renvoie contracté
-      if (index === 0) {
-        return parts[0].trim();
+  // 3. Extraire toutes les sections à partir des puces
+  const bulletParts =
+    firstBulletIndex !== -1 ? cleaned.slice(firstBulletIndex).split('•') : [];
+
+  const formattedBullets = bulletParts
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .map((part) => {
+      const match = part.match(/^(.+?)\s*:\s*(.+)$/);
+      if (match) {
+        const [, boldPart, rest] = match;
+        return `<p><strong>${boldPart.trim()}</strong> : ${rest.trim()}</p>`;
       }
+      return `<p>• ${part}</p>`;
+    });
 
-      // Pour chaque segment après une puce, on cherche “avant :” et “après :”
-      const match = chunk.match(/^\s*(.+?)\s*:\s*(.+)$/);
-      if (!match) {
-        // Si pas de “:”, on remet la puce et le texte brut
-        return `• ${chunk.trim()}`;
-      }
+  const formattedIntro = beforeBullets ? `<p>${beforeBullets}</p>` : '';
 
-      const [, boldPart, rest] = match;
-
-      return `<p><strong>${boldPart.trim()}</strong> : ${rest.trim()}</p>`;
-    })
-    .join('');
+  return [formattedIntro, ...formattedBullets].join('');
 };
 
 /**
