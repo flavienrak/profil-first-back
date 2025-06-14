@@ -34,6 +34,7 @@ model User {
   cvThequeUsers            CvThequeUser[]
   cvThequeContactViews     CvThequeContactView[]
   payments                 Payment[]
+  credits                  Credit[]
 
   userCvThequeContacts      CvThequeContact[] @relation("UserCvThequeContact")
   recruiterCvThequeContacts CvThequeContact[] @relation("RecruiterCvThequeContact")
@@ -363,5 +364,19 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credit Credit?
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Credit {
+  id        Int @id @default(autoincrement())
+  value     Int
+  paymentId Int @unique
+  userId    Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

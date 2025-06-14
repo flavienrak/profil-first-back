@@ -6,6 +6,7 @@ import { validationResult } from 'express-validator';
 import { stripe } from '@/socket';
 import { currency } from '@/utils/constants';
 import { expirationDate } from '@/utils/payment/expriation';
+import { getCredit } from '@/utils/payment/credit';
 
 const frontendUri = process.env.FRONTEND_URI;
 
@@ -71,6 +72,8 @@ const stripeController = async (req: Request, res: Response): Promise<void> => {
 const stripeSessionController = async (req: Request, res: Response) => {
   const { sessionId } = req.params;
   try {
+    const { user } = res.locals;
+
     // Récupérer les détails de la session Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['payment_intent'],
@@ -80,6 +83,11 @@ const stripeSessionController = async (req: Request, res: Response) => {
       where: { sessionId: session.id },
     });
 
+    if (!payment) {
+      res.json({ paymentNotFound: true });
+      return;
+    }
+
     if (payment) {
       // Mettre à jour le paiement en base
       payment = await prisma.payment.update({
@@ -87,6 +95,29 @@ const stripeSessionController = async (req: Request, res: Response) => {
         data: { status: session.payment_status as string },
       });
     }
+
+    let credit = await prisma.credit.findUnique({
+      where: { paymentId: payment.id },
+    });
+
+    if (payment.status === 'paid' && !credit) {
+      const creditValue = getCredit(payment.type);
+
+      if (creditValue) {
+        credit = await prisma.credit.create({
+          data: {
+            value: creditValue,
+            paymentId: payment.id,
+            userId: user.id,
+          },
+        });
+      }
+    }
+
+    payment = await prisma.payment.findUnique({
+      where: { sessionId: session.id },
+      include: { credit: true },
+    });
 
     res.json({ payment });
     return;

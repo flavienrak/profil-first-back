@@ -24,7 +24,7 @@ const getUser = async (req: Request, res: Response): Promise<void> => {
 
     const userData = await prisma.user.findUnique({
       where: { id: user.id },
-      include: { files: true, payments: true },
+      include: { files: true, payments: { include: { credit: true } } },
     });
 
     if (!userData) {
