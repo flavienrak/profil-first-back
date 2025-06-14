@@ -83,9 +83,9 @@ const formatTextWithStrong = (value: string): string => {
       const match = part.match(/^(.+?)\s*:\s*(.+)$/);
       if (match) {
         const [, boldPart, rest] = match;
-        return `<p>• <strong>${boldPart.trim()}</strong> : ${rest.trim()}</p>`;
+        return `<p><strong>${boldPart.trim()}</strong> : ${rest.trim()}</p>`;
       }
-      return `<p>• ${part}</p>`;
+      return `<p>${part}</p>`;
     });
 
   const formattedIntro = beforeBullets ? `<p>${beforeBullets}</p>` : '';

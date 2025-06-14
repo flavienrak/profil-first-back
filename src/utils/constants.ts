@@ -1,3 +1,4 @@
+const currency = 'eur';
 const maxAgeAuthToken = 31536000000;
 
 const imageMimeTypes = [
@@ -72,6 +73,7 @@ const domains = [
 ];
 
 export {
+  currency,
   maxAgeAuthToken,
   imageMimeTypes,
   maxCvThequeUserResult,

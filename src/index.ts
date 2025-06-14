@@ -5,6 +5,7 @@ import { checkIsRecruiter } from '@/middlewares/role/recruiter/recruiter.middlew
 
 import authRoutes from '@/routes/auth.routes';
 import allUserRoutes from '@/routes/all-user.routes';
+import paymentRoutes from '@/routes/payment.routes';
 
 import userRoleRoutes from '@/routes/role/user/user-role.routes';
 import cvMinuteRoutes from '@/routes/role/user/cv-minute.routes';
@@ -15,6 +16,7 @@ import crossSourcingRoutes from '@/routes/role/recruiter/cross-sourcing.routes';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', isAuthenticated, allUserRoutes);
+app.use('/api/payment', isAuthenticated, paymentRoutes);
 
 // USER ROLE ROUTES
 app.use('/api/role/user', isAuthenticated, userRoleRoutes);

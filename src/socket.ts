@@ -8,6 +8,7 @@ import winston from 'winston';
 import compression from 'compression';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import Stripe from 'stripe';
 import OpenAI from 'openai';
 
 import { Server, Socket } from 'socket.io';
@@ -54,6 +55,8 @@ app.use(
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -105,4 +108,4 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-export { app, openai, logger, io, server };
+export { app, openai, stripe, logger, io, server };

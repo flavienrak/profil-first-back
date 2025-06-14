@@ -3,6 +3,7 @@ import { FileInterface } from './file.interface';
 import { CvThequeCritereInterface } from './role/recruiter/cvtheque/cvthequeCritere.interface';
 import { CvThequeUserInterface } from './role/recruiter/cvtheque/cvthequeUser.interface';
 import { CvMinuteDomainInterface } from './role/user/cv-minute/cvMinuteDomain.interface';
+import { PaymentInterface } from './payment.interface';
 
 export interface UserInterface {
   id: number;
@@ -17,6 +18,7 @@ export interface UserInterface {
   cvMinutes?: CvMinuteInterface[];
   cvThequeCriteres?: CvThequeCritereInterface[];
   cvThequeUsers?: CvThequeUserInterface[];
+  payments?: PaymentInterface[];
 
   createdAt: Date;
   updatedAt: Date;
