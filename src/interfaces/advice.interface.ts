@@ -1,4 +1,4 @@
-export interface CvMinuteAdviceInterface {
+export interface AdviceInterface {
   id: number;
   type: string;
   content: string;

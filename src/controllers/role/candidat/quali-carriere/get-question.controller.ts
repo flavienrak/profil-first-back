@@ -14,8 +14,8 @@ import {
   qualiCarriereNextQuestionPrompt,
   qualiCarriereResumePrompt,
 } from '@/utils/prompts/quali-carriere.prompt';
-import { QualiCarriereQuestionInteface } from '@/interfaces/role/user/quali-carriere/qualiCarriereQuestionInterface';
-import { CvMinuteInterface } from '@/interfaces/role/user/cv-minute/cvMinute.interface';
+import { QualiCarriereQuestionInteface } from '@/interfaces/role/candidat/quali-carriere/qualiCarriereQuestionInterface';
+import { CvMinuteInterface } from '@/interfaces/role/candidat/cv-minute/cvMinute.interface';
 import { gpt3, gpt4 } from '@/utils/openai';
 
 const getQualiCarriereQuestion = async (

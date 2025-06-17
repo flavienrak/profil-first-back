@@ -3,7 +3,7 @@ import prisma from '@/lib/db';
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { extractJson } from '@/utils/functions';
-import { CvMinuteSectionInterface } from '@/interfaces/role/user/cv-minute/cvMinuteSection.interface';
+import { CvMinuteSectionInterface } from '@/interfaces/role/candidat/cv-minute/cvMinuteSection.interface';
 import { EvaluationInterface } from '@/interfaces/evaluation.interface';
 import {
   cvMinuteExperienceAdvicesPrompt,

@@ -24,7 +24,11 @@ const getUser = async (req: Request, res: Response): Promise<void> => {
 
     const userData = await prisma.user.findUnique({
       where: { id: user.id },
-      include: { files: true, payments: { include: { credit: true } } },
+      include: {
+        files: true,
+        userInfos: true,
+        payments: { include: { credit: true } },
+      },
     });
 
     if (!userData) {
@@ -141,4 +145,63 @@ const updateUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export { getUser, updateUser };
+const updateUserInfos = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const { user } = res.locals;
+
+    const body: {
+      acceptConditions?: boolean;
+      acceptFreeUse?: boolean;
+      mode?: string;
+      fontSize?: number;
+    } = req.body;
+
+    const infos: {
+      acceptConditions?: boolean;
+      acceptFreeUse?: boolean;
+      mode?: string;
+      fontSize?: number;
+    } = {};
+
+    if (body.acceptConditions) {
+      infos.acceptConditions = body.acceptConditions;
+    }
+    if (body.acceptFreeUse) {
+      infos.acceptFreeUse = body.acceptFreeUse;
+    }
+    if (body.mode) {
+      infos.mode = body.mode;
+    }
+    if (body.fontSize) {
+      infos.fontSize = body.fontSize;
+    }
+
+    if (isEmpty(infos)) {
+      res.json({ noChanges: true });
+      return;
+    }
+
+    const userInfos = await prisma.userInfos.update({
+      where: { id: user.id },
+      data: infos,
+    });
+
+    res.status(200).json({ userInfos });
+    return;
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
+    return;
+  }
+};
+
+export { getUser, updateUser, updateUserInfos };

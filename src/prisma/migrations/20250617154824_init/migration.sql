@@ -4,13 +4,27 @@ CREATE TABLE "User" (
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
-    "acceptConditions" BOOLEAN NOT NULL DEFAULT false,
-    "role" TEXT NOT NULL DEFAULT 'user',
+    "role" TEXT NOT NULL DEFAULT 'candidat',
     "qualiCarriere" TEXT NOT NULL DEFAULT '',
+    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserInfos" (
+    "id" SERIAL NOT NULL,
+    "mode" TEXT NOT NULL DEFAULT 'system',
+    "fontSize" INTEGER NOT NULL DEFAULT 16,
+    "acceptFreeUse" BOOLEAN NOT NULL DEFAULT false,
+    "acceptConditions" BOOLEAN NOT NULL DEFAULT false,
+    "userId" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UserInfos_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -20,6 +34,7 @@ CREATE TABLE "File" (
     "originalName" TEXT NOT NULL,
     "extension" TEXT NOT NULL,
     "usage" TEXT NOT NULL,
+    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "userId" INTEGER NOT NULL,
     "cvMinuteId" INTEGER,
     "cvMinuteSectionId" INTEGER,
@@ -42,6 +57,7 @@ CREATE TABLE "CvMinute" (
     "qualiCarriereRef" BOOLEAN NOT NULL DEFAULT false,
     "generated" TEXT,
     "score" INTEGER NOT NULL DEFAULT 0,
+    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "userId" INTEGER NOT NULL,
     "cvThequeCritereId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -75,6 +91,7 @@ CREATE TABLE "CvMinuteSection" (
     "contrat" TEXT,
     "icon" TEXT,
     "iconSize" INTEGER,
+    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "cvMinuteId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -201,6 +218,7 @@ CREATE TABLE "CvThequeCritere" (
     "experience" INTEGER,
     "evaluation" INTEGER NOT NULL DEFAULT 0,
     "saved" BOOLEAN NOT NULL DEFAULT false,
+    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "userId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -273,8 +291,40 @@ CREATE TABLE "CvThequeContactView" (
     CONSTRAINT "CvThequeContactView_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "Payment" (
+    "id" SERIAL NOT NULL,
+    "amount" INTEGER NOT NULL,
+    "name" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'eur',
+    "sessionId" TEXT NOT NULL,
+    "status" TEXT NOT NULL,
+    "expiredAt" TIMESTAMP(3),
+    "userId" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Credit" (
+    "id" SERIAL NOT NULL,
+    "value" INTEGER NOT NULL,
+    "paymentId" INTEGER NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Credit_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserInfos_userId_key" ON "UserInfos"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Evaluation_cvMinuteId_key" ON "Evaluation"("cvMinuteId");
@@ -297,14 +347,23 @@ CREATE UNIQUE INDEX "CvThequeUser_userId_cvThequeCritereId_key" ON "CvThequeUser
 -- CreateIndex
 CREATE UNIQUE INDEX "CvThequeContact_recruiterId_cvMinuteId_key" ON "CvThequeContact"("recruiterId", "cvMinuteId");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "Payment_sessionId_key" ON "Payment"("sessionId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Credit_paymentId_key" ON "Credit"("paymentId");
+
+-- AddForeignKey
+ALTER TABLE "UserInfos" ADD CONSTRAINT "UserInfos_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
 -- AddForeignKey
 ALTER TABLE "File" ADD CONSTRAINT "File_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "File" ADD CONSTRAINT "File_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "File" ADD CONSTRAINT "File_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "File" ADD CONSTRAINT "File_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "File" ADD CONSTRAINT "File_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CvMinute" ADD CONSTRAINT "CvMinute_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -325,13 +384,13 @@ ALTER TABLE "CvMinuteSection" ADD CONSTRAINT "CvMinuteSection_cvMinuteId_fkey" F
 ALTER TABLE "Advice" ADD CONSTRAINT "Advice_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Advice" ADD CONSTRAINT "Advice_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Advice" ADD CONSTRAINT "Advice_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Evaluation" ADD CONSTRAINT "Evaluation_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Evaluation" ADD CONSTRAINT "Evaluation_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Evaluation" ADD CONSTRAINT "Evaluation_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OpenaiResponse" ADD CONSTRAINT "OpenaiResponse_cvMinuteId_fkey" FOREIGN KEY ("cvMinuteId") REFERENCES "CvMinute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -343,13 +402,13 @@ ALTER TABLE "OpenaiResponse" ADD CONSTRAINT "OpenaiResponse_userId_fkey" FOREIGN
 ALTER TABLE "OpenaiResponse" ADD CONSTRAINT "OpenaiResponse_cvThequeCritereId_fkey" FOREIGN KEY ("cvThequeCritereId") REFERENCES "CvThequeCritere"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "OpenaiResponse" ADD CONSTRAINT "OpenaiResponse_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "OpenaiResponse" ADD CONSTRAINT "OpenaiResponse_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "QualiCarriereQuestion" ADD CONSTRAINT "QualiCarriereQuestion_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "QualiCarriereQuestion" ADD CONSTRAINT "QualiCarriereQuestion_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "QualiCarriereQuestion" ADD CONSTRAINT "QualiCarriereQuestion_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "QualiCarriereResponse" ADD CONSTRAINT "QualiCarriereResponse_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "QualiCarriereQuestion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -358,19 +417,19 @@ ALTER TABLE "QualiCarriereResponse" ADD CONSTRAINT "QualiCarriereResponse_questi
 ALTER TABLE "QualiCarriereResponse" ADD CONSTRAINT "QualiCarriereResponse_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "QualiCarriereResponse" ADD CONSTRAINT "QualiCarriereResponse_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "QualiCarriereResponse" ADD CONSTRAINT "QualiCarriereResponse_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "QualiCarriereResume" ADD CONSTRAINT "QualiCarriereResume_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "QualiCarriereResume" ADD CONSTRAINT "QualiCarriereResume_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "QualiCarriereResume" ADD CONSTRAINT "QualiCarriereResume_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "QualiCarriereCompetence" ADD CONSTRAINT "QualiCarriereCompetence_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "QualiCarriereCompetence" ADD CONSTRAINT "QualiCarriereCompetence_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "QualiCarriereCompetence" ADD CONSTRAINT "QualiCarriereCompetence_cvMinuteSectionId_fkey" FOREIGN KEY ("cvMinuteSectionId") REFERENCES "CvMinuteSection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "QualiCarriereChat" ADD CONSTRAINT "QualiCarriereChat_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -407,3 +466,12 @@ ALTER TABLE "CvThequeContactView" ADD CONSTRAINT "CvThequeContactView_userId_fke
 
 -- AddForeignKey
 ALTER TABLE "CvThequeContactView" ADD CONSTRAINT "CvThequeContactView_cvThequeContactId_fkey" FOREIGN KEY ("cvThequeContactId") REFERENCES "CvThequeContact"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Credit" ADD CONSTRAINT "Credit_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Credit" ADD CONSTRAINT "Credit_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

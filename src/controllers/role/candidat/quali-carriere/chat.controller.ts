@@ -5,7 +5,7 @@ import { validationResult } from 'express-validator';
 import { io } from '@/socket';
 import { extractJson } from '@/utils/functions';
 import { qualiCarriereChatResponsePrompt } from '@/utils/prompts/quali-carriere.prompt';
-import { QualiCarriereChatInterface } from '@/interfaces/role/user/quali-carriere/qualiCarriereChatInterface';
+import { QualiCarriereChatInterface } from '@/interfaces/role/candidat/quali-carriere/qualiCarriereChatInterface';
 import { gpt3 } from '@/utils/openai';
 
 const sendQualiCarriereMessage = async (

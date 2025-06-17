@@ -1,19 +1,19 @@
 import express from 'express';
 
-import { respondQualiCarriereQuestion } from '@/controllers/role/user/quali-carriere/respond-question.controller';
-import { getQualiCarriereQuestion } from '@/controllers/role/user/quali-carriere/get-question.controller';
+import { respondQualiCarriereQuestion } from '@/controllers/role/candidat/quali-carriere/respond-question.controller';
+import { getQualiCarriereQuestion } from '@/controllers/role/candidat/quali-carriere/get-question.controller';
 import {
   changeQualiCarriereStatus,
   editQualiCarriereCompetence,
   editQualiCarriereResume,
-} from '@/controllers/role/user/quali-carriere/crud-quali-carriere.controller';
-import { sendQualiCarriereMessage } from '@/controllers/role/user/quali-carriere/chat.controller';
+} from '@/controllers/role/candidat/quali-carriere/crud-quali-carriere.controller';
+import { sendQualiCarriereMessage } from '@/controllers/role/candidat/quali-carriere/chat.controller';
 import {
   respondQualiCarriereQuestionValidation,
   senndQualiCarriereMessageValidation,
   updateQualiCarriereCompetenceValidation,
   updateQualiCarriereResumeValidation,
-} from '@/validations/role/user/quali-carriere.validation';
+} from '@/validations/role/candidat/quali-carriere.validation';
 import { upload } from '@/lib/multer';
 
 const router = express.Router();

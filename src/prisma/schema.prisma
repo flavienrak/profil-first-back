@@ -10,17 +10,18 @@ datasource db {
 }
 
 model User {
-  id               Int     @id @default(autoincrement())
-  name             String
-  email            String  @unique
-  password         String
-  acceptConditions Boolean @default(false)
-  role             String  @default("user")
-  qualiCarriere    String  @default("")
+  id            Int     @id @default(autoincrement())
+  name          String
+  email         String  @unique
+  password      String
+  role          String  @default("candidat")
+  qualiCarriere String  @default("")
+  isDeleted     Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  userInfos                UserInfos?
   files                    File[]
   cvMinutes                CvMinute[]
   cvMinuteDomains          CvMinuteDomain[]
@@ -40,12 +41,27 @@ model User {
   recruiterCvThequeContacts CvThequeContact[] @relation("RecruiterCvThequeContact")
 }
 
+model UserInfos {
+  id               Int     @id @default(autoincrement())
+  mode             String  @default("system")
+  fontSize         Int     @default(16)
+  acceptFreeUse    Boolean @default(false)
+  acceptConditions Boolean @default(false)
+  userId           Int     @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model File {
-  id                Int    @id @default(autoincrement())
+  id                Int     @id @default(autoincrement())
   name              String
   originalName      String
   extension         String
   usage             String
+  isDeleted         Boolean @default(false)
   userId            Int
   cvMinuteId        Int?
   cvMinuteSectionId Int?
@@ -70,6 +86,7 @@ model CvMinute {
   qualiCarriereRef  Boolean @default(false)
   generated         String?
   score             Int     @default(0)
+  isDeleted         Boolean @default(false)
   userId            Int
   cvThequeCritereId Int?
 
@@ -79,8 +96,8 @@ model CvMinute {
   files            File[]
   advices          Advice[]
   cvMinuteSections CvMinuteSection[]
-  openaiResponses  OpenaiResponse[]
   evaluation       Evaluation?
+  openaiResponses  OpenaiResponse[]
   cvThequeViews    CvThequeView[]
   cvMinuteDomains  CvMinuteDomain[]
   cvThequeContacts CvThequeContact[]
@@ -114,6 +131,7 @@ model CvMinuteSection {
   contrat    String?
   icon       String?
   iconSize   Int?
+  isDeleted  Boolean @default(false)
   cvMinuteId Int
 
   createdAt DateTime @default(now())
@@ -260,6 +278,7 @@ model CvThequeCritere {
   experience   Int?
   evaluation   Int     @default(0)
   saved        Boolean @default(false)
+  isDeleted    Boolean @default(false)
   userId       Int
 
   createdAt DateTime @default(now())

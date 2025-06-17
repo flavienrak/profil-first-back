@@ -2,9 +2,11 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import prisma from '@/lib/db';
 
+import { v4 as uuid4 } from 'uuid';
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { maxAgeAuthToken } from '@/utils/constants';
+import { getCredit } from '@/utils/payment/credit';
 
 const secretKey = process.env.JWT_SECRET_KEY;
 const authTokenName = process.env.AUTH_TOKEN_NAME;
@@ -126,6 +128,28 @@ const register = async (req: Request, res: Response): Promise<void> => {
         role: body.role,
       },
     });
+
+    if (user.role === 'candidat') {
+      await prisma.userInfos.create({ data: { userId: user.id } });
+
+      const sessionId = uuid4();
+      const payment = await prisma.payment.create({
+        data: {
+          amount: 0,
+          name: 'Free Access',
+          type: 'free',
+          currency: 'eur',
+          sessionId,
+          status: 'paid',
+          userId: user.id,
+        },
+      });
+
+      const creditValue = getCredit('free');
+      await prisma.credit.create({
+        data: { value: creditValue, paymentId: payment.id, userId: user.id },
+      });
+    }
 
     res.status(201).json({ userId: user.id });
     return;

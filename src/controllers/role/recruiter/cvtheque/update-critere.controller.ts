@@ -9,7 +9,7 @@ import {
   cvThequeUserEvaluationPrompt,
 } from '@/utils/prompts/cvtheque.prompt';
 import { CvThequeCritereInterface } from '@/interfaces/role/recruiter/cvtheque/cvthequeCritere.interface';
-import { CvMinuteInterface } from '@/interfaces/role/user/cv-minute/cvMinute.interface';
+import { CvMinuteInterface } from '@/interfaces/role/candidat/cv-minute/cvMinute.interface';
 import { CompatibleUserInterface } from '@/interfaces/role/recruiter/cvtheque/compatibleUser.interface';
 import { gpt3 } from '@/utils/openai';
 

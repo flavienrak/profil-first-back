@@ -16,7 +16,7 @@ const loginValidation = [
     .trim()
     .notEmpty()
     .withMessage('role required')
-    .isIn(['user', 'recruiter', 'admin'])
+    .isIn(['candidat', 'recruiter', 'admin'])
     .withMessage('invalid role'),
 ];
 
@@ -42,7 +42,7 @@ const registerValidation = [
     .trim()
     .notEmpty()
     .withMessage('role required')
-    .isIn(['user', 'recruiter', 'admin'])
+    .isIn(['candidat', 'recruiter', 'admin'])
     .withMessage('invalid role'),
 ];
 

@@ -4,6 +4,8 @@ const getCredit = (type: string) => {
   } else if (type === 'booster') {
     return 25000;
   }
+
+  return 10000;
 };
 
 export { getCredit };

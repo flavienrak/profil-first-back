@@ -1,7 +1,8 @@
 import { QualiCarriereCompetenceInteface } from '../quali-carriere/qualiCarriereCompetence.interface';
 import { QualiCarriereResumeInterface } from '../quali-carriere/qualiCarriereResume.interface';
-import { CvMinuteAdviceInterface } from './cvMinuteAdvice.interface';
-import { EvaluationInterface } from '../../../evaluation.interface';
+import { EvaluationInterface } from '@/interfaces/evaluation.interface';
+import { UserActionInterface } from '@/interfaces/userAction.interface';
+import { AdviceInterface } from '@/interfaces/advice.interface';
 
 export interface CvMinuteSectionInterface {
   id: number;
@@ -18,7 +19,8 @@ export interface CvMinuteSectionInterface {
   editable: boolean;
 
   evaluation?: EvaluationInterface | null;
-  advices?: CvMinuteAdviceInterface[];
+  userActions?: UserActionInterface[];
+  advices?: AdviceInterface[];
   qualiCarriereCompetences?: QualiCarriereCompetenceInteface[];
   qualiCarriereResumes?: QualiCarriereResumeInterface[];
 

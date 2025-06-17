@@ -24,7 +24,11 @@ const getCvMinute = async (req: Request, res: Response): Promise<void> => {
         advices: true,
         evaluation: true,
         cvMinuteSections: {
-          include: { advices: true, evaluation: true, files: true },
+          include: {
+            advices: true,
+            evaluation: true,
+            files: true,
+          },
           orderBy: { order: 'asc' },
         },
       },

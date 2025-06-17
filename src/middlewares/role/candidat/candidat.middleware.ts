@@ -7,7 +7,7 @@ const checkUserRole = async (
 ) => {
   const { user } = res.locals;
 
-  if (user.role !== 'user') {
+  if (user.role !== 'candidat') {
     res.json({ notPermitted: true });
     return;
   }
