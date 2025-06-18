@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 
 import { Request, Response } from 'express';
 import { domains } from '@/utils/constants';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -44,7 +45,9 @@ const getUsers = async (req: Request, res: Response): Promise<void> => {
 
 const getUserCvMinutes = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { crossSourcingUser } = res.locals;
+    const { crossSourcingUser } = res.locals as {
+      crossSourcingUser: UserInterface;
+    };
 
     const cvMinutes = await prisma.cvMinute.findMany({
       where: {

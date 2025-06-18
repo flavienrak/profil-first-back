@@ -10,7 +10,6 @@ const recruiter_middleware_1 = require("./middlewares/role/recruiter/recruiter.m
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
-const candidat_routes_1 = __importDefault(require("./routes/role/candidat/candidat.routes"));
 const cv_minute_routes_1 = __importDefault(require("./routes/role/candidat/cv-minute.routes"));
 const quali_quarriere_routes_1 = __importDefault(require("./routes/role/candidat/quali-quarriere.routes"));
 const cvtheque_routes_1 = __importDefault(require("./routes/role/recruiter/cvtheque.routes"));
@@ -19,7 +18,6 @@ socket_1.app.use('/api/auth', auth_routes_1.default);
 socket_1.app.use('/api/user', auth_middleware_1.isAuthenticated, user_routes_1.default);
 socket_1.app.use('/api/payment', auth_middleware_1.isAuthenticated, payment_routes_1.default);
 // CANDIDAT ROUTES
-socket_1.app.use('/api/role/candidat', auth_middleware_1.isAuthenticated, candidat_routes_1.default);
 socket_1.app.use('/api/role/candidat/cv-minute', auth_middleware_1.isAuthenticated, candidat_middleware_1.checkUserRole, cv_minute_routes_1.default);
 socket_1.app.use('/api/role/candidat/quali-carriere', auth_middleware_1.isAuthenticated, candidat_middleware_1.checkUserRole, quali_quarriere_routes_1.default);
 // RECRUITER ROLE ROUTES

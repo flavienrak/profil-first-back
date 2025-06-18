@@ -4,6 +4,7 @@ export interface FileInterface {
   originalName: string;
   extension: string;
   usage: string;
+  deleted: boolean;
   userId: number;
   cvMinuteId: number | null;
   cvMinuteSectionId: number | null;

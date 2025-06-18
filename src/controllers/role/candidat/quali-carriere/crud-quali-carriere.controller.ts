@@ -10,7 +10,7 @@ const changeQualiCarriereStatus = async (
 ): Promise<void> => {
   try {
     let updatedUser: UserInterface | null = null;
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
 
     if (user.qualiCarriere === '' || user.qualiCarriere === 'inactive') {
       updatedUser = await prisma.user.update({

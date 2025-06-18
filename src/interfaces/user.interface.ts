@@ -12,7 +12,9 @@ export interface UserInterface {
   name: string;
   email: string;
   role: string;
+  password: string;
   qualiCarriere: string;
+  deleted: boolean;
 
   userInfos?: UserInfosInterface;
   files?: FileInterface[];

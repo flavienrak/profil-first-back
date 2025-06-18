@@ -1,13 +1,16 @@
 import { app, logger, server } from '@/socket';
 import { isAuthenticated } from '@/middlewares/auth.middleware';
-import { checkUserRole } from '@/middlewares/role/candidat/candidat.middleware';
+import {
+  checkQualiCarriere,
+  checkUserRole,
+  getCvMinuteCards,
+} from '@/middlewares/role/candidat/candidat.middleware';
 import { checkIsRecruiter } from '@/middlewares/role/recruiter/recruiter.middleware';
 
 import authRoutes from '@/routes/auth.routes';
 import userRoutes from '@/routes/user.routes';
 import paymentRoutes from '@/routes/payment.routes';
 
-import candidatRoutes from '@/routes/role/candidat/candidat.routes';
 import cvMinuteRoutes from '@/routes/role/candidat/cv-minute.routes';
 import qualiCarriereRoutes from '@/routes/role/candidat/quali-quarriere.routes';
 
@@ -19,17 +22,18 @@ app.use('/api/user', isAuthenticated, userRoutes);
 app.use('/api/payment', isAuthenticated, paymentRoutes);
 
 // CANDIDAT ROUTES
-app.use('/api/role/candidat', isAuthenticated, candidatRoutes);
 app.use(
   '/api/role/candidat/cv-minute',
   isAuthenticated,
   checkUserRole,
+  getCvMinuteCards,
   cvMinuteRoutes,
 );
 app.use(
   '/api/role/candidat/quali-carriere',
   isAuthenticated,
   checkUserRole,
+  checkQualiCarriere,
   qualiCarriereRoutes,
 );
 

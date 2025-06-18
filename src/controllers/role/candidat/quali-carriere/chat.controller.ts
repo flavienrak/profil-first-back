@@ -7,6 +7,7 @@ import { extractJson } from '@/utils/functions';
 import { qualiCarriereChatResponsePrompt } from '@/utils/prompts/quali-carriere.prompt';
 import { QualiCarriereChatInterface } from '@/interfaces/role/candidat/quali-carriere/qualiCarriereChatInterface';
 import { gpt3 } from '@/utils/openai';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const sendQualiCarriereMessage = async (
   req: Request,
@@ -20,7 +21,7 @@ const sendQualiCarriereMessage = async (
     }
 
     let response: QualiCarriereChatInterface | null = null;
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
     const body: { message: string } = req.body;
 
     const cvMinute = await prisma.cvMinute.findFirst({
@@ -32,6 +33,26 @@ const sendQualiCarriereMessage = async (
       return;
     }
 
+    const qualiCarriereResumes = await prisma.qualiCarriereResume.findMany({
+      where: { userId: user.id },
+    });
+
+    const prevMessages = await prisma.qualiCarriereChat.findMany({
+      where: { userId: user.id },
+    });
+
+    const systemPrompt = qualiCarriereChatResponsePrompt.trim();
+    const userPrompt = `
+      Résumé du candidat :
+      ${qualiCarriereResumes.map((r) => r.content).join('\n')}\n
+      
+      Récentes discussion :
+      ${prevMessages.map((m, index) => `${index + 1}. ${m.role} : ${m.content}`).join('\n')}\n
+
+      Dernier message :
+      ${body.message}
+    `.trim();
+
     const message = await prisma.qualiCarriereChat.create({
       data: {
         userId: user.id,
@@ -42,31 +63,14 @@ const sendQualiCarriereMessage = async (
 
     io.to(`user-${user.id}`).emit('qualiCarriereMessage', message);
 
-    const qualiCarriereResumes = await prisma.qualiCarriereResume.findMany({
-      where: { userId: user.id },
-    });
-
-    const prevMessages = await prisma.qualiCarriereChat.findMany({
-      where: { userId: user.id },
-    });
-
     const openaiResponse = await gpt3([
       {
         role: 'system',
-        content: qualiCarriereChatResponsePrompt.trim(),
+        content: systemPrompt,
       },
       {
         role: 'user',
-        content: `
-          Résumé du candidat :
-          ${qualiCarriereResumes.map((r) => r.content).join('\n')}\n
-          
-          Historique de la discussion :
-          ${prevMessages.map((m, index) => `${index + 1}. ${m.role} : ${m.content}`).join('\n')}\n
-
-          Dernier message :
-          ${message.content}
-        `.trim(),
+        content: userPrompt,
       },
     ]);
 
@@ -75,18 +79,22 @@ const sendQualiCarriereMessage = async (
       return;
     }
 
-    for (const r of openaiResponse.choices) {
+    const responseChoice = openaiResponse.choices[0];
+
+    if (responseChoice.message.content) {
       await prisma.openaiResponse.create({
         data: {
           responseId: openaiResponse.id,
           userId: user.id,
           request: 'qualiCarriereChat',
-          response: r.message.content ?? '',
-          index: r.index,
+          response: responseChoice.message.content ?? '',
+          index: responseChoice.index,
         },
       });
 
-      const jsonData: { response: string } = extractJson(r.message.content);
+      const jsonData: { response: string } = extractJson(
+        responseChoice.message.content,
+      );
 
       if (!jsonData) {
         res.json({ parsingError: true });

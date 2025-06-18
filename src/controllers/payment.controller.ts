@@ -1,5 +1,4 @@
 import prisma from '@/lib/db';
-import Stripe from 'stripe';
 
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
@@ -7,6 +6,7 @@ import { stripe } from '@/socket';
 import { currency } from '@/utils/constants';
 import { expirationDate } from '@/utils/payment/expriation';
 import { getCredit } from '@/utils/payment/credit';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const frontendUri = process.env.FRONTEND_URI;
 
@@ -18,7 +18,7 @@ const stripeController = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
     const body: { amount: number; name: string; type: string } = req.body;
 
     const session = await stripe.checkout.sessions.create({
@@ -72,7 +72,7 @@ const stripeController = async (req: Request, res: Response): Promise<void> => {
 const stripeSessionController = async (req: Request, res: Response) => {
   const { sessionId } = req.params;
   try {
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
 
     // Récupérer les détails de la session Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId, {

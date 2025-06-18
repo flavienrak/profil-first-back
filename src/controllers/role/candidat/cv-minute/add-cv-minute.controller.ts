@@ -11,6 +11,10 @@ import { extractJson, formatTextWithStrong } from '@/utils/functions';
 import { formattedDate } from '@/utils/constants';
 import { addCvMinutePrompt } from '@/utils/prompts/cv-minute.prompt';
 import { gpt4 } from '@/utils/openai';
+import { UserInterface } from '@/interfaces/user.interface';
+import { PaymentInterface } from '@/interfaces/payment.interface';
+import { inputToken, outputToken } from '@/utils/payment/token';
+import { updateCvMinutePayments } from './updateCvMinutePayments';
 
 const uniqueId = crypto.randomBytes(4).toString('hex');
 
@@ -22,7 +26,26 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { user } = res.locals;
+    const {
+      user,
+      cvMinuteCount,
+
+      freeCard,
+      premiumCards,
+      boosterCards,
+
+      totalCredits,
+    } = res.locals as {
+      user: UserInterface;
+      cvMinuteCount: number;
+
+      freeCard: PaymentInterface;
+      premiumCards: PaymentInterface[];
+      boosterCards: PaymentInterface[];
+
+      totalCredits: number;
+    };
+
     const body: { position: string } = req.body;
 
     const name = `CV du ${formattedDate}`;
@@ -49,6 +72,31 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
       res.json({ invalidDocument: true });
       return;
     } else {
+      let textData = '';
+      if (req.file.mimetype === 'application/pdf') {
+        const pdfData = await pdfParse(req.file.buffer);
+        textData = pdfData.text;
+      } else {
+        const wordData = await mammoth.extractRawText({
+          buffer: req.file.buffer,
+        });
+        textData = wordData.value;
+      }
+
+      const normalized = textData.replace(/(\r?\n\s*){2,}/g, '\\n').trim();
+
+      // TOKEN
+      let inputTokens = inputToken('gpt-4', normalized);
+      let outputTokens = outputToken('gpt-4', normalized);
+      let totalTokens = inputTokens + outputTokens;
+
+      if (cvMinuteCount > 0) {
+        if (totalCredits < totalTokens) {
+          res.json({ notAvailable: true });
+          return;
+        }
+      }
+
       const extension = path.extname(req.file.originalname);
       const fileName = `cv-${user.id}-${Date.now()}-${uniqueId}${extension}`;
       const uploadsBase = path.join(process.cwd(), 'uploads');
@@ -71,34 +119,25 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
         },
       });
 
-      // OPENAI
-      let textData = '';
-      if (req.file.mimetype === 'application/pdf') {
-        const dataBuffer = fs.readFileSync(filePath);
-        const pdfData = await pdfParse(dataBuffer);
-        textData = pdfData.text;
-      } else {
-        const wordData = await mammoth.extractRawText({ path: filePath });
-        textData = wordData.value;
-      }
-
-      const normalized = textData.replace(/(\r?\n\s*){2,}/g, '\\n').trim();
-
       cvMinute = await prisma.cvMinute.update({
         where: { id: cvMinute.id },
         data: { content: normalized },
       });
 
+      const systemPrompt = addCvMinutePrompt.trim();
+      const userPrompt = `
+        CV : ${normalized}\n
+
+        Offre ciblée :
+        ${body.position}
+      `.trim();
+
+      // OPENAI
       const openaiResponse = await gpt4([
-        { role: 'system', content: addCvMinutePrompt.trim() },
+        { role: 'system', content: systemPrompt },
         {
           role: 'user',
-          content: `
-            CV : ${normalized}\n
-
-            Offre ciblée :
-            ${body.position}
-          `.trim(),
+          content: userPrompt,
         },
       ]);
 
@@ -107,14 +146,20 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
         return;
       }
 
-      for (const r of openaiResponse.choices) {
+      inputTokens = inputToken('gpt-4', systemPrompt + userPrompt);
+
+      const responseChoice = openaiResponse.choices[0];
+
+      if (responseChoice.message.content) {
+        outputTokens = outputToken('gpt-4', responseChoice.message.content);
+
         await prisma.openaiResponse.create({
           data: {
             responseId: openaiResponse.id,
             cvMinuteId: cvMinute.id,
             request: 'cv-infos',
-            response: r.message.content ?? 'cv-infos-response',
-            index: r.index,
+            response: responseChoice.message.content,
+            index: responseChoice.index,
           },
         });
 
@@ -157,7 +202,7 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
             globalScore: string;
             recommendations: string;
           };
-        } = extractJson(r.message.content);
+        } = extractJson(responseChoice.message.content);
 
         if (!jsonData) {
           res.json({ parsingError: true });
@@ -186,10 +231,6 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
                 high?: string;
                 weak?: string;
               }[];
-          withAdvice?: {
-            content: string;
-            advice: string;
-          };
         }[] = [
           { name: 'profile', content: 'cvMinute-profile' },
           { name: 'name', content: jsonData.name },
@@ -211,43 +252,27 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
           },
           {
             name: 'title',
-            withAdvice: {
-              content: jsonData.cvTitle.title,
-              advice: jsonData.cvTitle.titleAdvice,
-            },
+            content: jsonData.cvTitle.title,
+            advice: jsonData.cvTitle.titleAdvice,
           },
           {
             name: 'presentation',
-            withAdvice: {
-              content: jsonData.profilePresentation.presentation,
-              advice: jsonData.profilePresentation.presentationAdvice,
-            },
+            content: jsonData.profilePresentation.presentation,
+            advice: jsonData.profilePresentation.presentationAdvice,
           },
           {
             name: 'experiences',
-            content: jsonData.experiences.map(
-              (item: {
-                postTitle: string;
-                postDate: string;
-                postCompany: string;
-                postContrat: string;
-                postDescription: string;
-                postOrder: string;
-                postScore: string;
-                postHigh: string;
-                postWeak: string;
-              }) => ({
-                title: item.postTitle,
-                date: item.postDate,
-                company: item.postCompany,
-                contrat: item.postContrat,
-                content: item.postDescription,
-                order: item.postOrder,
-                score: item.postScore,
-                high: item.postHigh,
-                weak: item.postWeak,
-              }),
-            ),
+            content: jsonData.experiences.map((item) => ({
+              title: item.postTitle,
+              date: item.postDate,
+              company: item.postCompany,
+              contrat: item.postContrat,
+              content: item.postDescription,
+              order: item.postOrder,
+              score: item.postScore,
+              high: item.postHigh,
+              weak: item.postWeak,
+            })),
           },
           ...jsonData.sections.map((section) => ({
             name: section.sectionName.trim().toLocaleLowerCase(),
@@ -259,50 +284,87 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
         ];
 
         // CVMINUTE SECTIONS
-        await Promise.all(
-          allSections.map(async (s) => {
-            if (s.content && typeof s.content === 'string') {
-              // PROFILE & NAME & FIRSTNAME & SECTIONS
-              const cvMinuteSection = await prisma.cvMinuteSection.create({
-                data: {
-                  name: s.name,
-                  content: s.content,
-                  order: !isNaN(Number(s.order)) ? Number(s.order) : 1,
-                  editable: s.editable,
-                  cvMinuteId: cvMinute.id,
-                },
-              });
+        const editableSections = allSections.filter(
+          (item) =>
+            item.content &&
+            typeof item.content === 'string' &&
+            item.name !== 'profile' &&
+            item.name !== 'name' &&
+            item.name !== 'firstname' &&
+            item.name !== 'title' &&
+            item.name !== 'presentation',
+        );
 
-              if (s.advice) {
+        if (editableSections.length > 0) {
+          await Promise.all(
+            editableSections.map(async (item, index) => {
+              if (typeof item.content === 'string') {
+                const cvMinuteSection = await prisma.cvMinuteSection.create({
+                  data: {
+                    name: item.name,
+                    content: item.content,
+                    order: !isNaN(Number(item.order)) ? Number(item.order) : 1,
+                    restricted:
+                      editableSections.length > 1 &&
+                      index !== 1 &&
+                      premiumCards.length === 0 &&
+                      boosterCards.length === 0,
+                    editable: true,
+                    cvMinuteId: cvMinute.id,
+                  },
+                });
+
                 await prisma.advice.create({
                   data: {
                     type: 'cvMinuteSectionAdvice',
-                    content: s.advice,
+                    content: item.advice ?? '',
                     cvMinuteSectionId: cvMinuteSection.id,
                   },
                 });
               }
-            } else if (s.withAdvice) {
-              // TITLE & PRESENTATION
-              const cvMinuteSection = await prisma.cvMinuteSection.create({
-                data: {
-                  name: s.name,
-                  content: s.withAdvice.content,
-                  cvMinuteId: cvMinute.id,
-                },
-              });
+            }),
+          );
+        }
 
-              await prisma.advice.create({
-                data: {
-                  type: 'cvMinuteSectionAdvice',
-                  content: s.withAdvice.advice,
-                  cvMinuteSectionId: cvMinuteSection.id,
-                },
-              });
+        await Promise.all(
+          allSections.map(async (s) => {
+            if (s.content && typeof s.content === 'string') {
+              // PROFILE & NAME & FIRSTNAME & TITLE & PRESENTATION
+              if (
+                s.name === 'profile' ||
+                s.name === 'name' ||
+                s.name === 'firstname'
+              ) {
+                await prisma.cvMinuteSection.create({
+                  data: {
+                    name: s.name,
+                    content: s.content,
+                    editable: false,
+                    cvMinuteId: cvMinute.id,
+                  },
+                });
+              } else if (s.name === 'title' || s.name === 'presentation') {
+                const cvMinuteSection = await prisma.cvMinuteSection.create({
+                  data: {
+                    name: s.name,
+                    content: s.content,
+                    editable: false,
+                    cvMinuteId: cvMinute.id,
+                  },
+                });
+
+                await prisma.advice.create({
+                  data: {
+                    type: 'cvMinuteSectionAdvice',
+                    content: s.advice ?? '',
+                    cvMinuteSectionId: cvMinuteSection.id,
+                  },
+                });
+              }
             } else {
               if (Array.isArray(s.content)) {
                 await Promise.all(
-                  s.content.map(async (item) => {
+                  s.content.map(async (item, index) => {
                     const cvMinuteSection = await prisma.cvMinuteSection.create(
                       {
                         data: {
@@ -319,6 +381,11 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
                           icon: item.icon,
                           iconSize: 16,
                           order: Number(item.order) ?? 1,
+                          restricted:
+                            s.name === 'experiences' &&
+                            index !== 1 &&
+                            premiumCards.length === 0 &&
+                            boosterCards.length === 0,
                           cvMinuteId: cvMinute.id,
                         },
                       },
@@ -380,18 +447,36 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
           },
         });
       }
+
+      if (cvMinuteCount > 0) {
+        totalTokens = inputTokens + outputTokens;
+
+        await updateCvMinutePayments({
+          totalTokens,
+          freeCard,
+          premiumCards,
+          boosterCards,
+        });
+      }
+
+      const cardIds = [
+        freeCard.id,
+        ...premiumCards.map((item) => item.id),
+        ...boosterCards.map((item) => item.id),
+      ];
+
+      const payments = await prisma.payment.findMany({
+        where: { id: { in: cardIds } },
+        include: { credit: true },
+      });
+
+      res.status(201).json({
+        cvMinuteId: cvMinute.id,
+        cvMinuteCount: cvMinuteCount + 1,
+        payments,
+      });
+      return;
     }
-
-    const cvMinuteCount = await prisma.cvMinute.count({
-      where: {
-        userId: user.id,
-        qualiCarriereRef: false,
-        generated: null,
-      },
-    });
-
-    res.status(201).json({ cvMinuteId: cvMinute.id, cvMinuteCount });
-    return;
   } catch (error) {
     if (error instanceof Error) {
       res.status(500).json({ error: error.message });

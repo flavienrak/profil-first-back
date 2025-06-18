@@ -1,6 +1,8 @@
 import prisma from '@/lib/db';
 
 import { Request, Response, NextFunction } from 'express';
+import { UserInterface } from '@/interfaces/user.interface';
+import { CvMinuteInterface } from '@/interfaces/role/candidat/cv-minute/cvMinute.interface';
 
 const checkCvMinuteOwner = async (
   req: Request,
@@ -8,7 +10,7 @@ const checkCvMinuteOwner = async (
   next: NextFunction,
 ) => {
   const { id } = req.params;
-  const { user } = res.locals;
+  const { user } = res.locals as { user: UserInterface };
 
   if (!id || isNaN(Number(id))) {
     res.json({ invalidId: true });
@@ -36,7 +38,7 @@ const checkCvMinuteSection = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const { cvMinute } = res.locals;
+  const { cvMinute } = res.locals as { cvMinute: CvMinuteInterface };
   const { cvMinuteSectionId } = req.params;
 
   if (isNaN(Number(cvMinuteSectionId))) {

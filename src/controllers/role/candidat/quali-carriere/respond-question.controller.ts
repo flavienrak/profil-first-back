@@ -15,6 +15,7 @@ import {
 } from '@/utils/functions';
 import { qualiCarriereNextQuestionPrompt } from '@/utils/prompts/quali-carriere.prompt';
 import { gpt3 } from '@/utils/openai';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const respondQualiCarriereQuestion = async (
   req: Request,
@@ -27,7 +28,7 @@ const respondQualiCarriereQuestion = async (
       return;
     }
 
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
     const { id } = req.params;
     const body: { cvMinuteSectionId: number; content?: string } = req.body;
 

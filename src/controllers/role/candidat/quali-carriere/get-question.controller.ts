@@ -17,6 +17,7 @@ import {
 import { QualiCarriereQuestionInteface } from '@/interfaces/role/candidat/quali-carriere/qualiCarriereQuestionInterface';
 import { CvMinuteInterface } from '@/interfaces/role/candidat/cv-minute/cvMinute.interface';
 import { gpt3, gpt4 } from '@/utils/openai';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const getQualiCarriereQuestion = async (
   req: Request,
@@ -30,7 +31,7 @@ const getQualiCarriereQuestion = async (
     }
 
     let qualiCarriereQuestion: QualiCarriereQuestionInteface | null = null;
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
 
     let cvMinute = await prisma.cvMinute.findFirst({
       where: { qualiCarriereRef: true, userId: user.id },

@@ -15,6 +15,10 @@ import {
   editableSectionEvaluationPrompt,
 } from '@/utils/prompts/cv-minute.prompt';
 import { gpt3 } from '@/utils/openai';
+import { CvMinuteInterface } from '@/interfaces/role/candidat/cv-minute/cvMinute.interface';
+import { PaymentInterface } from '@/interfaces/payment.interface';
+import { inputToken, outputToken } from '@/utils/payment/token';
+import { updateCvMinutePayments } from './updateCvMinutePayments';
 
 const updateCvMinuteSection = async (
   req: Request,
@@ -30,6 +34,19 @@ const updateCvMinuteSection = async (
     let cvMinuteSection: CvMinuteSectionInterface | null = null;
 
     const { id } = req.params;
+    const {
+      freeCard,
+      premiumCards,
+      boosterCards,
+
+      totalCredits,
+    } = res.locals as {
+      freeCard: PaymentInterface;
+      premiumCards: PaymentInterface[];
+      boosterCards: PaymentInterface[];
+
+      totalCredits: number;
+    };
     const body: {
       name?: string;
       order?: number;
@@ -134,6 +151,21 @@ const updateCvMinuteSection = async (
       res.status(200).json({ cvMinuteSection });
       return;
     } else if (body.newEditableSection && body.title && body.content) {
+      const systemPrompt = editableSectionEvaluationPrompt.trim();
+      const userPrompt = `
+        Section: ${body.title} ${body.content}\n
+        Offre: ${cvMinute.position}
+      `.trim();
+
+      let inputTokens = inputToken('gpt-3', systemPrompt + userPrompt);
+      let outputTokens = outputToken('gpt-3', systemPrompt + userPrompt);
+      let totalTokens = inputTokens + outputTokens;
+
+      if (totalCredits < totalTokens) {
+        res.json({ notAvailable: true });
+        return;
+      }
+
       await prisma.cvMinuteSection.updateMany({
         where: { cvMinuteId: cvMinute.id, editable: true },
         data: { order: { increment: 1 } },
@@ -149,19 +181,14 @@ const updateCvMinuteSection = async (
         },
       });
 
-      const details = `${cvMinuteSection.name} ${cvMinuteSection.content}`;
-
       const openaiResponse = await gpt3([
         {
           role: 'system',
-          content: editableSectionEvaluationPrompt.trim(),
+          content: systemPrompt,
         },
         {
           role: 'user',
-          content: `
-            Section:\n${details}\n
-            Offre:\n${cvMinute.position}
-          `.trim(),
+          content: userPrompt,
         },
       ]);
 
@@ -170,18 +197,24 @@ const updateCvMinuteSection = async (
         return;
       }
 
-      for (const r of openaiResponse.choices) {
+      const responseChoice = openaiResponse.choices[0];
+
+      if (responseChoice.message.content) {
+        outputTokens = outputToken('gpt-3', responseChoice.message.content);
+
         await prisma.openaiResponse.create({
           data: {
             responseId: openaiResponse.id,
             cvMinuteId: cvMinute.id,
             request: 'cvMinuteSectionAdvice',
-            response: r.message.content ?? '',
-            index: r.index,
+            response: responseChoice.message.content,
+            index: responseChoice.index,
           },
         });
 
-        const jsonData: { content: string } = extractJson(r.message.content);
+        const jsonData: { content: string } = extractJson(
+          responseChoice.message.content,
+        );
 
         if (!jsonData) {
           res.json({ parsingError: true });
@@ -202,7 +235,27 @@ const updateCvMinuteSection = async (
         include: { evaluation: true, advices: true },
       });
 
-      res.status(201).json({ cvMinuteSection });
+      totalTokens = inputTokens + outputTokens;
+
+      await updateCvMinutePayments({
+        totalTokens,
+        freeCard,
+        premiumCards,
+        boosterCards,
+      });
+
+      const cardIds = [
+        freeCard.id,
+        ...premiumCards.map((item) => item.id),
+        ...boosterCards.map((item) => item.id),
+      ];
+
+      const payments = await prisma.payment.findMany({
+        where: { id: { in: cardIds } },
+        include: { credit: true },
+      });
+
+      res.status(201).json({ cvMinuteSection, payments });
       return;
     } else if ((body.updateName || body.updateFirstname) && body.content) {
       cvMinuteSection = await prisma.cvMinuteSection.update({
@@ -282,6 +335,27 @@ const updateCvMinuteSection = async (
       body.date &&
       body.contrat
     ) {
+      const details = `
+      postTitle: ${body.title.trim()}, 
+      postDate: ${body.date.trim()}, 
+      postDescription: ${body.content.trim()}, 
+    `;
+
+      const systemPrompt = experienceEvaluationPrompt.trim();
+      const userPrompt = `
+      Expérience: ${details}\n
+      Offre: ${cvMinute.position}
+    `.trim();
+
+      let inputTokens = inputToken('gpt-3', systemPrompt + userPrompt);
+      let outputTokens = outputToken('gpt-3', systemPrompt + userPrompt);
+      let totalTokens = inputTokens + outputTokens;
+
+      if (totalCredits < totalTokens) {
+        res.json({ notAvailable: true, cvMinuteSection });
+        return;
+      }
+
       await prisma.cvMinuteSection.updateMany({
         where: { name: 'experiences', cvMinuteId: cvMinute.id },
         data: { order: { increment: 1 } },
@@ -300,23 +374,14 @@ const updateCvMinuteSection = async (
         },
       });
 
-      const details = `
-        postTitle: ${cvMinuteSection.title}, 
-        postDate: ${cvMinuteSection.date}, 
-        postDescription: ${cvMinuteSection.content}, 
-      `;
-
       const openaiResponse = await gpt3([
         {
           role: 'system',
-          content: experienceEvaluationPrompt.trim(),
+          content: systemPrompt,
         },
         {
           role: 'user',
-          content: `
-            Expérience:\n${details}\n
-            Offre:\n${cvMinute.position}
-          `.trim(),
+          content: userPrompt,
         },
       ]);
 
@@ -325,14 +390,18 @@ const updateCvMinuteSection = async (
         return;
       }
 
-      for (const r of openaiResponse.choices) {
+      const responseChoice = openaiResponse.choices[0];
+
+      if (responseChoice.message.content) {
+        outputTokens = outputToken('gpt-3', responseChoice.message.content);
+
         await prisma.openaiResponse.create({
           data: {
             responseId: openaiResponse.id,
             cvMinuteId: cvMinute.id,
             request: 'cvMinuteSectionEvaluation',
-            response: r.message.content ?? '',
-            index: r.index,
+            response: responseChoice.message.content,
+            index: responseChoice.index,
           },
         });
 
@@ -340,7 +409,7 @@ const updateCvMinuteSection = async (
           postScore: string;
           postHigh: string;
           postWeak: string;
-        } = extractJson(r.message.content);
+        } = extractJson(responseChoice.message.content);
 
         if (!jsonData) {
           res.json({ parsingError: true });
@@ -363,7 +432,27 @@ const updateCvMinuteSection = async (
         include: { evaluation: true, advices: true },
       });
 
-      res.status(200).json({ cvMinuteSection });
+      totalTokens = inputTokens + outputTokens;
+
+      await updateCvMinutePayments({
+        totalTokens,
+        freeCard,
+        premiumCards,
+        boosterCards,
+      });
+
+      const cardIds = [
+        freeCard.id,
+        ...premiumCards.map((item) => item.id),
+        ...boosterCards.map((item) => item.id),
+      ];
+
+      const payments = await prisma.payment.findMany({
+        where: { id: { in: cardIds } },
+        include: { credit: true },
+      });
+
+      res.status(200).json({ cvMinuteSection, payments });
       return;
     }
   } catch (error) {
@@ -382,6 +471,19 @@ const generateNewCvMinuteSections = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
+    const {
+      freeCard,
+      premiumCards,
+      boosterCards,
+
+      totalCredits,
+    } = res.locals as {
+      freeCard: PaymentInterface;
+      premiumCards: PaymentInterface[];
+      boosterCards: PaymentInterface[];
+
+      totalCredits: number;
+    };
 
     const cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
@@ -398,18 +500,21 @@ const generateNewCvMinuteSections = async (
 
     const advice = cvMinute.advices.find((a) => a.type === 'cvMinuteAdvice');
 
+    const systemPrompt = newCvMinuteSectionPrompt.trim();
+    const userPrompt = `
+      Sections existantes: ${cvMinute.cvMinuteSections.map((item) => item.name).join('\n')}\n
+      Conseils: ${advice?.content}\n
+      Offre ciblée: ${cvMinute.position}
+    `.trim();
+
     const openaiResponse = await gpt3([
       {
         role: 'system',
-        content: newCvMinuteSectionPrompt.trim(),
+        content: systemPrompt,
       },
       {
         role: 'user',
-        content: `
-          Sections existantes: ${cvMinute.cvMinuteSections.map((item) => item.name).join('\n')}\n
-          Conseils: ${advice?.content}\n
-          Offre ciblée: ${cvMinute.position}
-        `.trim(),
+        content: userPrompt,
       },
     ]);
 
@@ -418,18 +523,33 @@ const generateNewCvMinuteSections = async (
       return;
     }
 
-    for (const r of openaiResponse.choices) {
+    let inputTokens = inputToken('gpt-3', systemPrompt + userPrompt);
+    let outputTokens = outputToken('gpt-3', systemPrompt + userPrompt);
+    let totalTokens = inputTokens + outputTokens;
+
+    if (totalCredits < totalTokens) {
+      res.json({ notAvailable: true });
+      return;
+    }
+
+    const responseChoice = openaiResponse.choices[0];
+
+    if (responseChoice.message.content) {
+      outputTokens = outputToken('gpt-3', responseChoice.message.content);
+
       await prisma.openaiResponse.create({
         data: {
           responseId: openaiResponse.id,
           cvMinuteId: cvMinute.id,
           request: 'newCvMinuteSectionSuggestion',
-          response: r.message.content ?? '',
-          index: r.index,
+          response: responseChoice.message.content,
+          index: responseChoice.index,
         },
       });
 
-      const jsonData: { sections: string[] } = extractJson(r.message.content);
+      const jsonData: { sections: string[] } = extractJson(
+        responseChoice.message.content,
+      );
 
       if (!jsonData) {
         res.json({ parsingError: true });
@@ -457,7 +577,28 @@ const generateNewCvMinuteSections = async (
       where: { id: cvMinute.id },
       include: { advices: true },
     });
-    res.status(200).json({ cvMinute: updatedCvMinute });
+
+    totalTokens = inputTokens + outputTokens;
+
+    await updateCvMinutePayments({
+      totalTokens,
+      freeCard,
+      premiumCards,
+      boosterCards,
+    });
+
+    const cardIds = [
+      freeCard.id,
+      ...premiumCards.map((item) => item.id),
+      ...boosterCards.map((item) => item.id),
+    ];
+
+    const payments = await prisma.payment.findMany({
+      where: { id: { in: cardIds } },
+      include: { credit: true },
+    });
+
+    res.status(200).json({ cvMinute: updatedCvMinute, payments });
     return;
   } catch (error) {
     if (error instanceof Error) {
@@ -480,10 +621,19 @@ const generateCvMinuteSectionAdvices = async (
       return;
     }
 
-    let messageSystem = '';
-    let messageUser = '';
-    const { cvMinute } = res.locals;
+    let systemPrompt = '';
+    let userPrompt = '';
     const { cvMinuteSectionId } = req.params;
+    const { cvMinute, freeCard, premiumCards, boosterCards, totalCredits } =
+      res.locals as {
+        cvMinute: CvMinuteInterface;
+
+        freeCard: PaymentInterface;
+        premiumCards: PaymentInterface[];
+        boosterCards: PaymentInterface[];
+
+        totalCredits: number;
+      };
 
     let cvMinuteSection = await prisma.cvMinuteSection.findUnique({
       where: { id: Number(cvMinuteSectionId), cvMinuteId: cvMinute.id },
@@ -500,42 +650,51 @@ const generateCvMinuteSectionAdvices = async (
     )?.content;
 
     if (cvMinuteSection.name === 'title') {
-      messageSystem = cvMinuteTitleAdvicesPrompt.trim();
+      systemPrompt = cvMinuteTitleAdvicesPrompt.trim();
 
-      messageUser = `
+      userPrompt = `
         Titre actuel:
         ${cvMinuteSection.content}\n
         Conseils: ${advice}\n
         Offre ciblée: ${cvMinute.position}
-      `;
+      `.trim();
     } else if (cvMinuteSection.name === 'presentation') {
-      messageSystem = cvMinutePresentationAdvicesPrompt.trim();
+      systemPrompt = cvMinutePresentationAdvicesPrompt.trim();
 
-      messageUser = `
+      userPrompt = `
         Présentation actuelle: 
         ${cvMinuteSection.content}\n 
         Conseils:\n${advice} \n 
         Offre ciblée: ${cvMinute.position}
-      `;
+      `.trim();
     } else if (cvMinuteSection.name === 'experiences') {
-      messageSystem = cvMinuteExperienceAdvicesPrompt.trim();
+      systemPrompt = cvMinuteExperienceAdvicesPrompt.trim();
 
-      messageUser = `
+      userPrompt = `
         Titre du poste: ${cvMinuteSection.title}\n 
         Description actuelle: ${cvMinuteSection.content}\n 
         Conseils: ${advice}\n 
         Offre ciblée: ${cvMinute.position}
-      `;
+      `.trim();
+    }
+
+    let inputTokens = inputToken('gpt-3', systemPrompt + userPrompt);
+    let outputTokens = outputToken('gpt-3', systemPrompt + userPrompt);
+    let totalTokens = inputTokens + outputTokens;
+
+    if (totalCredits < totalTokens) {
+      res.json({ notAvailable: true });
+      return;
     }
 
     const openaiResponse = await gpt3([
       {
         role: 'system',
-        content: messageSystem.trim(),
+        content: systemPrompt,
       },
       {
         role: 'user',
-        content: messageUser.trim(),
+        content: userPrompt,
       },
     ]);
 
@@ -544,18 +703,24 @@ const generateCvMinuteSectionAdvices = async (
       return;
     }
 
-    for (const r of openaiResponse.choices) {
+    const responseChoice = openaiResponse.choices[0];
+
+    if (responseChoice.message.content) {
+      outputTokens = outputToken('gpt-3', responseChoice.message.content);
+
       await prisma.openaiResponse.create({
         data: {
           responseId: openaiResponse.id,
           cvMinuteId: cvMinute.id,
           request: 'cvMinuteSectionSuggestion',
-          response: r.message.content ?? '',
-          index: r.index,
+          response: responseChoice.message.content,
+          index: responseChoice.index,
         },
       });
 
-      const jsonData: { advices: string[] } = extractJson(r.message.content);
+      const jsonData: { advices: string[] } = extractJson(
+        responseChoice.message.content,
+      );
 
       if (!jsonData) {
         res.json({ parsingError: true });
@@ -584,7 +749,27 @@ const generateCvMinuteSectionAdvices = async (
       include: { advices: true, evaluation: true },
     });
 
-    res.status(200).json({ cvMinuteSection });
+    totalTokens = inputTokens + outputTokens;
+
+    await updateCvMinutePayments({
+      totalTokens,
+      freeCard,
+      premiumCards,
+      boosterCards,
+    });
+
+    const cardIds = [
+      freeCard.id,
+      ...premiumCards.map((item) => item.id),
+      ...boosterCards.map((item) => item.id),
+    ];
+
+    const payments = await prisma.payment.findMany({
+      where: { id: { in: cardIds } },
+      include: { credit: true },
+    });
+
+    res.status(200).json({ cvMinuteSection, payments });
     return;
   } catch (error) {
     if (error instanceof Error) {
@@ -603,6 +788,19 @@ const updateCvMinuteScore = async (
   try {
     let evaluation: EvaluationInterface | null = null;
     const { id } = req.params;
+    const {
+      freeCard,
+      premiumCards,
+      boosterCards,
+
+      totalCredits,
+    } = res.locals as {
+      freeCard: PaymentInterface;
+      premiumCards: PaymentInterface[];
+      boosterCards: PaymentInterface[];
+
+      totalCredits: number;
+    };
 
     const cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
@@ -650,17 +848,29 @@ const updateCvMinuteScore = async (
       sections: ${allEditableSections}
     `;
 
+    const systemPrompt = cvMinuteEvaluationPrompt.trim();
+    const userPrompt = `
+      Contenu du CV: ${cvDetails}\n 
+      Offre ciblée: ${cvMinute.position}
+    `.trim();
+
+    let inputTokens = inputToken('gpt-3', userPrompt + systemPrompt);
+    let outputTokens = outputToken('gpt-3', userPrompt + systemPrompt);
+    let totalTokens = inputTokens + outputTokens;
+
+    if (totalCredits < totalTokens) {
+      res.json({ notAvailable: true });
+      return;
+    }
+
     const openaiResponse = await gpt3([
       {
         role: 'system',
-        content: cvMinuteEvaluationPrompt.trim(),
+        content: systemPrompt,
       },
       {
         role: 'user',
-        content: `
-          Contenu du CV: ${cvDetails}\n 
-          Offre ciblée: ${cvMinute.position}
-        `.trim(),
+        content: userPrompt,
       },
     ]);
 
@@ -669,19 +879,23 @@ const updateCvMinuteScore = async (
       return;
     }
 
-    for (const r of openaiResponse.choices) {
+    const responseChoice = openaiResponse.choices[0];
+
+    if (responseChoice.message.content) {
+      outputTokens = outputToken('gpt-3', responseChoice.message.content);
+
       await prisma.openaiResponse.create({
         data: {
           responseId: openaiResponse.id,
           cvMinuteId: cvMinute.id,
           request: 'cvMinuteMatchingScore',
-          response: r.message.content ?? '',
-          index: r.index,
+          response: responseChoice.message.content ?? '',
+          index: responseChoice.index,
         },
       });
 
       const jsonData: { globalScore: string; recommendations: string } =
-        extractJson(r.message.content);
+        extractJson(responseChoice.message.content);
 
       if (!jsonData) {
         res.json({ parsingError: true });
@@ -708,7 +922,27 @@ const updateCvMinuteScore = async (
       }
     }
 
-    res.status(200).json({ evaluation });
+    totalTokens = inputTokens + outputTokens;
+
+    await updateCvMinutePayments({
+      totalTokens,
+      freeCard,
+      premiumCards,
+      boosterCards,
+    });
+
+    const cardIds = [
+      freeCard.id,
+      ...premiumCards.map((item) => item.id),
+      ...boosterCards.map((item) => item.id),
+    ];
+
+    const payments = await prisma.payment.findMany({
+      where: { id: { in: cardIds } },
+      include: { credit: true },
+    });
+
+    res.status(200).json({ evaluation, payments });
     return;
   } catch (error) {
     if (error instanceof Error) {
@@ -725,7 +959,23 @@ const updateCvMinuteSectionScore = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cvMinute } = res.locals;
+    const {
+      cvMinute,
+
+      freeCard,
+      premiumCards,
+      boosterCards,
+
+      totalCredits,
+    } = res.locals as {
+      cvMinute: CvMinuteInterface;
+
+      freeCard: PaymentInterface;
+      premiumCards: PaymentInterface[];
+      boosterCards: PaymentInterface[];
+
+      totalCredits: number;
+    };
     const { cvMinuteSectionId } = req.params;
 
     let cvMinuteSection = await prisma.cvMinuteSection.findUnique({
@@ -744,18 +994,30 @@ const updateCvMinuteSectionScore = async (
       description: ${cvMinuteSection.content}
     `;
 
+    const systemPrompt = experienceEvaluationPrompt.trim();
+    const userPrompt = `
+      Contenu de l'expérience: 
+      ${experience}\n 
+      Offre ciblée: ${cvMinute.position}
+    `.trim();
+
+    let inputTokens = inputToken('gpt-3', systemPrompt + userPrompt);
+    let outputTokens = outputToken('gpt-3', systemPrompt + userPrompt);
+    let totalTokens = inputTokens + outputTokens;
+
+    if (totalCredits < totalTokens) {
+      res.json({ notAvailable: true });
+      return;
+    }
+
     const openaiResponse = await gpt3([
       {
         role: 'system',
-        content: experienceEvaluationPrompt.trim(),
+        content: systemPrompt,
       },
       {
         role: 'user',
-        content: `
-          Contenu de l'expérience: 
-          ${experience}\n 
-          Offre ciblée: ${cvMinute.position}
-        `.trim(),
+        content: userPrompt,
       },
     ]);
 
@@ -764,14 +1026,16 @@ const updateCvMinuteSectionScore = async (
       return;
     }
 
-    for (const r of openaiResponse.choices) {
+    const responseChoice = openaiResponse.choices[0];
+
+    if (responseChoice.message.content) {
       await prisma.openaiResponse.create({
         data: {
           responseId: openaiResponse.id,
           cvMinuteId: cvMinute.id,
           request: 'cvMinuteSectionMatchingScore',
-          response: r.message.content ?? '',
-          index: r.index,
+          response: responseChoice.message.content ?? '',
+          index: responseChoice.index,
         },
       });
 
@@ -779,7 +1043,7 @@ const updateCvMinuteSectionScore = async (
         postScore: string;
         postHigh: string;
         postWeak: string;
-      } = extractJson(r.message.content);
+      } = extractJson(responseChoice.message.content);
 
       if (!jsonData) {
         res.json({ parsingError: true });
@@ -813,7 +1077,27 @@ const updateCvMinuteSectionScore = async (
       include: { evaluation: true, advices: true },
     });
 
-    res.status(200).json({ cvMinuteSection });
+    totalTokens = inputTokens + outputTokens;
+
+    await updateCvMinutePayments({
+      totalTokens,
+      freeCard,
+      premiumCards,
+      boosterCards,
+    });
+
+    const cardIds = [
+      freeCard.id,
+      ...premiumCards.map((item) => item.id),
+      ...boosterCards.map((item) => item.id),
+    ];
+
+    const payments = await prisma.payment.findMany({
+      where: { id: { in: cardIds } },
+      include: { credit: true },
+    });
+
+    res.status(200).json({ cvMinuteSection, payments });
     return;
   } catch (error) {
     if (error instanceof Error) {

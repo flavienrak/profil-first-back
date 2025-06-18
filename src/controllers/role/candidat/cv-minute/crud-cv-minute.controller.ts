@@ -6,6 +6,7 @@ import prisma from '@/lib/db';
 import { Request, Response } from 'express';
 import { formattedDate, imageMimeTypes } from '@/utils/constants';
 import { FileInterface } from '@/interfaces/file.interface';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const uniqueId = crypto.randomBytes(4).toString('hex');
 
@@ -53,7 +54,7 @@ const getCvMinute = async (req: Request, res: Response): Promise<void> => {
 
 const copyCvMinute = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
     const { id } = req.params;
 
     const cvMinute = await prisma.cvMinute.findUnique({
@@ -226,7 +227,7 @@ const deleteCvMinute = async (req: Request, res: Response): Promise<void> => {
 
 const getAllCvMinute = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
     const cvMinutes = await prisma.cvMinute.findMany({
       where: {
         userId: user.id,
@@ -323,7 +324,7 @@ const updateCvMinuteProfile = async (
 ): Promise<void> => {
   try {
     let file: FileInterface | null = null;
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
     const { id } = req.params;
     const body: { cvMinuteSectionId: string } = req.body;
 

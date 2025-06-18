@@ -8,6 +8,7 @@ import isEmpty from '@/utils/isEmpty';
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { imageMimeTypes } from '@/utils/constants';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const uniqueId = crypto.randomBytes(4).toString('hex');
 
@@ -19,7 +20,7 @@ const getUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
     let cvMinuteCount = 0;
 
     const userData = await prisma.user.findUnique({
@@ -36,7 +37,7 @@ const getUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (userData.role === 'user') {
+    if (userData.role === 'candidat') {
       cvMinuteCount = await prisma.cvMinute.count({
         where: {
           userId: userData.id,
@@ -71,7 +72,7 @@ const updateUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
 
     let fileName = '';
     const body: { name?: string; password?: string } = req.body;
@@ -153,7 +154,7 @@ const updateUserInfos = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
 
     const body: {
       acceptConditions?: boolean;

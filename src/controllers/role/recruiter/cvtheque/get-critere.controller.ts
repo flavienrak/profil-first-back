@@ -12,6 +12,7 @@ import { CvMinuteInterface } from '@/interfaces/role/candidat/cv-minute/cvMinute
 import { CompatibleUserInterface } from '@/interfaces/role/recruiter/cvtheque/compatibleUser.interface';
 import { CvThequeCritereInterface } from '@/interfaces/role/recruiter/cvtheque/cvthequeCritere.interface';
 import { gpt3 } from '@/utils/openai';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const getCvThequeCritere = async (
   req: Request,
@@ -19,7 +20,7 @@ const getCvThequeCritere = async (
 ): Promise<void> => {
   try {
     let cvThequeCritere: CvThequeCritereInterface | null = null;
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
     const { id } = req.params;
 
     cvThequeCritere = await prisma.cvThequeCritere.findUnique({

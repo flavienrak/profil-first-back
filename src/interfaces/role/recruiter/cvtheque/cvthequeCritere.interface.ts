@@ -14,6 +14,7 @@ export interface CvThequeCritereInterface {
   distance: number;
   evaluation: number;
   saved: boolean;
+  deleted: boolean;
   userId: number;
 
   cvThequeCompetences?: CvThequeCompetenceInterface[];

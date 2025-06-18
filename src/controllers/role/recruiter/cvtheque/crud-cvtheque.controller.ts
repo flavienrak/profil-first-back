@@ -1,3 +1,4 @@
+import { UserInterface } from '@/interfaces/user.interface';
 import prisma from '@/lib/db';
 
 import { Request, Response } from 'express';
@@ -70,7 +71,7 @@ const addCvThequeCritere = async (
       return;
     }
 
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
     const body: {
       position: string;
       domain: string;
@@ -131,7 +132,7 @@ const getCvThequeHistory = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
 
     const history = await prisma.cvThequeCritere.findMany({
       where: { userId: user.id },
@@ -193,7 +194,7 @@ const contactCvAnonym = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { user } = res.locals;
+    const { user } = res.locals as { user: UserInterface };
     const { cvAnonymId } = req.params;
     const body: {
       type: string;

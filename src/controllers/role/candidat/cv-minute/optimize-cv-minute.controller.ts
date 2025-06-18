@@ -5,10 +5,26 @@ import { htmlToText } from 'html-to-text';
 import { extractJson, formatTextWithStrong } from '@/utils/functions';
 import { optimizeCvMinutePrompt } from '@/utils/prompts/cv-minute.prompt';
 import { gpt4 } from '@/utils/openai';
+import { PaymentInterface } from '@/interfaces/payment.interface';
+import { inputToken, outputToken } from '@/utils/payment/token';
+import { updateCvMinutePayments } from './updateCvMinutePayments';
 
 const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const {
+      freeCard,
+      premiumCards,
+      boosterCards,
+
+      totalCredits,
+    } = res.locals as {
+      freeCard: PaymentInterface;
+      premiumCards: PaymentInterface[];
+      boosterCards: PaymentInterface[];
+
+      totalCredits: number;
+    };
 
     let cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
@@ -90,22 +106,34 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       })
       .join('\n');
 
+    const systemPrompt = optimizeCvMinutePrompt.trim();
+    const userPrompt = `
+      Contenu du CV:\n
+      Titre: ${existTitle}\n 
+      Présentation: ${existPresentation}\n 
+      Sections: ${existSections}\n 
+      Expériences: ${existExperiences}\n 
+      Nouvelles sections proposées: ${newSections}\n 
+      Offre ciblée: ${cvMinute.position}
+    `.trim();
+
+    let inputTokens = inputToken('gpt-4', systemPrompt + userPrompt);
+    let outputTokens = outputToken('gpt-4', systemPrompt + userPrompt);
+    let totalTokens = inputTokens + outputTokens;
+
+    if (totalCredits < totalTokens) {
+      res.json({ notAvailable: true });
+      return;
+    }
+
     const openaiResponse = await gpt4([
       {
         role: 'system',
-        content: optimizeCvMinutePrompt.trim(),
+        content: systemPrompt,
       },
       {
         role: 'user',
-        content: `
-          Contenu du CV:\n
-          Titre: ${existTitle}\n 
-          Présentation: ${existPresentation}\n 
-          Sections: ${existSections}\n 
-          Expériences: ${existExperiences}\n 
-          Nouvelles sections proposées: ${newSections}\n 
-          Offre ciblée: ${cvMinute.position}
-        `.trim(),
+        content: userPrompt,
       },
     ]);
 
@@ -114,14 +142,18 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    for (const r of openaiResponse.choices) {
+    const responseChoice = openaiResponse.choices[0];
+
+    if (responseChoice.message.content) {
+      outputTokens = outputToken('gpt-4', responseChoice.message.content);
+
       await prisma.openaiResponse.create({
         data: {
           responseId: openaiResponse.id,
           cvMinuteId: cvMinute.id,
           request: 'optimizeCvMiute',
-          response: r.message.content ?? '',
-          index: r.index,
+          response: responseChoice.message.content ?? '',
+          index: responseChoice.index,
         },
       });
 
@@ -152,7 +184,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
           globalScore: string;
           recommendations: string;
         };
-      } = extractJson(r.message.content);
+      } = extractJson(responseChoice.message.content);
 
       if (!jsonData) {
         res.json({ parsingError: true });
@@ -161,10 +193,6 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
 
       const allSections: {
         name: string;
-        title?: string;
-        editable?: boolean;
-        advice?: string;
-        adviceId?: string;
         sectionId?: string;
         content?:
           | string
@@ -176,24 +204,16 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
               postHigh: string;
               postWeak: string;
             }[];
-        withAdvice?: {
-          sectionId: string;
-          content: string;
-        };
       }[] = [
         {
           name: 'title',
-          withAdvice: {
-            sectionId: jsonData.cvTitle.sectionId,
-            content: jsonData.cvTitle.title,
-          },
+          sectionId: jsonData.cvTitle.sectionId,
+          content: jsonData.cvTitle.title,
         },
         {
           name: 'presentation',
-          withAdvice: {
-            sectionId: jsonData.profilePresentation.sectionId,
-            content: jsonData.profilePresentation.presentation,
-          },
+          sectionId: jsonData.profilePresentation.sectionId,
+          content: jsonData.profilePresentation.presentation,
         },
         {
           name: 'experiences',
@@ -215,17 +235,11 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
             }),
           ),
         },
-        ...jsonData.sections.map(
-          (section: {
-            sectionId: string;
-            sectionName: string;
-            sectionContent: string;
-          }) => ({
-            sectionId: section.sectionId,
-            name: section.sectionName.trim().toLocaleLowerCase(),
-            content: section.sectionContent.trim(),
-          }),
-        ),
+        ...jsonData.sections.map((section) => ({
+          sectionId: section.sectionId,
+          name: section.sectionName.trim().toLocaleLowerCase(),
+          content: section.sectionContent.trim(),
+        })),
       ];
 
       // CVMINUTE SECTIONS
@@ -288,11 +302,6 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
                     }
                   }),
                 );
-              } else if (s.withAdvice) {
-                await prisma.cvMinuteSection.update({
-                  where: { id: Number(s.withAdvice.sectionId) },
-                  data: { content: s.withAdvice.content },
-                });
               } else {
                 await prisma.cvMinuteSection.update({
                   where: { id: Number(s.sectionId) },
@@ -326,7 +335,27 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       },
     });
 
-    res.status(200).json({ cvMinute });
+    totalTokens = inputTokens + outputTokens;
+
+    await updateCvMinutePayments({
+      totalTokens,
+      freeCard,
+      premiumCards,
+      boosterCards,
+    });
+
+    const cardIds = [
+      freeCard.id,
+      ...premiumCards.map((item) => item.id),
+      ...boosterCards.map((item) => item.id),
+    ];
+
+    const payments = await prisma.payment.findMany({
+      where: { id: { in: cardIds } },
+      include: { credit: true },
+    });
+
+    res.status(200).json({ cvMinute, payments });
     return;
   } catch (error) {
     if (error instanceof Error) {

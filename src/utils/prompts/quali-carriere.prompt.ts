@@ -3,7 +3,7 @@ const qualiCarriereChatResponsePrompt = `
 
   Tu aides l'utilisateur à valoriser ses expériences professionnelles. 
 
-  Selon le résumé du candidat, l'historique de la discussion, répond au dernier message.
+  Selon le résumé du candidat, les récentes discussions, répond au dernier message.
 
   Contraintes :
   - Max 300 caractères.

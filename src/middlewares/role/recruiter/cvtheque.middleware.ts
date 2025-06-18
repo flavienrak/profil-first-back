@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
 
 import { Request, Response, NextFunction } from 'express';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const checkCvCritereOwner = async (
   req: Request,
@@ -8,7 +9,7 @@ const checkCvCritereOwner = async (
   next: NextFunction,
 ) => {
   const { id } = req.params;
-  const { user } = res.locals;
+  const { user } = res.locals as { user: UserInterface };
 
   if (!id || isNaN(Number(id))) {
     res.json({ invalidId: true });

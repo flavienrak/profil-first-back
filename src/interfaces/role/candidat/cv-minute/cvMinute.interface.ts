@@ -17,6 +17,7 @@ export interface CvMinuteInterface {
   qualiCarriereRef: boolean;
   generated: string | null;
   score: number | null;
+  deleted: boolean;
   userId: number;
   cvThequeCritereId: number | null;
 

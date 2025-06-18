@@ -15,6 +15,7 @@ import {
   updateQualiCarriereResumeValidation,
 } from '@/validations/role/candidat/quali-carriere.validation';
 import { upload } from '@/lib/multer';
+import { checkQualiCarriere } from '@/middlewares/role/candidat/candidat.middleware';
 
 const router = express.Router();
 
@@ -28,6 +29,7 @@ router.post('/status', changeQualiCarriereStatus);
 router.post(
   '/message',
   senndQualiCarriereMessageValidation,
+  checkQualiCarriere,
   sendQualiCarriereMessage,
 );
 
@@ -36,6 +38,7 @@ router.post(
   '/:id',
   upload.single('file'),
   respondQualiCarriereQuestionValidation,
+  checkQualiCarriere,
   respondQualiCarriereQuestion,
 );
 

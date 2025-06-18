@@ -16,7 +16,7 @@ model User {
   password      String
   role          String  @default("candidat")
   qualiCarriere String  @default("")
-  isDeleted     Boolean @default(false)
+  deleted       Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -45,6 +45,7 @@ model UserInfos {
   id               Int     @id @default(autoincrement())
   mode             String  @default("system")
   fontSize         Int     @default(16)
+  isVerified       Boolean @default(false)
   acceptFreeUse    Boolean @default(false)
   acceptConditions Boolean @default(false)
   userId           Int     @unique
@@ -61,7 +62,7 @@ model File {
   originalName      String
   extension         String
   usage             String
-  isDeleted         Boolean @default(false)
+  deleted           Boolean @default(false)
   userId            Int
   cvMinuteId        Int?
   cvMinuteSectionId Int?
@@ -86,7 +87,7 @@ model CvMinute {
   qualiCarriereRef  Boolean @default(false)
   generated         String?
   score             Int     @default(0)
-  isDeleted         Boolean @default(false)
+  deleted           Boolean @default(false)
   userId            Int
   cvThequeCritereId Int?
 
@@ -131,7 +132,8 @@ model CvMinuteSection {
   contrat    String?
   icon       String?
   iconSize   Int?
-  isDeleted  Boolean @default(false)
+  restricted Boolean @default(false)
+  deleted    Boolean @default(false)
   cvMinuteId Int
 
   createdAt DateTime @default(now())
@@ -278,7 +280,7 @@ model CvThequeCritere {
   experience   Int?
   evaluation   Int     @default(0)
   saved        Boolean @default(false)
-  isDeleted    Boolean @default(false)
+  deleted      Boolean @default(false)
   userId       Int
 
   createdAt DateTime @default(now())

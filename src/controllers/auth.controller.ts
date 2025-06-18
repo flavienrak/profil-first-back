@@ -7,12 +7,13 @@ import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { maxAgeAuthToken } from '@/utils/constants';
 import { getCredit } from '@/utils/payment/credit';
+import { UserInterface } from '@/interfaces/user.interface';
 
 const secretKey = process.env.JWT_SECRET_KEY;
 const authTokenName = process.env.AUTH_TOKEN_NAME;
 
 const requireAuth = (req: Request, res: Response): void => {
-  const { user } = res.locals;
+  const { user } = res.locals as { user: UserInterface };
 
   if (!user) {
     res.json({ notAuthenticated: true });
