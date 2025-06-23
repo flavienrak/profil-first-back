@@ -13,7 +13,7 @@ import { addCvMinutePrompt } from '@/utils/prompts/cv-minute.prompt';
 import { gpt4 } from '@/utils/openai';
 import { UserInterface } from '@/interfaces/user.interface';
 import { PaymentInterface } from '@/interfaces/payment.interface';
-import { inputToken, outputToken } from '@/utils/payment/token';
+import { gpt4Token } from '@/utils/payment/token';
 import { updateCvMinutePayments } from './updateCvMinutePayments';
 
 const uniqueId = crypto.randomBytes(4).toString('hex');
@@ -86,8 +86,8 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
       const normalized = textData.replace(/(\r?\n\s*){2,}/g, '\\n').trim();
 
       // TOKEN
-      let inputTokens = inputToken('gpt-4', normalized);
-      let outputTokens = outputToken('gpt-4', normalized);
+      let inputTokens = gpt4Token('input', normalized);
+      let outputTokens = gpt4Token('output', normalized);
       let totalTokens = inputTokens + outputTokens;
 
       if (cvMinuteCount > 0) {
@@ -146,12 +146,12 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
         return;
       }
 
-      inputTokens = inputToken('gpt-4', systemPrompt + userPrompt);
+      inputTokens = gpt4Token('input', systemPrompt + userPrompt);
 
       const responseChoice = openaiResponse.choices[0];
 
       if (responseChoice.message.content) {
-        outputTokens = outputToken('gpt-4', responseChoice.message.content);
+        outputTokens = gpt4Token('output', responseChoice.message.content);
 
         await prisma.openaiResponse.create({
           data: {

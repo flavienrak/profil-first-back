@@ -17,7 +17,7 @@ import {
 import { gpt3 } from '@/utils/openai';
 import { CvMinuteInterface } from '@/interfaces/role/candidat/cv-minute/cvMinute.interface';
 import { PaymentInterface } from '@/interfaces/payment.interface';
-import { inputToken, outputToken } from '@/utils/payment/token';
+import { gpt3Token } from '@/utils/payment/token';
 import { updateCvMinutePayments } from './updateCvMinutePayments';
 
 const updateCvMinuteSection = async (
@@ -157,8 +157,8 @@ const updateCvMinuteSection = async (
         Offre: ${cvMinute.position}
       `.trim();
 
-      let inputTokens = inputToken('gpt-3', systemPrompt + userPrompt);
-      let outputTokens = outputToken('gpt-3', systemPrompt + userPrompt);
+      let inputTokens = gpt3Token('input', systemPrompt + userPrompt);
+      let outputTokens = gpt3Token('output', systemPrompt + userPrompt);
       let totalTokens = inputTokens + outputTokens;
 
       if (totalCredits < totalTokens) {
@@ -200,7 +200,7 @@ const updateCvMinuteSection = async (
       const responseChoice = openaiResponse.choices[0];
 
       if (responseChoice.message.content) {
-        outputTokens = outputToken('gpt-3', responseChoice.message.content);
+        outputTokens = gpt3Token('output', responseChoice.message.content);
 
         await prisma.openaiResponse.create({
           data: {
@@ -347,8 +347,8 @@ const updateCvMinuteSection = async (
       Offre: ${cvMinute.position}
     `.trim();
 
-      let inputTokens = inputToken('gpt-3', systemPrompt + userPrompt);
-      let outputTokens = outputToken('gpt-3', systemPrompt + userPrompt);
+      let inputTokens = gpt3Token('input', systemPrompt + userPrompt);
+      let outputTokens = gpt3Token('output', systemPrompt + userPrompt);
       let totalTokens = inputTokens + outputTokens;
 
       if (totalCredits < totalTokens) {
@@ -393,7 +393,7 @@ const updateCvMinuteSection = async (
       const responseChoice = openaiResponse.choices[0];
 
       if (responseChoice.message.content) {
-        outputTokens = outputToken('gpt-3', responseChoice.message.content);
+        outputTokens = gpt3Token('output', responseChoice.message.content);
 
         await prisma.openaiResponse.create({
           data: {
@@ -523,8 +523,8 @@ const generateNewCvMinuteSections = async (
       return;
     }
 
-    let inputTokens = inputToken('gpt-3', systemPrompt + userPrompt);
-    let outputTokens = outputToken('gpt-3', systemPrompt + userPrompt);
+    let inputTokens = gpt3Token('input', systemPrompt + userPrompt);
+    let outputTokens = gpt3Token('output', systemPrompt + userPrompt);
     let totalTokens = inputTokens + outputTokens;
 
     if (totalCredits < totalTokens) {
@@ -535,7 +535,7 @@ const generateNewCvMinuteSections = async (
     const responseChoice = openaiResponse.choices[0];
 
     if (responseChoice.message.content) {
-      outputTokens = outputToken('gpt-3', responseChoice.message.content);
+      outputTokens = gpt3Token('output', responseChoice.message.content);
 
       await prisma.openaiResponse.create({
         data: {
@@ -678,8 +678,8 @@ const generateCvMinuteSectionAdvices = async (
       `.trim();
     }
 
-    let inputTokens = inputToken('gpt-3', systemPrompt + userPrompt);
-    let outputTokens = outputToken('gpt-3', systemPrompt + userPrompt);
+    let inputTokens = gpt3Token('input', systemPrompt + userPrompt);
+    let outputTokens = gpt3Token('output', systemPrompt + userPrompt);
     let totalTokens = inputTokens + outputTokens;
 
     if (totalCredits < totalTokens) {
@@ -706,7 +706,7 @@ const generateCvMinuteSectionAdvices = async (
     const responseChoice = openaiResponse.choices[0];
 
     if (responseChoice.message.content) {
-      outputTokens = outputToken('gpt-3', responseChoice.message.content);
+      outputTokens = gpt3Token('output', responseChoice.message.content);
 
       await prisma.openaiResponse.create({
         data: {
@@ -854,8 +854,8 @@ const updateCvMinuteScore = async (
       Offre ciblée: ${cvMinute.position}
     `.trim();
 
-    let inputTokens = inputToken('gpt-3', userPrompt + systemPrompt);
-    let outputTokens = outputToken('gpt-3', userPrompt + systemPrompt);
+    let inputTokens = gpt3Token('input', userPrompt + systemPrompt);
+    let outputTokens = gpt3Token('output', userPrompt + systemPrompt);
     let totalTokens = inputTokens + outputTokens;
 
     if (totalCredits < totalTokens) {
@@ -882,7 +882,7 @@ const updateCvMinuteScore = async (
     const responseChoice = openaiResponse.choices[0];
 
     if (responseChoice.message.content) {
-      outputTokens = outputToken('gpt-3', responseChoice.message.content);
+      outputTokens = gpt3Token('output', responseChoice.message.content);
 
       await prisma.openaiResponse.create({
         data: {
@@ -1001,8 +1001,8 @@ const updateCvMinuteSectionScore = async (
       Offre ciblée: ${cvMinute.position}
     `.trim();
 
-    let inputTokens = inputToken('gpt-3', systemPrompt + userPrompt);
-    let outputTokens = outputToken('gpt-3', systemPrompt + userPrompt);
+    let inputTokens = gpt3Token('input', systemPrompt + userPrompt);
+    let outputTokens = gpt3Token('output', systemPrompt + userPrompt);
     let totalTokens = inputTokens + outputTokens;
 
     if (totalCredits < totalTokens) {

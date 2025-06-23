@@ -18,8 +18,8 @@ socket_1.app.use('/api/auth', auth_routes_1.default);
 socket_1.app.use('/api/user', auth_middleware_1.isAuthenticated, user_routes_1.default);
 socket_1.app.use('/api/payment', auth_middleware_1.isAuthenticated, payment_routes_1.default);
 // CANDIDAT ROUTES
-socket_1.app.use('/api/role/candidat/cv-minute', auth_middleware_1.isAuthenticated, candidat_middleware_1.checkUserRole, cv_minute_routes_1.default);
-socket_1.app.use('/api/role/candidat/quali-carriere', auth_middleware_1.isAuthenticated, candidat_middleware_1.checkUserRole, quali_quarriere_routes_1.default);
+socket_1.app.use('/api/role/candidat/cv-minute', auth_middleware_1.isAuthenticated, candidat_middleware_1.checkUserRole, candidat_middleware_1.getCvMinuteCards, cv_minute_routes_1.default);
+socket_1.app.use('/api/role/candidat/quali-carriere', auth_middleware_1.isAuthenticated, candidat_middleware_1.checkUserRole, candidat_middleware_1.checkQualiCarriere, quali_quarriere_routes_1.default);
 // RECRUITER ROLE ROUTES
 socket_1.app.use('/api/role/recruiter/cvtheque', auth_middleware_1.isAuthenticated, recruiter_middleware_1.checkIsRecruiter, cvtheque_routes_1.default);
 socket_1.app.use('/api/role/recruiter/cross-sourcing', auth_middleware_1.isAuthenticated, recruiter_middleware_1.checkIsRecruiter, cross_sourcing_routes_1.default);

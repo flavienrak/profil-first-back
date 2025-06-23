@@ -1,15 +1,19 @@
-const inputToken = (model: 'gpt-4' | 'gpt-3', value: string) => {
-  if (model === 'gpt-3') {
-    return (4 / 6.67) * value.length;
-  }
-  return (2 / 6.67) * value.length;
+import { encoding_for_model } from '@dqbd/tiktoken';
+
+const gpt3Token = (type: 'input' | 'output', value: string): number => {
+  const encoder = encoding_for_model('gpt-3.5-turbo');
+  const tokens = encoder.encode(value);
+  encoder.free();
+
+  return tokens.length * 6.67 * (type === 'input' ? 1 : 2);
 };
 
-const outputToken = (model: 'gpt-4' | 'gpt-3', value: string) => {
-  if (model === 'gpt-3') {
-    return (2 / 6.67) * value.length;
-  }
-  return (1 / 6.67) * value.length;
+const gpt4Token = (type: 'input' | 'output', value: string): number => {
+  const encoder = encoding_for_model('gpt-4-turbo-preview');
+  const tokens = encoder.encode(value);
+  encoder.free();
+
+  return tokens.length * 6.67 * (type === 'input' ? 2 : 3);
 };
 
-export { inputToken, outputToken };
+export { gpt3Token, gpt4Token };

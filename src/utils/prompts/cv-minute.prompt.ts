@@ -108,7 +108,7 @@ const optimizeCvMinutePrompt = `
     experiences: [
       {
         sectionId: (identique à l’entrée),
-        postDescription: string, // Format: "• MotClé : détail1, détail2, détail3, ...]\\n". Mettre un maximum de contenu (min 5).
+        postDescription: string, // Format: "• MotClé : détail1, détail2, détail3, ...]\\n". Mettre 5 contenus pour les 3 dernières expériences et 4 pour les reste.
         postOrder: string, // "1" = plus récent
         postScore: string, // Compatibilité de l'expérience par rapport à l'offre
         postHigh: string, // Points forts

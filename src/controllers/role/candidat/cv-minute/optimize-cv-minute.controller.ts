@@ -6,7 +6,7 @@ import { extractJson, formatTextWithStrong } from '@/utils/functions';
 import { optimizeCvMinutePrompt } from '@/utils/prompts/cv-minute.prompt';
 import { gpt4 } from '@/utils/openai';
 import { PaymentInterface } from '@/interfaces/payment.interface';
-import { inputToken, outputToken } from '@/utils/payment/token';
+import { gpt4Token } from '@/utils/payment/token';
 import { updateCvMinutePayments } from './updateCvMinutePayments';
 
 const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
@@ -117,8 +117,8 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
       Offre ciblée: ${cvMinute.position}
     `.trim();
 
-    let inputTokens = inputToken('gpt-4', systemPrompt + userPrompt);
-    let outputTokens = outputToken('gpt-4', systemPrompt + userPrompt);
+    let inputTokens = gpt4Token('input', systemPrompt + userPrompt);
+    let outputTokens = gpt4Token('output', systemPrompt + userPrompt);
     let totalTokens = inputTokens + outputTokens;
 
     if (totalCredits < totalTokens) {
@@ -145,7 +145,7 @@ const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
     const responseChoice = openaiResponse.choices[0];
 
     if (responseChoice.message.content) {
-      outputTokens = outputToken('gpt-4', responseChoice.message.content);
+      outputTokens = gpt4Token('output', responseChoice.message.content);
 
       await prisma.openaiResponse.create({
         data: {
