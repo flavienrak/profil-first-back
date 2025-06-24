@@ -5,7 +5,7 @@ const gpt3Token = (type: 'input' | 'output', value: string): number => {
   const tokens = encoder.encode(value);
   encoder.free();
 
-  return tokens.length * 6.67 * (type === 'input' ? 1 : 2);
+  return tokens.length * 6.67 * (type === 'input' ? 0.25 : 0.5);
 };
 
 const gpt4Token = (type: 'input' | 'output', value: string): number => {
@@ -13,7 +13,7 @@ const gpt4Token = (type: 'input' | 'output', value: string): number => {
   const tokens = encoder.encode(value);
   encoder.free();
 
-  return tokens.length * 6.67 * (type === 'input' ? 2 : 3);
+  return tokens.length * 6.67 * (type === 'input' ? 0.5 : 1);
 };
 
 export { gpt3Token, gpt4Token };
