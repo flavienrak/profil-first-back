@@ -43,7 +43,10 @@ const login = async (req: Request, res: Response): Promise<void> => {
       let user = await prisma.user.findUnique({
         where: { email: body.email.toLowerCase() },
       });
-      if (!user || (user && user.role !== body.role)) {
+      if (
+        !user
+        // || (user && user.role !== body.role)
+      ) {
         res.json({ userNotFound: true });
         return;
       }
