@@ -10,16 +10,15 @@ datasource db {
 }
 
 model User {
-  id            Int     @id @default(autoincrement())
+  id            Int    @id @default(autoincrement())
   name          String
-  email         String  @unique
+  email         String @unique
   password      String
-  role          String  @default("candidat")
-  qualiCarriere String  @default("")
-  deleted       Boolean @default(false)
+  role          String @default("candidat")
+  qualiCarriere String @default("")
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   userInfos                UserInfos?
   files                    File[]
@@ -45,13 +44,15 @@ model UserInfos {
   id               Int     @id @default(autoincrement())
   mode             String  @default("system")
   fontSize         Int     @default(16)
-  isVerified       Boolean @default(false)
+  verified         Boolean @default(false)
+  blocked          Boolean @default(false)
   acceptFreeUse    Boolean @default(false)
   acceptConditions Boolean @default(false)
+  deleted          Boolean @default(false)
   userId           Int     @unique
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -68,7 +69,7 @@ model File {
   cvMinuteSectionId Int?
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
@@ -92,7 +93,7 @@ model CvMinute {
   cvThequeCritereId Int?
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   files            File[]
   advices          Advice[]
@@ -114,7 +115,7 @@ model CvMinuteDomain {
   userId     Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvMinute CvMinute @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
@@ -137,7 +138,7 @@ model CvMinuteSection {
   cvMinuteId Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   files                    File[]
   advices                  Advice[]
@@ -159,7 +160,7 @@ model Advice {
   cvMinuteSectionId Int?
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
   cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
@@ -175,7 +176,7 @@ model Evaluation {
   cvMinuteSectionId Int?    @unique
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
   cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
@@ -193,7 +194,7 @@ model OpenaiResponse {
   cvMinuteSectionId Int?
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
   user            User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -209,7 +210,7 @@ model QualiCarriereQuestion {
   cvMinuteSectionId Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvMinuteSection       CvMinuteSection?       @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
@@ -224,7 +225,7 @@ model QualiCarriereResponse {
   cvMinuteSectionId Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   qualiCarriereQuestion QualiCarriereQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -238,7 +239,7 @@ model QualiCarriereResume {
   cvMinuteSectionId Int    @unique
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
@@ -251,7 +252,7 @@ model QualiCarriereCompetence {
   cvMinuteSectionId Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
@@ -264,7 +265,7 @@ model QualiCarriereChat {
   userId  Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -284,7 +285,7 @@ model CvThequeCritere {
   userId       Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -301,7 +302,7 @@ model CvThequeCompetence {
   cvThequeCritereId Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   cvThequeCritere CvThequeCritere @relation(fields: [cvThequeCritereId], references: [id], onDelete: Cascade)
 }
@@ -313,7 +314,7 @@ model CvThequeView {
   cvThequeCritereId Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   cvMinute        CvMinute        @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
   cvThequeCritere CvThequeCritere @relation(fields: [cvThequeCritereId], references: [id], onDelete: Cascade)
@@ -326,7 +327,7 @@ model CvThequeUser {
   cvThequeCritereId Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvThequeCritere CvThequeCritere @relation(fields: [cvThequeCritereId], references: [id], onDelete: Cascade)
@@ -347,7 +348,7 @@ model CvThequeContact {
   cvMinuteId  Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user      User     @relation(name: "UserCvThequeContact", fields: [userId], references: [id], onDelete: Cascade)
   recruiter User     @relation(name: "RecruiterCvThequeContact", fields: [recruiterId], references: [id], onDelete: Cascade)
@@ -365,7 +366,7 @@ model CvThequeContactView {
   cvThequeContactId Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvThequeContact CvThequeContact @relation(fields: [cvThequeContactId], references: [id], onDelete: Cascade)
@@ -383,7 +384,7 @@ model Payment {
   userId    Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   credit Credit?
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -396,7 +397,7 @@ model Credit {
   userId    Int
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
