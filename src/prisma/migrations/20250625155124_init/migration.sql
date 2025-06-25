@@ -6,9 +6,8 @@ CREATE TABLE "User" (
     "password" TEXT NOT NULL,
     "role" TEXT NOT NULL DEFAULT 'candidat',
     "qualiCarriere" TEXT NOT NULL DEFAULT '',
-    "deleted" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -18,12 +17,14 @@ CREATE TABLE "UserInfos" (
     "id" SERIAL NOT NULL,
     "mode" TEXT NOT NULL DEFAULT 'system',
     "fontSize" INTEGER NOT NULL DEFAULT 16,
-    "isVerified" BOOLEAN NOT NULL DEFAULT false,
+    "verified" BOOLEAN NOT NULL DEFAULT false,
+    "blocked" BOOLEAN NOT NULL DEFAULT false,
     "acceptFreeUse" BOOLEAN NOT NULL DEFAULT false,
     "acceptConditions" BOOLEAN NOT NULL DEFAULT false,
+    "deleted" BOOLEAN NOT NULL DEFAULT false,
     "userId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "UserInfos_pkey" PRIMARY KEY ("id")
 );
@@ -40,7 +41,7 @@ CREATE TABLE "File" (
     "cvMinuteId" INTEGER,
     "cvMinuteSectionId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "File_pkey" PRIMARY KEY ("id")
 );
@@ -62,7 +63,7 @@ CREATE TABLE "CvMinute" (
     "userId" INTEGER NOT NULL,
     "cvThequeCritereId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CvMinute_pkey" PRIMARY KEY ("id")
 );
@@ -74,7 +75,7 @@ CREATE TABLE "CvMinuteDomain" (
     "cvMinuteId" INTEGER NOT NULL,
     "userId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CvMinuteDomain_pkey" PRIMARY KEY ("id")
 );
@@ -96,7 +97,7 @@ CREATE TABLE "CvMinuteSection" (
     "deleted" BOOLEAN NOT NULL DEFAULT false,
     "cvMinuteId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CvMinuteSection_pkey" PRIMARY KEY ("id")
 );
@@ -109,7 +110,7 @@ CREATE TABLE "Advice" (
     "cvMinuteId" INTEGER,
     "cvMinuteSectionId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Advice_pkey" PRIMARY KEY ("id")
 );
@@ -124,7 +125,7 @@ CREATE TABLE "Evaluation" (
     "cvMinuteId" INTEGER,
     "cvMinuteSectionId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Evaluation_pkey" PRIMARY KEY ("id")
 );
@@ -141,7 +142,7 @@ CREATE TABLE "OpenaiResponse" (
     "cvThequeCritereId" INTEGER,
     "cvMinuteSectionId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "OpenaiResponse_pkey" PRIMARY KEY ("id")
 );
@@ -154,7 +155,7 @@ CREATE TABLE "QualiCarriereQuestion" (
     "userId" INTEGER NOT NULL,
     "cvMinuteSectionId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "QualiCarriereQuestion_pkey" PRIMARY KEY ("id")
 );
@@ -167,7 +168,7 @@ CREATE TABLE "QualiCarriereResponse" (
     "userId" INTEGER NOT NULL,
     "cvMinuteSectionId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "QualiCarriereResponse_pkey" PRIMARY KEY ("id")
 );
@@ -179,7 +180,7 @@ CREATE TABLE "QualiCarriereResume" (
     "userId" INTEGER NOT NULL,
     "cvMinuteSectionId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "QualiCarriereResume_pkey" PRIMARY KEY ("id")
 );
@@ -191,7 +192,7 @@ CREATE TABLE "QualiCarriereCompetence" (
     "userId" INTEGER NOT NULL,
     "cvMinuteSectionId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "QualiCarriereCompetence_pkey" PRIMARY KEY ("id")
 );
@@ -203,7 +204,7 @@ CREATE TABLE "QualiCarriereChat" (
     "content" TEXT NOT NULL,
     "userId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "QualiCarriereChat_pkey" PRIMARY KEY ("id")
 );
@@ -223,7 +224,7 @@ CREATE TABLE "CvThequeCritere" (
     "deleted" BOOLEAN NOT NULL DEFAULT false,
     "userId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CvThequeCritere_pkey" PRIMARY KEY ("id")
 );
@@ -234,7 +235,7 @@ CREATE TABLE "CvThequeCompetence" (
     "content" TEXT NOT NULL,
     "cvThequeCritereId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CvThequeCompetence_pkey" PRIMARY KEY ("id")
 );
@@ -246,7 +247,7 @@ CREATE TABLE "CvThequeView" (
     "cvMinuteId" INTEGER NOT NULL,
     "cvThequeCritereId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CvThequeView_pkey" PRIMARY KEY ("id")
 );
@@ -258,7 +259,7 @@ CREATE TABLE "CvThequeUser" (
     "userId" INTEGER NOT NULL,
     "cvThequeCritereId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CvThequeUser_pkey" PRIMARY KEY ("id")
 );
@@ -276,7 +277,7 @@ CREATE TABLE "CvThequeContact" (
     "recruiterId" INTEGER NOT NULL,
     "cvMinuteId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CvThequeContact_pkey" PRIMARY KEY ("id")
 );
@@ -288,7 +289,7 @@ CREATE TABLE "CvThequeContactView" (
     "userId" INTEGER NOT NULL,
     "cvThequeContactId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CvThequeContactView_pkey" PRIMARY KEY ("id")
 );
@@ -305,7 +306,7 @@ CREATE TABLE "Payment" (
     "expiredAt" TIMESTAMP(3),
     "userId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
 );
@@ -317,7 +318,7 @@ CREATE TABLE "Credit" (
     "paymentId" INTEGER NOT NULL,
     "userId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Credit_pkey" PRIMARY KEY ("id")
 );
