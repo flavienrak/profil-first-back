@@ -2,9 +2,11 @@ export interface UserInfosInterface {
   id: number;
   mode: string;
   fontSize: number;
-  isVerified: boolean;
+  verified: boolean;
+  blocked: boolean;
   acceptFreeUse: boolean;
   acceptConditions: boolean;
+  deleted: boolean;
   userId: number;
 
   createdAt: Date;

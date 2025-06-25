@@ -14,7 +14,6 @@ export interface UserInterface {
   role: string;
   password: string;
   qualiCarriere: string;
-  deleted: boolean;
 
   userInfos?: UserInfosInterface;
   files?: FileInterface[];
