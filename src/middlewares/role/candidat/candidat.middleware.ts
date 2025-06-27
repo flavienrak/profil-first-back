@@ -34,8 +34,9 @@ const getCvMinuteCards = async (
   const { user } = res.locals as { user: UserInterface };
 
   const payments = await prisma.payment.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, type: { in: ['free', 'premium', 'booster'] } },
     include: { credit: true },
+    orderBy: { updatedAt: 'desc' },
   });
 
   const freeCard = payments.find((item) => item.type === 'free');
@@ -76,6 +77,7 @@ const checkQualiCarriere = async (
   const payments = await prisma.payment.findMany({
     where: { userId: user.id, type: 'quali-carriere' },
     include: { credit: true },
+    orderBy: { updatedAt: 'desc' },
   });
 
   const activeQualiCarriere = payments.find(

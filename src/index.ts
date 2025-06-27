@@ -52,8 +52,9 @@ app.use(
 );
 
 const port = process.env.BACKEND_PORT;
-if (!port) {
-  logger.error('ENV NOT FOUND');
-} else {
-  server.listen(port, () => logger.info(`App runing at: ${port}`));
-}
+
+server.listen(port, () => logger.info(`App runing at: ${port}`));
+
+process.on('SIGTERM', () => {
+  server.close(() => logger.info('Server closed'));
+});
