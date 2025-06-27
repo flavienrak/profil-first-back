@@ -4,7 +4,7 @@ import { Request, Response } from 'express';
 import { domains } from '@/utils/constants';
 import { UserInterface } from '@/interfaces/user.interface';
 
-const getUsers = async (req: Request, res: Response): Promise<void> => {
+const getUsers = async (req: Request, res: Response) => {
   try {
     const { domainId } = req.params;
 
@@ -43,7 +43,7 @@ const getUsers = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const getUserCvMinutes = async (req: Request, res: Response): Promise<void> => {
+const getUserCvMinutes = async (req: Request, res: Response) => {
   try {
     const { crossSourcingUser } = res.locals as {
       crossSourcingUser: UserInterface;
@@ -69,7 +69,7 @@ const getUserCvMinutes = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const getUserCvMinute = async (req: Request, res: Response): Promise<void> => {
+const getUserCvMinute = async (req: Request, res: Response) => {
   try {
     const { cvMinuteId } = req.params;
 

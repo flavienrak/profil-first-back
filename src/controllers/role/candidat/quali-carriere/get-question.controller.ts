@@ -19,10 +19,7 @@ import { CvMinuteInterface } from '@/interfaces/role/candidat/cv-minute/cvMinute
 import { gpt3, gpt4 } from '@/utils/openai';
 import { UserInterface } from '@/interfaces/user.interface';
 
-const getQualiCarriereQuestion = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const getQualiCarriereQuestion = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

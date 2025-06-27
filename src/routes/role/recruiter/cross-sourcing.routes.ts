@@ -1,5 +1,4 @@
-import express from 'express';
-
+import { Router } from 'express';
 import {
   getUserCvMinute,
   getUserCvMinutes,
@@ -12,7 +11,7 @@ import {
 } from '@/validations/role/recruiter/cross-sourcing.validation';
 import { checkCrossSourcingUser } from '@/middlewares/role/recruiter/cross-sourcing.middleware';
 
-const router = express.Router();
+const router = Router();
 
 router.get('/:domainId', getUsersValidation, getUsers);
 

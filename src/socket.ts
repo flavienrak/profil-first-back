@@ -12,11 +12,10 @@ import Stripe from 'stripe';
 import OpenAI from 'openai';
 
 import { Server, Socket } from 'socket.io';
+import { frontendUri, openaiApiKey, stripeSecretKey } from '@/utils/env';
 
 dotenv.config();
 const app = express();
-
-const frontendUri = process.env.FRONTEND_URI || '';
 
 app.use(
   cors({
@@ -52,11 +51,9 @@ app.use(
   }),
 );
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: openaiApiKey });
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+const stripe = new Stripe(stripeSecretKey);
 
 const server = http.createServer(app);
 const io = new Server(server, {

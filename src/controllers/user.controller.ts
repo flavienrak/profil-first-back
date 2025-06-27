@@ -12,7 +12,7 @@ import { UserInterface } from '@/interfaces/user.interface';
 
 const uniqueId = crypto.randomBytes(4).toString('hex');
 
-const getUser = async (req: Request, res: Response): Promise<void> => {
+const getUser = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -64,7 +64,7 @@ const getUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const updateUser = async (req: Request, res: Response): Promise<void> => {
+const updateUser = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -75,7 +75,8 @@ const updateUser = async (req: Request, res: Response): Promise<void> => {
     const { user } = res.locals as { user: UserInterface };
 
     let fileName = '';
-    const body: { name?: string; password?: string } = req.body;
+    const body = req.body as { name?: string; password?: string };
+
     const infos: { name?: string; password?: string } = {};
 
     if (body.name) {
@@ -146,7 +147,7 @@ const updateUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const updateUserInfos = async (req: Request, res: Response): Promise<void> => {
+const updateUserInfos = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -155,13 +156,12 @@ const updateUserInfos = async (req: Request, res: Response): Promise<void> => {
     }
 
     const { user } = res.locals as { user: UserInterface };
-
-    const body: {
+    const body = req.body as {
       acceptConditions?: boolean;
       acceptFreeUse?: boolean;
       mode?: string;
       fontSize?: number;
-    } = req.body;
+    };
 
     const infos: {
       acceptConditions?: boolean;

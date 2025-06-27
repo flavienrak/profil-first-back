@@ -4,10 +4,7 @@ import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { UserInterface } from '@/interfaces/user.interface';
 
-const changeQualiCarriereStatus = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const changeQualiCarriereStatus = async (req: Request, res: Response) => {
   try {
     let updatedUser: UserInterface | null = null;
     const { user } = res.locals as { user: UserInterface };
@@ -38,10 +35,7 @@ const changeQualiCarriereStatus = async (
   }
 };
 
-const editQualiCarriereResume = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const editQualiCarriereResume = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -50,7 +44,7 @@ const editQualiCarriereResume = async (
     }
 
     const { id } = req.params;
-    const body: { content: string } = req.body;
+    const body = req.body as { content: string };
 
     const qualiCarrirereResume = await prisma.qualiCarriereResume.update({
       where: { id: Number(id) },
@@ -69,10 +63,7 @@ const editQualiCarriereResume = async (
   }
 };
 
-const editQualiCarriereCompetence = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const editQualiCarriereCompetence = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -80,7 +71,7 @@ const editQualiCarriereCompetence = async (
       return;
     }
 
-    const body: { competences: { id: number; content: string }[] } = req.body;
+    const body = req.body as { competences: { id: number; content: string }[] };
 
     const qualiCarriereCompetences = await Promise.all(
       body.competences.map((c) =>

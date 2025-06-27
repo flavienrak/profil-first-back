@@ -1,5 +1,4 @@
-import express from 'express';
-
+import { Router } from 'express';
 import { respondQualiCarriereQuestion } from '@/controllers/role/candidat/quali-carriere/respond-question.controller';
 import { getQualiCarriereQuestion } from '@/controllers/role/candidat/quali-carriere/get-question.controller';
 import {
@@ -17,7 +16,7 @@ import {
 import { upload } from '@/lib/multer';
 import { checkQualiCarriere } from '@/middlewares/role/candidat/candidat.middleware';
 
-const router = express.Router();
+const router = Router();
 
 // GET QUESTION
 router.get('/', getQualiCarriereQuestion);

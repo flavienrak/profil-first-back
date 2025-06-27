@@ -1,5 +1,7 @@
-const currency = 'eur';
-const maxAgeAuthToken = 31536000000;
+const maxAgeAuthToken = 365 * 24 * 60 * 60 * 1000;
+const authTokenType = 'authToken';
+const mailValidationType = 'mailValidation';
+const resetPasswordTokenType = 'resetPassword';
 
 const imageMimeTypes = [
   'image/jpeg',
@@ -73,8 +75,10 @@ const domains = [
 ];
 
 export {
-  currency,
   maxAgeAuthToken,
+  authTokenType,
+  mailValidationType,
+  resetPasswordTokenType,
   imageMimeTypes,
   maxCvThequeUserResult,
   formattedDate,

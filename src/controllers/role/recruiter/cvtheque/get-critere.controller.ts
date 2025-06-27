@@ -14,10 +14,7 @@ import { CvThequeCritereInterface } from '@/interfaces/role/recruiter/cvtheque/c
 import { gpt3 } from '@/utils/openai';
 import { UserInterface } from '@/interfaces/user.interface';
 
-const getCvThequeCritere = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const getCvThequeCritere = async (req: Request, res: Response) => {
   try {
     let cvThequeCritere: CvThequeCritereInterface | null = null;
     const { user } = res.locals as { user: UserInterface };

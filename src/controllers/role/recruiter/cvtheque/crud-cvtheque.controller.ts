@@ -4,7 +4,7 @@ import prisma from '@/lib/db';
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 
-const getCvAnonym = async (req: Request, res: Response): Promise<void> => {
+const getCvAnonym = async (req: Request, res: Response) => {
   try {
     const { id, cvAnonymId } = req.params;
 
@@ -60,10 +60,7 @@ const getCvAnonym = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const addCvThequeCritere = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const addCvThequeCritere = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -72,7 +69,7 @@ const addCvThequeCritere = async (
     }
 
     const { user } = res.locals as { user: UserInterface };
-    const body: {
+    const body = req.body as {
       position: string;
       domain: string;
       description?: string;
@@ -81,7 +78,7 @@ const addCvThequeCritere = async (
       diplome?: string;
       localisation?: string;
       distance?: number;
-    } = req.body;
+    };
 
     const clean = (val?: string) => val?.trim() || undefined;
 
@@ -127,10 +124,7 @@ const addCvThequeCritere = async (
   }
 };
 
-const getCvThequeHistory = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const getCvThequeHistory = async (req: Request, res: Response) => {
   try {
     const { user } = res.locals as { user: UserInterface };
 
@@ -156,10 +150,7 @@ const getCvThequeHistory = async (
   }
 };
 
-const saveCvThequeCritere = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const saveCvThequeCritere = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -186,7 +177,7 @@ const saveCvThequeCritere = async (
   }
 };
 
-const contactCvAnonym = async (req: Request, res: Response): Promise<void> => {
+const contactCvAnonym = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -196,13 +187,13 @@ const contactCvAnonym = async (req: Request, res: Response): Promise<void> => {
 
     const { user } = res.locals as { user: UserInterface };
     const { cvAnonymId } = req.params;
-    const body: {
+    const body = req.body as {
       type: string;
       date: string;
       hour: number;
       minute: number;
       message: string;
-    } = req.body;
+    };
 
     const cvAnonym = await prisma.cvMinute.findUnique({
       where: { id: Number(cvAnonymId) },

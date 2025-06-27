@@ -13,10 +13,7 @@ import { CvMinuteInterface } from '@/interfaces/role/candidat/cv-minute/cvMinute
 import { CompatibleUserInterface } from '@/interfaces/role/recruiter/cvtheque/compatibleUser.interface';
 import { gpt3 } from '@/utils/openai';
 
-const resendCvThequeCritere = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const resendCvThequeCritere = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

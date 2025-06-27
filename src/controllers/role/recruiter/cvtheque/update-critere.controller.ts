@@ -13,10 +13,7 @@ import { CvMinuteInterface } from '@/interfaces/role/candidat/cv-minute/cvMinute
 import { CompatibleUserInterface } from '@/interfaces/role/recruiter/cvtheque/compatibleUser.interface';
 import { gpt3 } from '@/utils/openai';
 
-const updateCvThequeCritere = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const updateCvThequeCritere = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -26,7 +23,7 @@ const updateCvThequeCritere = async (
 
     const { id } = req.params;
     let updatedCvThequeCritere: CvThequeCritereInterface | null = null;
-    const body: {
+    const body = req.body as {
       position?: string;
       description?: string;
       domain?: string;
@@ -35,7 +32,7 @@ const updateCvThequeCritere = async (
       diplome?: string;
       localisation?: string;
       distance?: number;
-    } = req.body;
+    };
 
     const cvThequeCritere = await prisma.cvThequeCritere.findUnique({
       where: { id: Number(id) },

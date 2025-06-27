@@ -18,7 +18,7 @@ import { updateCvMinutePayments } from './updateCvMinutePayments';
 
 const uniqueId = crypto.randomBytes(4).toString('hex');
 
-const addCvMinute = async (req: Request, res: Response): Promise<void> => {
+const addCvMinute = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -46,7 +46,7 @@ const addCvMinute = async (req: Request, res: Response): Promise<void> => {
       totalCredits: number;
     };
 
-    const body: { position: string } = req.body;
+    const body = req.body as { position: string };
 
     const name = `CV du ${formattedDate}`;
 

@@ -9,10 +9,7 @@ import { QualiCarriereChatInterface } from '@/interfaces/role/candidat/quali-car
 import { gpt3 } from '@/utils/openai';
 import { UserInterface } from '@/interfaces/user.interface';
 
-const sendQualiCarriereMessage = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const sendQualiCarriereMessage = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -22,7 +19,7 @@ const sendQualiCarriereMessage = async (
 
     let response: QualiCarriereChatInterface | null = null;
     const { user } = res.locals as { user: UserInterface };
-    const body: { message: string } = req.body;
+    const body = req.body as { message: string };
 
     const cvMinute = await prisma.cvMinute.findFirst({
       where: { userId: user.id, qualiCarriereRef: true },
@@ -39,6 +36,8 @@ const sendQualiCarriereMessage = async (
 
     const prevMessages = await prisma.qualiCarriereChat.findMany({
       where: { userId: user.id },
+      orderBy: { updatedAt: 'desc' },
+      take: 2,
     });
 
     const systemPrompt = qualiCarriereChatResponsePrompt.trim();

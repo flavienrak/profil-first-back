@@ -1,5 +1,4 @@
-import express from 'express';
-
+import { Router } from 'express';
 import {
   stripeController,
   stripeSessionController,
@@ -9,7 +8,7 @@ import {
   stripeValidation,
 } from '@/validations/payment.validation';
 
-const router = express.Router();
+const router = Router();
 
 router.post('/stripe', stripeValidation, stripeController);
 router.get(

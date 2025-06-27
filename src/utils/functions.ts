@@ -1,5 +1,7 @@
-import { logger } from '@/socket';
 import JSON5 from 'json5';
+import crypto from 'crypto';
+
+import { logger } from '@/socket';
 
 // return total questions
 const questionNumber = (value: number) => {
@@ -59,6 +61,15 @@ const questionRangeByIndex = (value: number) => {
   const end = start + count - 1;
 
   return { start, end };
+};
+
+// Génère un code sécurisé à 6 chiffres
+const generateSecureCode = (): string => {
+  const buffer = crypto.randomBytes(4); // 4 bytes = 32 bits
+  const code = (parseInt(buffer.toString('hex'), 16) % 1_000_000)
+    .toString()
+    .padStart(6, '0');
+  return code;
 };
 
 const formatTextWithStrong = (value: string): string => {
@@ -153,6 +164,7 @@ export {
   questionNumber,
   questionNumberByIndex,
   questionRangeByIndex,
+  generateSecureCode,
   formatTextWithStrong,
   extractJson,
 };

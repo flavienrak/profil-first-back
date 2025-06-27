@@ -9,7 +9,7 @@ import { PaymentInterface } from '@/interfaces/payment.interface';
 import { gpt4Token } from '@/utils/payment/token';
 import { updateCvMinutePayments } from './updateCvMinutePayments';
 
-const optimizeCvMinute = async (req: Request, res: Response): Promise<void> => {
+const optimizeCvMinute = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const {

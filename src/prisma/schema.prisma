@@ -22,6 +22,7 @@ model User {
 
   userInfos                UserInfos?
   files                    File[]
+  tokens                   Token[]
   cvMinutes                CvMinute[]
   cvMinuteDomains          CvMinuteDomain[]
   qualiCarriereQuestions   QualiCarriereQuestion[]
@@ -74,6 +75,19 @@ model File {
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvMinute        CvMinute?        @relation(fields: [cvMinuteId], references: [id], onDelete: Cascade)
   cvMinuteSection CvMinuteSection? @relation(fields: [cvMinuteSectionId], references: [id], onDelete: Cascade)
+}
+
+model Token {
+  id        Int      @id @default(autoincrement())
+  type      String
+  value     String
+  expiredAt DateTime
+  userId    Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model CvMinute {
@@ -374,10 +388,8 @@ model CvThequeContactView {
 
 model Payment {
   id        Int       @id @default(autoincrement())
-  amount    Int
-  name      String
   type      String
-  currency  String    @default("eur")
+  priceId   String?
   sessionId String    @unique
   status    String
   expiredAt DateTime?

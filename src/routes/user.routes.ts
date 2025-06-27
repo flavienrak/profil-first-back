@@ -1,5 +1,4 @@
-import express from 'express';
-
+import { Router } from 'express';
 import {
   getUser,
   updateUser,
@@ -11,7 +10,7 @@ import {
 } from '@/validations/user.validation';
 import { upload } from '@/lib/multer';
 
-const router = express.Router();
+const router = Router();
 
 router.get('/', getUser);
 router.put(

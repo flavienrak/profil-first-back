@@ -1,5 +1,4 @@
-import express from 'express';
-
+import { Router } from 'express';
 import {
   addCvThequeCritere,
   saveCvThequeCritere,
@@ -18,7 +17,7 @@ import {
 } from '@/validations/role/recruiter/cvtheque.validation';
 import { resendCvThequeCritere } from '@/controllers/role/recruiter/cvtheque/resend-search.controller';
 
-const router = express.Router();
+const router = Router();
 
 router.post('/', addCvThequeCritereValidation, addCvThequeCritere);
 

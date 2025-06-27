@@ -16,11 +16,9 @@ import {
 import { qualiCarriereNextQuestionPrompt } from '@/utils/prompts/quali-carriere.prompt';
 import { gpt3 } from '@/utils/openai';
 import { UserInterface } from '@/interfaces/user.interface';
+import { openaiApiKey } from '@/utils/env';
 
-const respondQualiCarriereQuestion = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const respondQualiCarriereQuestion = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -30,7 +28,7 @@ const respondQualiCarriereQuestion = async (
 
     const { user } = res.locals as { user: UserInterface };
     const { id } = req.params;
-    const body: { cvMinuteSectionId: number; content?: string } = req.body;
+    const body = req.body as { cvMinuteSectionId: number; content?: string };
 
     const cvMinute = await prisma.cvMinute.findFirst({
       where: { qualiCarriereRef: true, userId: user.id },
@@ -105,7 +103,7 @@ const respondQualiCarriereQuestion = async (
         formData,
         {
           headers: {
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            Authorization: `Bearer ${openaiApiKey}`,
             ...formData.getHeaders(),
           },
         },

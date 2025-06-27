@@ -1,5 +1,4 @@
-import express from 'express';
-
+import { Router } from 'express';
 import {
   updateCvMinuteSection,
   updateCvMinuteSectionScore,
@@ -36,7 +35,7 @@ import {
 } from '@/middlewares/role/candidat/cv-minute.middleware';
 import { upload } from '@/lib/multer';
 
-const router = express.Router();
+const router = Router();
 
 // GET CVMINUTES
 router.get('/', getAllCvMinute);

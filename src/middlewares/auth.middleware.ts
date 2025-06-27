@@ -2,48 +2,46 @@ import jwt from 'jsonwebtoken';
 import prisma from '@/lib/db';
 
 import { Request, Response, NextFunction } from 'express';
-
-const authTokenName = process.env.AUTH_TOKEN_NAME;
-const secretKey = process.env.JWT_SECRET_KEY;
+import { authTokenName, jwtSecretKey } from '@/utils/env';
 
 const isAuthenticated = async (
   req: Request,
   res: Response,
   next: NextFunction,
-): Promise<void> => {
+) => {
   try {
-    if (authTokenName && secretKey) {
-      const token = req.cookies?.[authTokenName];
-      if (token) {
-        const verify = jwt.verify(token, secretKey);
-        if ((verify as jwt.JwtPayload)?.infos) {
-          const userId = (verify as jwt.JwtPayload).infos.id;
-          const user = await prisma.user.findUnique({
-            where: { id: userId },
-          });
+    const token = req.cookies?.[authTokenName];
+    if (token) {
+      const verify = jwt.verify(token, jwtSecretKey);
+      if ((verify as jwt.JwtPayload)?.infos) {
+        const userId = (verify as jwt.JwtPayload).infos.id;
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          include: { userInfos: true },
+        });
 
-          if (user) {
-            res.locals.user = user;
-            return next();
-          } else {
-            res.locals.user = null;
+        if (user) {
+          if (!user.userInfos?.verified) {
+            res.json({ notVerified: true });
             res.clearCookie(authTokenName);
-            res.json({ unAuthorized: true });
             return;
+          } else {
+            res.locals.user = user;
+            next();
           }
         } else {
-          res.locals.user = null;
           res.clearCookie(authTokenName);
           res.json({ unAuthorized: true });
           return;
         }
       } else {
         res.locals.user = null;
+        res.clearCookie(authTokenName);
         res.json({ unAuthorized: true });
         return;
       }
     } else {
-      res.json({ envNotFound: true });
+      res.json({ noToken: true });
       return;
     }
   } catch (error) {

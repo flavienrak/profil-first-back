@@ -20,10 +20,7 @@ import { PaymentInterface } from '@/interfaces/payment.interface';
 import { gpt3Token } from '@/utils/payment/token';
 import { updateCvMinutePayments } from './updateCvMinutePayments';
 
-const updateCvMinuteSection = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const updateCvMinuteSection = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -47,7 +44,7 @@ const updateCvMinuteSection = async (
 
       totalCredits: number;
     };
-    const body: {
+    const body = req.body as {
       name?: string;
       order?: number;
       title?: string;
@@ -76,7 +73,7 @@ const updateCvMinuteSection = async (
       newExperience?: boolean;
 
       cvMinuteSectionId?: number;
-    } = req.body;
+    };
 
     const cvMinute = await prisma.cvMinute.findUnique({
       where: { id: Number(id) },
@@ -465,10 +462,7 @@ const updateCvMinuteSection = async (
   }
 };
 
-const generateNewCvMinuteSections = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const generateNewCvMinuteSections = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const {
@@ -610,10 +604,7 @@ const generateNewCvMinuteSections = async (
   }
 };
 
-const generateCvMinuteSectionAdvices = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const generateCvMinuteSectionAdvices = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -781,10 +772,7 @@ const generateCvMinuteSectionAdvices = async (
   }
 };
 
-const updateCvMinuteScore = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const updateCvMinuteScore = async (req: Request, res: Response) => {
   try {
     let evaluation: EvaluationInterface | null = null;
     const { id } = req.params;
@@ -954,10 +942,7 @@ const updateCvMinuteScore = async (
   }
 };
 
-const updateCvMinuteSectionScore = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+const updateCvMinuteSectionScore = async (req: Request, res: Response) => {
   try {
     const {
       cvMinute,

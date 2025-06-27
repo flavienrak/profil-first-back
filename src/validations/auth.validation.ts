@@ -46,4 +46,26 @@ const registerValidation = [
     .withMessage('invalid role'),
 ];
 
-export { loginValidation, registerValidation };
+const resetPasswordMailValidation = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('email required')
+    .isEmail()
+    .withMessage('invalid email'),
+];
+
+const resetPasswordValidation = [
+  body('password')
+    .notEmpty()
+    .withMessage('password required')
+    .isLength({ min: 6 })
+    .withMessage('invalid password'),
+];
+
+export {
+  loginValidation,
+  registerValidation,
+  resetPasswordMailValidation,
+  resetPasswordValidation,
+};

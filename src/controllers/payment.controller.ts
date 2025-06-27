@@ -3,14 +3,18 @@ import prisma from '@/lib/db';
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { stripe } from '@/socket';
-import { currency } from '@/utils/constants';
 import { expirationDate } from '@/utils/payment/expriation';
 import { getCredit } from '@/utils/payment/credit';
 import { UserInterface } from '@/interfaces/user.interface';
+import { PaymentType } from '@/types/payment.type';
+import {
+  boosterPriceId,
+  frontendUri,
+  premiumPriceId,
+  qualiCarrierePriceId,
+} from '@/utils/env';
 
-const frontendUri = process.env.FRONTEND_URI;
-
-const stripeController = async (req: Request, res: Response): Promise<void> => {
+const stripeController = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -19,37 +23,40 @@ const stripeController = async (req: Request, res: Response): Promise<void> => {
     }
 
     const { user } = res.locals as { user: UserInterface };
-    const body: { amount: number; name: string; type: string } = req.body;
+    const { type } = req.body as { type: PaymentType };
+
+    const priceId =
+      type === 'premium'
+        ? premiumPriceId
+        : type === 'booster'
+          ? boosterPriceId
+          : qualiCarrierePriceId;
+
+    const paymentMode = type === 'booster' ? 'payment' : 'subscription';
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price_data: {
-            currency,
-            product_data: { name: body.name },
-            unit_amount: body.amount,
-          },
+          price: priceId,
           quantity: 1,
         },
       ],
-      mode: 'payment',
+      mode: paymentMode,
       success_url: `${frontendUri}/payment/{CHECKOUT_SESSION_ID}`,
       cancel_url: `${frontendUri}/mon-plan`,
     });
 
     let expiredAt: Date | null = null;
 
-    if (body.type === 'premium' || body.type === 'quali-carriere') {
-      expiredAt = expirationDate(body.type);
+    if (type === 'premium' || type === 'quali-carriere') {
+      expiredAt = expirationDate(type);
     }
 
     const payment = await prisma.payment.create({
       data: {
-        amount: body.amount,
-        name: body.name,
-        type: body.type,
-        currency,
+        type: type,
+        priceId,
         sessionId: session.id,
         status: session.payment_status,
         expiredAt,

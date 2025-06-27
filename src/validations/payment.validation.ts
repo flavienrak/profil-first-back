@@ -1,13 +1,11 @@
 import { body, param } from 'express-validator';
 
 const stripeValidation = [
-  body('amount')
+  body('type')
+    .trim()
     .notEmpty()
-    .withMessage('Amount required')
-    .isInt({ gt: 0 })
-    .withMessage('Invalid amount'),
-  body('name').trim().notEmpty().withMessage('name required'),
-  body('type').trim().notEmpty().withMessage('type required'),
+    .isIn(['premium', 'booster', 'quali-carriere'])
+    .withMessage('type required'),
 ];
 
 const stripeSessionValidation = [
