@@ -32,7 +32,7 @@ const stripeController = async (req: Request, res: Response) => {
           ? boosterPriceId
           : qualiCarrierePriceId;
 
-    const paymentMode = type === 'booster' ? 'payment' : 'subscription';
+    const paymentMode = type === 'premium' ? 'subscription' : 'payment';
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -110,7 +110,7 @@ const stripeSessionController = async (req: Request, res: Response) => {
     if (payment.status === 'paid' && !credit) {
       const creditValue = getCredit(payment.type);
 
-      if (creditValue) {
+      if (creditValue && payment.type !== 'quali-carriere') {
         credit = await prisma.credit.create({
           data: {
             value: creditValue,

@@ -214,7 +214,10 @@ const updateCvMinuteSection = async (req: Request, res: Response) => {
         );
 
         if (!jsonData) {
-          res.json({ parsingError: true });
+          res.json({
+            parsingError: true,
+            message: responseChoice.message.content,
+          });
           return;
         }
 
@@ -409,7 +412,10 @@ const updateCvMinuteSection = async (req: Request, res: Response) => {
         } = extractJson(responseChoice.message.content);
 
         if (!jsonData) {
-          res.json({ parsingError: true });
+          res.json({
+            parsingError: true,
+            message: responseChoice.message.content,
+          });
           return;
         }
 
@@ -546,7 +552,10 @@ const generateNewCvMinuteSections = async (req: Request, res: Response) => {
       );
 
       if (!jsonData) {
-        res.json({ parsingError: true });
+        res.json({
+          parsingError: true,
+          message: responseChoice.message.content,
+        });
         return;
       }
 
@@ -714,7 +723,10 @@ const generateCvMinuteSectionAdvices = async (req: Request, res: Response) => {
       );
 
       if (!jsonData) {
-        res.json({ parsingError: true });
+        res.json({
+          parsingError: true,
+          message: responseChoice.message.content,
+        });
         return;
       }
 
@@ -877,7 +889,7 @@ const updateCvMinuteScore = async (req: Request, res: Response) => {
           responseId: openaiResponse.id,
           cvMinuteId: cvMinute.id,
           request: 'cvMinuteMatchingScore',
-          response: responseChoice.message.content ?? '',
+          response: responseChoice.message.content,
           index: responseChoice.index,
         },
       });
@@ -886,7 +898,10 @@ const updateCvMinuteScore = async (req: Request, res: Response) => {
         extractJson(responseChoice.message.content);
 
       if (!jsonData) {
-        res.json({ parsingError: true });
+        res.json({
+          parsingError: true,
+          message: responseChoice.message.content,
+        });
         return;
       }
 
@@ -1019,7 +1034,7 @@ const updateCvMinuteSectionScore = async (req: Request, res: Response) => {
           responseId: openaiResponse.id,
           cvMinuteId: cvMinute.id,
           request: 'cvMinuteSectionMatchingScore',
-          response: responseChoice.message.content ?? '',
+          response: responseChoice.message.content,
           index: responseChoice.index,
         },
       });
@@ -1031,7 +1046,10 @@ const updateCvMinuteSectionScore = async (req: Request, res: Response) => {
       } = extractJson(responseChoice.message.content);
 
       if (!jsonData) {
-        res.json({ parsingError: true });
+        res.json({
+          parsingError: true,
+          message: responseChoice.message.content,
+        });
         return;
       }
 

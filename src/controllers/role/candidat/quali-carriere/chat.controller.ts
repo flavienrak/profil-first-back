@@ -86,7 +86,7 @@ const sendQualiCarriereMessage = async (req: Request, res: Response) => {
           responseId: openaiResponse.id,
           userId: user.id,
           request: 'qualiCarriereChat',
-          response: responseChoice.message.content ?? '',
+          response: responseChoice.message.content,
           index: responseChoice.index,
         },
       });
@@ -96,7 +96,10 @@ const sendQualiCarriereMessage = async (req: Request, res: Response) => {
       );
 
       if (!jsonData) {
-        res.json({ parsingError: true });
+        res.json({
+          parsingError: true,
+          message: responseChoice.message.content,
+        });
         return;
       }
 

@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import {
   getUser,
+  reservationContact,
   updateUser,
   updateUserInfos,
 } from '@/controllers/user.controller';
 import {
+  reservationContactValidation,
   updateProfileValidation,
   updateUserInfosValidation,
 } from '@/validations/user.validation';
@@ -20,5 +22,11 @@ router.put(
   updateUser,
 );
 router.put('/user-infos', updateUserInfosValidation, updateUserInfos);
+
+router.post(
+  '/reservation-contact',
+  reservationContactValidation,
+  reservationContact,
+);
 
 export default router;

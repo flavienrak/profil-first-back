@@ -1,6 +1,12 @@
 import nodemailer from 'nodemailer';
 
-import { smtpHost, smtpPass, smtpPort, smtpUser } from '@/utils/env';
+import {
+  contactMail,
+  smtpHost,
+  smtpPass,
+  smtpPort,
+  smtpUser,
+} from '@/utils/env';
 
 const transporter = nodemailer.createTransport({
   host: smtpHost,
@@ -79,4 +85,33 @@ async function sendResetPasswordEmail(data: {
   await transporter.sendMail(mailOptions);
 }
 
-export { sendVerificationEmail, sendResetPasswordEmail };
+// RESERVATION CONTACT
+async function sendReservationContactMail(data: {
+  name: string;
+  email: string;
+  phone: string;
+  date: string;
+}) {
+  const mailOptions = {
+    from: `"PROFILE FIRST" <${smtpUser}>`,
+    to: contactMail,
+    subject: 'Résérvation séance',
+    text: `Demande de résérvation séance : ${data.email}`,
+    html: `
+      <p>Bonjour,</p>
+      <p>Un utilisateur de Profile First a demandé d'etre contacté.</p>
+      <p>Nom : ${data.name}</p>
+      <p>Adresse email : <a href="mailto:${data.email}">${data.email}</a></p>
+      <p>Numéro téléphone : <a href="tel:${data.phone}">${data.phone}</a></p>
+      <p>Date et Heure : ${data.date}</p>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+export {
+  sendVerificationEmail,
+  sendResetPasswordEmail,
+  sendReservationContactMail,
+};

@@ -8,6 +8,7 @@ const qualiCarriereChatResponsePrompt = `
   Contraintes :
   - Max 300 caractères.
   - Aérer la réponse avec des retours à la ligne.
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Ne jamais sortir du format demandé.
 
   Format attendu : 
@@ -45,6 +46,7 @@ const qualiCarriereFirstQuestionPrompt = `
   - Génère les **2 premières questions** de l’échange.
   - Max 110 caractères par question.
   - Respecter les retours à la ligne demandé.
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Ne jamais sortir du format demandé.
 
   Format attendu :
@@ -81,8 +83,9 @@ const qualiCarriereNextQuestionPrompt = `
   - Si long ou confus : Clarifie et valide ("Tu veux dire que… ?")
 
   Contraintes :
-  - Max 110 caractères
-  - Ne jamais sortir du format demandé
+  - Max 110 caractères.
+  - Donne uniquement un objet JSON (pas de texte autour).
+  - Ne jamais sortir du format demandé.
 
   Format de sortie :
   { question: "..." }
@@ -120,6 +123,7 @@ const qualiCarriereResumePrompt = `
   - Privilégie des termes métiers, précis et actionnables.
   - Évite les soft skills vagues ou évidentes (ex : rigueur, curiosité…).
   - Ne reformule pas plusieurs fois une même idée.
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Respecter les retours à la ligne demandé.
   - Ne jamais sortir du format demandé.
 

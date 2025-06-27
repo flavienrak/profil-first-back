@@ -200,24 +200,29 @@ const resendCvThequeCritere = async (req: Request, res: Response) => {
                   return;
                 }
 
-                for (const r of openaiResponse.choices) {
+                const responseChoice = openaiResponse.choices[0];
+
+                if (responseChoice.message.content) {
                   await prisma.openaiResponse.create({
                     data: {
                       responseId: openaiResponse.id,
                       userId: u.id,
                       request: 'cvthequeEvaluation',
-                      response: r.message.content ?? '',
-                      index: r.index,
+                      response: responseChoice.message.content,
+                      index: responseChoice.index,
                     },
                   });
 
                   const jsonData: {
                     compatible: boolean;
                     score: number;
-                  } = extractJson(r.message.content);
+                  } = extractJson(responseChoice.message.content);
 
                   if (!jsonData) {
-                    res.json({ parsingError: true });
+                    res.json({
+                      parsingError: true,
+                      message: responseChoice.message.content,
+                    });
                     return;
                   }
 
@@ -313,23 +318,28 @@ const resendCvThequeCritere = async (req: Request, res: Response) => {
             return;
           }
 
-          for (const r of openaiSectionResponse.choices) {
+          const responseChoice = openaiSectionResponse.choices[0];
+
+          if (responseChoice.message.content) {
             await prisma.openaiResponse.create({
               data: {
                 responseId: openaiSectionResponse.id,
                 userId: item.user.id,
                 request: 'cvthequeTitle',
-                response: r.message.content ?? '',
-                index: r.index,
+                response: responseChoice.message.content,
+                index: responseChoice.index,
               },
             });
 
             const jsonData: { content: string } = extractJson(
-              r.message.content,
+              responseChoice.message.content,
             );
 
             if (!jsonData) {
-              res.json({ parsingError: true });
+              res.json({
+                parsingError: true,
+                message: responseChoice.message.content,
+              });
               return;
             }
 
@@ -360,23 +370,28 @@ const resendCvThequeCritere = async (req: Request, res: Response) => {
             return;
           }
 
-          for (const r of openaiSectionResponse.choices) {
+          const responseChoice = openaiSectionResponse.choices[0];
+
+          if (responseChoice.message.content) {
             await prisma.openaiResponse.create({
               data: {
                 responseId: openaiSectionResponse.id,
                 userId: item.user.id,
                 request: 'cvthequePresentation',
-                response: r.message.content ?? '',
-                index: r.index,
+                response: responseChoice.message.content,
+                index: responseChoice.index,
               },
             });
 
             const jsonData: { content: string } = extractJson(
-              r.message.content,
+              responseChoice.message.content,
             );
 
             if (!jsonData) {
-              res.json({ parsingError: true });
+              res.json({
+                parsingError: true,
+                message: responseChoice.message.content,
+              });
               return;
             }
 
@@ -407,14 +422,16 @@ const resendCvThequeCritere = async (req: Request, res: Response) => {
             return;
           }
 
-          for (const r of openaiSectionResponse.choices) {
+          const responseChoice = openaiSectionResponse.choices[0];
+
+          if (responseChoice.message.content) {
             await prisma.openaiResponse.create({
               data: {
                 responseId: openaiSectionResponse.id,
                 userId: item.user.id,
                 request: 'cvthequeExperience',
-                response: r.message.content ?? '',
-                index: r.index,
+                response: responseChoice.message.content,
+                index: responseChoice.index,
               },
             });
             const jsonData: {
@@ -422,10 +439,13 @@ const resendCvThequeCritere = async (req: Request, res: Response) => {
               date: string;
               company: string;
               description: string;
-            }[] = extractJson(r.message.content);
+            }[] = extractJson(responseChoice.message.content);
 
             if (!jsonData) {
-              res.json({ parsingError: true });
+              res.json({
+                parsingError: true,
+                message: responseChoice.message.content,
+              });
               return;
             }
 
@@ -462,21 +482,28 @@ const resendCvThequeCritere = async (req: Request, res: Response) => {
             return;
           }
 
-          for (const r of openaiSectionResponse.choices) {
+          const responseChoice = openaiSectionResponse.choices[0];
+
+          if (responseChoice.message.content) {
             await prisma.openaiResponse.create({
               data: {
                 responseId: openaiSectionResponse.id,
                 userId: item.user.id,
                 request: 'cvthequeDiplomes',
-                response: r.message.content ?? '',
-                index: r.index,
+                response: responseChoice.message.content,
+                index: responseChoice.index,
               },
             });
 
-            const jsonData: string[] = extractJson(r.message.content);
+            const jsonData: string[] = extractJson(
+              responseChoice.message.content,
+            );
 
             if (!jsonData) {
-              res.json({ parsingError: true });
+              res.json({
+                parsingError: true,
+                message: responseChoice.message.content,
+              });
               return;
             }
 
@@ -512,23 +539,28 @@ const resendCvThequeCritere = async (req: Request, res: Response) => {
             return;
           }
 
-          for (const r of openaiSectionResponse.choices) {
+          const responseChoice = openaiSectionResponse.choices[0];
+
+          if (responseChoice.message.content) {
             await prisma.openaiResponse.create({
               data: {
                 responseId: openaiSectionResponse.id,
                 userId: item.user.id,
                 request: 'cvthequeFormation',
-                response: r.message.content ?? '',
-                index: r.index,
+                response: responseChoice.message.content,
+                index: responseChoice.index,
               },
             });
 
             const jsonData: { content: string } = extractJson(
-              r.message.content,
+              responseChoice.message.content,
             );
 
             if (!jsonData) {
-              res.json({ parsingError: true });
+              res.json({
+                parsingError: true,
+                message: responseChoice.message.content,
+              });
               return;
             }
 
@@ -560,23 +592,28 @@ const resendCvThequeCritere = async (req: Request, res: Response) => {
             return;
           }
 
-          for (const r of openaiSectionResponse.choices) {
+          const responseChoice = openaiSectionResponse.choices[0];
+
+          if (responseChoice.message.content) {
             await prisma.openaiResponse.create({
               data: {
                 responseId: openaiSectionResponse.id,
                 userId: item.user.id,
                 request: 'cvthequeCompetence',
-                response: r.message.content ?? '',
-                index: r.index,
+                response: responseChoice.message.content,
+                index: responseChoice.index,
               },
             });
 
             const jsonData: { content: string } = extractJson(
-              r.message.content,
+              responseChoice.message.content,
             );
 
             if (!jsonData) {
-              res.json({ parsingError: true });
+              res.json({
+                parsingError: true,
+                message: responseChoice.message.content,
+              });
               return;
             }
 

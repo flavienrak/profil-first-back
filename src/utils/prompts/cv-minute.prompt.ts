@@ -92,6 +92,7 @@ const optimizeCvMinutePrompt = `
   - Génère de nouvelles sections appelées "rubriques" selon les conseils.
   - Scores : entre 0 et 100.
   - Ne jamais inclure d’introduction ou d’explication.
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Respecter les retours à la ligne demandé.
   - Ne jamais sortir du format demandé.
 
@@ -141,6 +142,7 @@ const editableSectionEvaluationPrompt = `
   Contraintes :
   - Phrases clairs, constructives et baséés sur les attentes du poste.
   - Pas d’introduction ni de phrase hors sujet.
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Ne jamais sortir du format demandé.
 
   Format attendu :
@@ -157,6 +159,7 @@ const experienceEvaluationPrompt = `
   - Le score est une valeur entière entre 0 et 100.
   - Les commentaires doivent être clairs, constructifs et basés sur les attentes du poste.
   - Pas d’introduction ni de phrase hors sujet.
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Respecter les retours à la ligne demandé.
   - Ne jamais sortir du format demandé.
 
@@ -175,9 +178,9 @@ const cvMinuteEvaluationPrompt = `
   À partir du contenu du CV et de l’offre ciblée, évalue la compatibilité globale du CV avec l’offre et fournir des recommandations concrètes.
 
   Contraintes :
-  - JSON simple uniquement.
   - Pas de texte explicatif en dehors du format demandé.
   - Respecter les retours à la ligne demandé.
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Ne jamais sortir du format demandé.
 
   Format attendu :
@@ -198,6 +201,7 @@ const newCvMinuteSectionPrompt = `
   Contraintes :
   - Ne pas proposer les sections déjà présentes.
   - Suggérer uniquement des ajouts pertinents, concrets et orientés impact.
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Ne jamais sortir du format demandé.
   
   Format attendu :
@@ -213,6 +217,7 @@ const cvMinuteTitleAdvicesPrompt = `
   Contraintes :
   - Pas de phrases explicatives.
   - Max 80 caractères par titre.
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Ne jamais sortir du format demandé.
 
   Format attendu :
@@ -226,6 +231,7 @@ const cvMinutePresentationAdvicesPrompt = `
   
   Contraintes :
   - Réponses claires, sans introduction.
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Ne jamais sortir du format demandé.
 
   Format attendu :
@@ -241,6 +247,7 @@ const cvMinuteExperienceAdvicesPrompt = `
   - Max 300 caractères par ligne.
   - Pas de phrases explicatives.
   - Format : "MotClé : détail1, détail2..."
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Ne jamais sortir du format demandé.
 
   Format attendu :

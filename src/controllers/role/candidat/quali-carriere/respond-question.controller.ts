@@ -204,23 +204,28 @@ const respondQualiCarriereQuestion = async (req: Request, res: Response) => {
             return;
           }
 
-          for (const r of openaiResponse.choices) {
+          const responseChoice = openaiResponse.choices[0];
+
+          if (responseChoice.message.content) {
             await prisma.openaiResponse.create({
               data: {
                 responseId: openaiResponse.id,
                 userId: user.id,
                 request: 'qualiCarriereQuestion',
-                response: r.message.content ?? '',
-                index: r.index,
+                response: responseChoice.message.content,
+                index: responseChoice.index,
               },
             });
 
             const jsonData: { question: string } = extractJson(
-              r.message.content,
+              responseChoice.message.content,
             );
 
             if (!jsonData) {
-              res.json({ parsingError: true });
+              res.json({
+                parsingError: true,
+                message: responseChoice.message.content,
+              });
               return;
             }
 

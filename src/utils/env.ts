@@ -19,6 +19,8 @@ const smtpPort = process.env.SMTP_PORT as string;
 const smtpUser = process.env.SMTP_USER as string;
 const smtpPass = process.env.SMTP_PASS as string;
 
+const contactMail = process.env.CONTACT_MAIL as string;
+
 const authTokenName = process.env.AUTH_TOKEN_NAME as string;
 
 export {
@@ -37,6 +39,8 @@ export {
   smtpPort,
   smtpUser,
   smtpPass,
+  // MAIL
+  contactMail,
   // TOKEN
   authTokenName,
 };

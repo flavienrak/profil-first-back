@@ -9,6 +9,8 @@ import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { imageMimeTypes } from '@/utils/constants';
 import { UserInterface } from '@/interfaces/user.interface';
+import { sendReservationContactMail } from '@/utils/mailer';
+import { formatDateFr } from '@/utils/functions';
 
 const uniqueId = crypto.randomBytes(4).toString('hex');
 
@@ -205,4 +207,36 @@ const updateUserInfos = async (req: Request, res: Response) => {
   }
 };
 
-export { getUser, updateUser, updateUserInfos };
+const reservationContact = async (req: Request, res: Response) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const { user } = res.locals as { user: UserInterface };
+    const { phone } = req.body as { phone: string };
+
+    const contact = await prisma.contact.create({ data: { userId: user.id } });
+
+    await sendReservationContactMail({
+      name: user.name,
+      email: user.email,
+      phone,
+      date: formatDateFr(contact.createdAt),
+    });
+
+    res.status(200).json({ sent: true });
+    return;
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ unknownError: error });
+    }
+    return;
+  }
+};
+
+export { getUser, updateUser, updateUserInfos, reservationContact };

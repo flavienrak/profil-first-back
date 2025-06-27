@@ -27,4 +27,17 @@ const updateUserInfosValidation = [
   }),
 ];
 
-export { updateProfileValidation, updateUserInfosValidation };
+const reservationContactValidation = [
+  body('phone')
+    .trim()
+    .notEmpty()
+    .withMessage('phone required')
+    .matches(/^[+]?[\d\s().-]{8,20}$/)
+    .withMessage('invalid phone number'),
+];
+
+export {
+  updateProfileValidation,
+  updateUserInfosValidation,
+  reservationContactValidation,
+};

@@ -196,7 +196,7 @@ const getQualiCarriereQuestion = async (req: Request, res: Response) => {
               .join('\n');
 
             if (qualiCarriereResponses.length >= restQuestions) {
-              const qualiCarriereResume =
+              let qualiCarriereResume =
                 await prisma.qualiCarriereResume.findUnique({
                   where: { cvMinuteSectionId: experience.id },
                 });
@@ -221,40 +221,52 @@ const getQualiCarriereQuestion = async (req: Request, res: Response) => {
                   return;
                 }
 
-                for (const r of openaiResponse.choices) {
+                const responseChoice = openaiResponse.choices[0];
+
+                if (responseChoice.message.content) {
                   await prisma.openaiResponse.create({
                     data: {
                       responseId: openaiResponse.id,
                       userId: user.id,
                       request: 'qualiCarriereResume',
-                      response: r.message.content ?? '',
-                      index: r.index,
+                      response: responseChoice.message.content,
+                      index: responseChoice.index,
                     },
                   });
                   const jsonData: { resume: string; competences: string[] } =
-                    extractJson(r.message.content);
+                    extractJson(responseChoice.message.content);
 
                   if (!jsonData) {
-                    res.json({ parsingError: true });
+                    res.json({
+                      parsingError: true,
+                      message: responseChoice.message.content,
+                    });
                     return;
                   }
 
-                  await prisma.qualiCarriereResume.create({
-                    data: {
-                      userId: user.id,
-                      content: jsonData.resume,
-                      cvMinuteSectionId: experience.id,
-                    },
-                  });
+                  qualiCarriereResume =
+                    await prisma.qualiCarriereResume.findUnique({
+                      where: { cvMinuteSectionId: experience.id },
+                    });
 
-                  for (const c of jsonData.competences) {
-                    await prisma.qualiCarriereCompetence.create({
+                  if (!qualiCarriereResume) {
+                    await prisma.qualiCarriereResume.create({
                       data: {
-                        content: c,
                         userId: user.id,
+                        content: jsonData.resume,
                         cvMinuteSectionId: experience.id,
                       },
                     });
+
+                    for (const c of jsonData.competences) {
+                      await prisma.qualiCarriereCompetence.create({
+                        data: {
+                          content: c,
+                          userId: user.id,
+                          cvMinuteSectionId: experience.id,
+                        },
+                      });
+                    }
                   }
                 }
               }
@@ -262,6 +274,21 @@ const getQualiCarriereQuestion = async (req: Request, res: Response) => {
               continue;
             }
           }
+        }
+
+        if (cvMinute) {
+          cvMinute = await prisma.cvMinute.findUnique({
+            where: { id: cvMinute.id },
+            include: {
+              cvMinuteSections: {
+                include: {
+                  qualiCarriereResumes: true,
+                  qualiCarriereCompetences: true,
+                },
+                orderBy: { order: 'asc' },
+              },
+            },
+          });
         }
 
         res.status(200).json({ nextStep: true, messages, cvMinute });
@@ -336,23 +363,28 @@ const getQualiCarriereQuestion = async (req: Request, res: Response) => {
                 return;
               }
 
-              for (const r of openaiResponse.choices) {
+              const responseChoice = openaiResponse.choices[0];
+
+              if (responseChoice.message.content) {
                 await prisma.openaiResponse.create({
                   data: {
                     responseId: openaiResponse.id,
                     userId: user.id,
                     request: 'qualiCarriereQuestion',
-                    response: r.message.content ?? '',
-                    index: r.index,
+                    response: responseChoice.message.content,
+                    index: responseChoice.index,
                   },
                 });
 
                 const jsonData: { question: string } = extractJson(
-                  r.message.content,
+                  responseChoice.message.content,
                 );
 
                 if (!jsonData) {
-                  res.json({ parsingError: true });
+                  res.json({
+                    parsingError: true,
+                    message: responseChoice.message.content,
+                  });
                   return;
                 }
 
@@ -389,23 +421,28 @@ const getQualiCarriereQuestion = async (req: Request, res: Response) => {
             return;
           }
 
-          for (const r of openaiResponse.choices) {
+          const responseChoice = openaiResponse.choices[0];
+
+          if (responseChoice.message.content) {
             await prisma.openaiResponse.create({
               data: {
                 responseId: openaiResponse.id,
                 userId: user.id,
                 request: 'qualiCarriereQuestion',
-                response: r.message.content ?? '',
-                index: r.index,
+                response: responseChoice.message.content,
+                index: responseChoice.index,
               },
             });
 
             const jsonData: { questions: string[] } = extractJson(
-              r.message.content,
+              responseChoice.message.content,
             );
 
             if (!jsonData) {
-              res.json({ parsingError: true });
+              res.json({
+                parsingError: true,
+                message: responseChoice.message.content,
+              });
               return;
             }
 

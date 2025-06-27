@@ -205,7 +205,10 @@ const addCvMinute = async (req: Request, res: Response) => {
         } = extractJson(responseChoice.message.content);
 
         if (!jsonData) {
-          res.json({ parsingError: true });
+          res.json({
+            parsingError: true,
+            message: responseChoice.message.content,
+          });
           return;
         }
 

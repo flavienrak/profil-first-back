@@ -160,6 +160,29 @@ const extractJson = (value?: string | null): any | null => {
   }
 };
 
+const formatDateFr = (dateInput: Date): string => {
+  const date = new Date(dateInput);
+
+  const optionsDate: Intl.DateTimeFormatOptions = {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  };
+
+  const rawDate = date.toLocaleDateString('fr-FR', optionsDate);
+  const parts = rawDate.split(' '); // ["01", "mai", "2025"]
+
+  if (parts.length !== 3) return rawDate; // fallback de sécurité
+
+  const [day, month, year] = parts;
+  const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+
+  return `${day} ${capitalizedMonth} ${year} à ${hours}h${minutes}`;
+};
+
 export {
   questionNumber,
   questionNumberByIndex,
@@ -167,4 +190,5 @@ export {
   generateSecureCode,
   formatTextWithStrong,
   extractJson,
+  formatDateFr,
 };

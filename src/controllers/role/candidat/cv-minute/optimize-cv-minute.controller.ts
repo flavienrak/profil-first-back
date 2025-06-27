@@ -152,7 +152,7 @@ const optimizeCvMinute = async (req: Request, res: Response) => {
           responseId: openaiResponse.id,
           cvMinuteId: cvMinute.id,
           request: 'optimizeCvMiute',
-          response: responseChoice.message.content ?? '',
+          response: responseChoice.message.content,
           index: responseChoice.index,
         },
       });
@@ -187,7 +187,10 @@ const optimizeCvMinute = async (req: Request, res: Response) => {
       } = extractJson(responseChoice.message.content);
 
       if (!jsonData) {
-        res.json({ parsingError: true });
+        res.json({
+          parsingError: true,
+          message: responseChoice.message.content,
+        });
         return;
       }
 

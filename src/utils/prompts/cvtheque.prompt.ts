@@ -11,6 +11,7 @@ const cvThequeUserEvaluationPrompt = `
   - Sinon, considérer comme non compatible.
 
   Contraintes:
+  - Donne uniquement un objet JSON (pas de texte autour).
   - Ne jamais sortir du format demandé
 
   Format attendu:
@@ -39,6 +40,7 @@ const cvThequeCirterePrompts = [
       Contraintes:
       - 1 ligne, maximum 80 caractères.
       - Pas de phrase complète ni de ponctuation inutile.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu:
@@ -62,6 +64,7 @@ const cvThequeCirterePrompts = [
       - 1 à 2 phrases, ton neutre et structuré.
       - Maximum 300 caractères.
       - Pas d'effet de style, pas d’exagération.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu:
@@ -126,6 +129,7 @@ const cvThequeCirterePrompts = [
       Contraintes:
       - Pas de doublons, ni de copier-coller de libellés d’offres.
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu:
@@ -174,6 +178,7 @@ const cvThequeCirterePrompts = [
       - Aucune abréviation non universelle.
       - Aucune spécialisation technique.
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu (array of string):
@@ -194,6 +199,7 @@ const cvThequeCirterePrompts = [
       - Les autres sont mentionnées sans détail.
       - Jamais de mots comme "initiation", "notions", "bases"
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu:
@@ -227,6 +233,7 @@ const cvThequeCirterePrompts = [
       - Une ligne vide entre chaque compétence.
       - Total: 4 lignes (la dernière peut être "Outils de [type]")
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
       
       Format attendu:
@@ -251,6 +258,7 @@ const cvThequeCirterePrompts = [
       - 1 seule ligne.
       - 80 caractères max.
       - Ton direct, orienté action ou bénéfice concret.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu:
@@ -274,6 +282,7 @@ const cvThequeCirterePrompts = [
       - 1 à 3 phrases – 300 caractères max.  
       - Ton affirmé, direct, axé valeur livrée.
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu:
@@ -346,6 +355,7 @@ const cvThequeCirterePrompts = [
       - Respecter les retours à la ligne demandé.
       - Pas de doublons, ni de copier-coller de libellés d’offres.
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu:
@@ -392,6 +402,7 @@ const cvThequeCirterePrompts = [
       - Adapter les compétences au poste ciblé.
       - Toujours privilégier des savoir-faire activables, transversaux, lisibles.
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu (array of string):
@@ -425,6 +436,7 @@ const cvThequeCirterePrompts = [
       - Ne pas ajouter de phrases hors format.
       - Ne pas citer de dates, de diplômes ou d’institutions.
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu:
@@ -459,6 +471,7 @@ const cvThequeCirterePrompts = [
 
       Contraintes:
       - Respecter les retours à la ligne demandé
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu: 
@@ -487,6 +500,7 @@ const cvThequeCirterePrompts = [
       - Éviter les titres flous, génériques, sans valeur ajoutée.
       - 1 seule ligne – 80 caractères max.  
       - Ton direct, clair, sans effet de style excessif.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
       
       Format attendu:
@@ -509,6 +523,7 @@ const cvThequeCirterePrompts = [
       Contraintes:
       - 2 à 3 phrases – 300 caractères max.  
       - Ton narratif, fluide, chaleureux et professionnel.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu:
@@ -601,6 +616,7 @@ const cvThequeCirterePrompts = [
       Contraintes:
       - Pas de doublons, ni de copier-coller de libellés d’offres.
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu:
@@ -653,6 +669,7 @@ const cvThequeCirterePrompts = [
       - Ne pas ajouter de commentaires ou d’explications.
       - Ne jamais utiliser de jargon technique dans le “Sujet”
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu (array of string):
@@ -683,6 +700,7 @@ const cvThequeCirterePrompts = [
       - Aucun jargon trop technique ou hermétique.  
       - Interdiction d’introduire des commentaires ou phrases hors format.
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu: 
@@ -721,6 +739,7 @@ const cvThequeCirterePrompts = [
 
       Contraintes:
       - Respecter les retours à la ligne demandé.
+      - Donne uniquement un objet JSON (pas de texte autour).
       - Ne jamais sortir du format demandé.
 
       Format attendu: 

@@ -11,14 +11,21 @@ const getUsers = async (req: Request, res: Response) => {
     const filterId = Number(domainId);
     let filterLabel: string | null = null;
 
-    if (!isNaN(filterId)) {
-      const foundDomain = domains.find((d) => d.id === filterId);
-      filterLabel = foundDomain?.label ?? null;
+    if (domainId !== 'all') {
+      if (!isNaN(Number(filterId))) {
+        const foundDomain = domains.find((d) => d.id === filterId);
+        filterLabel = foundDomain?.label ?? null;
+      }
+
+      if (!filterLabel) {
+        res.json({ invalidFilter: true });
+        return;
+      }
     }
 
     const users = await prisma.user.findMany({
       where: {
-        role: 'user',
+        role: 'candidat',
         ...(filterLabel && {
           cvMinuteDomains: { some: { content: filterLabel } },
         }),
